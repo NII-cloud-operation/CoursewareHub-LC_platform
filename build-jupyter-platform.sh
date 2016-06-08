@@ -101,9 +101,9 @@ chmod +x Anaconda3-2.4.1-Linux-x86_64.sh
 
 ./Anaconda3-2.4.1-Linux-x86_64.sh -b
 
-echo 'export PATH="/home/centos/anaconda3/bin:$PATH"' >>.bashrc
+echo 'export PATH="/root/anaconda3/bin:$PATH"' >>.bashrc
 
-export PATH="/home/centos/anaconda3/bin:$PATH"
+export PATH="/root/anaconda3/bin:$PATH"
 
 conda install -y jupyter
 EOF
