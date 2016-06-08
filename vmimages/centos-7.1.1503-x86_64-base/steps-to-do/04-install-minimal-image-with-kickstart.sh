@@ -1,0 +1,1 @@
+../../shared-code/centos-base/04-install-minimal-image-with-kickstart.sh

@@ -1,0 +1,1 @@
+../../shared-code/centos-base/02-download-centos-image.sh

@@ -1,0 +1,1 @@
+../../shared-code/centos-base/03-generate-ssh-keypair-and-kickstart-file.sh

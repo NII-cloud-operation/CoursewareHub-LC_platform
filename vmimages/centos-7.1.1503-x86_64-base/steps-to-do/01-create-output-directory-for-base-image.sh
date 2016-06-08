@@ -1,0 +1,1 @@
+../../shared-code/centos-base/01-create-output-directory-for-base-image.sh
