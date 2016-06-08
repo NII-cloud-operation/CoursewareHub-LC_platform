@@ -69,6 +69,22 @@ imagesource="$DATADIR/vmimages/centos-7.1.1511-x86_64-base/output/minimal-image.
 	[ -x "$DATADIR/vmdir/kvm-boot.sh" ] && \
 	    "$DATADIR/vmdir/kvm-boot.sh"
 
+
+	for p in wget bzip2; do
+	    (
+		$starting_step "Install $p"
+		[ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
+		    [ -f "$DATADIR/vmdir/1box-openvz-w-jupyter.raw.tar.gz" ] || \
+			[[ "$("$DATADIR/vmdir/ssh-to-kvm.sh" which $p 2>/dev/null)" = *$p* ]]
+		}
+		$skip_step_if_already_done ; set -e
+
+		"$DATADIR/vmdir/ssh-to-kvm.sh" <<EOF
+yum install -y $p
+EOF
+	    )
+	done
+	
 	(
 	    $starting_step "Do short set of script lines to install jupyter"
 	    [ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
