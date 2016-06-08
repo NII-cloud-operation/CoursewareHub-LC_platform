@@ -21,12 +21,23 @@ touch "$DATADIR/datadir.conf"
 
 source "$DATADIR/datadir.conf"
 
+imagesource="$DATADIR/vmimages/centos-7.1.1511-x86_64-base/output/minimal-image.raw.tar.gz"
+
 (
     $starting_group "Build minimal Centos 7 image"
-    [ -f "$DATADIR/vmimages/centos-7.1.1511-x86_64-base/output/minimal-image.raw.tar.gz" ]
+    [ -f "$imagesource" ]
     $skip_group_if_unnecessary ; set -e
     cd "$DATADIR/vmimages"
     ./build.sh centos-7.1.1511-x86_64-base/
+) ; prev_cmd_failed
+
+(
+    $starting_step "Setup user/sshkey for use by ind-steps/kvmsteps"
+    [ -f "${imagesource%.tar.gz}.sshuser" ]
+    $skip_step_if_already_done; set -e
+    cp "${imagesource%/*}/tmp-sshkeypair" "${imagesource%.tar.gz}.sshkey"
+    echo "root" >"${imagesource%.tar.gz}.sshuser"
+
 ) ; prev_cmd_failed
 
 (
@@ -46,7 +57,7 @@ source "$DATADIR/datadir.conf"
 
 	DATADIR="$DATADIR/vmdir" \
 	       "$ORGCODEDIR/ind-steps/kvmsteps/kvm-setup.sh" \
-	       "$DATADIR/vmapp-vdc-1box/1box-openvz.netfilter.x86_64.raw.tar.gz"
+	       "$DATADIR/vmimages/centos-7.1.1511-x86_64-base/output/minimal-image.raw.tar.gz"
     ) ; prev_cmd_failed
 
     (
