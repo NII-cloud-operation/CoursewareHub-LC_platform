@@ -182,6 +182,6 @@ EOF
 	[ -f "$DATADIR/vmdir/1box-openvz-w-jupyter.raw.tar.gz" ]
 	$skip_step_if_already_done ; set -e
 	cd "$DATADIR/vmdir/"
-	tar czSvf 1box-openvz-w-jupyter.raw.tar.gz 1box-openvz.netfilter.x86_64.raw
+	tar czSvf minimal-image-w-jupyter.raw.tar.gz minimal-image.raw
     ) ; prev_cmd_failed
 ) ; prev_cmd_failed
