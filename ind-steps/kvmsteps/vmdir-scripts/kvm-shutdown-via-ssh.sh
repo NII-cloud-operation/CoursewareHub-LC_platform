@@ -21,11 +21,16 @@ kvm_is_running()
 	[ -d /proc/"$(< "$DATADIR/runinfo/kvm.pid")" ]
 }
 
+: ${SSHUSER:=$(cat "$DATADIR/sshuser" 2>/dev/null)}
+
+maybesudo=""
+[ "$SSHUSER" != "root" ] && maybesudo="sudo "
+
 (
-    $starting_step 'Send "sudo shutdown -h now" via ssh'
+    $starting_step "Send \"${maybesudo}shutdown -h now\" via ssh"
     false
     $skip_step_if_already_done ; set -e
-    "$DATADIR/ssh-to-kvm.sh" sudo shutdown -h now
+    "$DATADIR/ssh-to-kvm.sh" $maybesudo shutdown -h now || :  # why does this return rc=255??
 ) ; prev_cmd_failed
 
 : ${WAITFORSHUTDOWN:=5 5 2 2 2 5 5 10 10 30 60} # set WAITFORSHUTDOWN to "0" to not wait
