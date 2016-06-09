@@ -185,6 +185,36 @@ EOF
 	    ) ; prev_cmd_failed
 	done
 
+	(
+	    $starting_step "Set default password for jupyter, plus other easy initial setup"
+	    JCFG="/home/centos/.jupyter/jupyter_notebook_config.py"
+	    [ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
+		[ -f "$DATADIR/vmdir/1box-openvz-w-jupyter.raw.tar.gz" ] || \
+		    "$DATADIR/vmdir/ssh-to-kvm.sh" grep sha1 "$JCFG" 2>/dev/null 1>&2
+	    }
+	    $skip_step_if_already_done ; set -e
+
+	    # http://jupyter-notebook.readthedocs.org/en/latest/public_server.html
+	    "$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<EOF
+set -x
+[ -f "$JCFG" ] || jupyter notebook --generate-config
+
+# set default password
+saltpass="\$(echo $'from notebook.auth import passwd\nprint(passwd("${JUPYTER_PASSWORD:=warmwinter}"))' | python)"
+echo "c.NotebookApp.password = '\$saltpass'" >>"$JCFG"
+echo "c.NotebookApp.ip = '*'" >>"$JCFG"
+
+# move jupyter's default directory away from \$HOME
+mkdir notebooks
+echo "c.NotebookApp.notebook_dir = 'notebooks'" >>"$JCFG"
+EOF
+	    "$DATADIR/vmdir/ssh-to-kvm.sh" <<EOF
+# autostart on boot
+echo "(setsid su - centos -c '/home/centos/anaconda3/bin/jupyter notebook' > /var/log/jupyter.log 2>&1) &" | \
+   bash -c "cat >>/etc/rc.local"
+EOF
+	) ; prev_cmd_failed
+
 	# TODO: this guard is awkward.
 	[ -x "$DATADIR/vmdir/kvm-shutdown-via-ssh.sh" ] && \
 	    "$DATADIR/vmdir/kvm-shutdown-via-ssh.sh"
