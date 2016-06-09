@@ -212,6 +212,8 @@ EOF
 # autostart on boot
 echo "(setsid su - centos -c '/home/centos/anaconda3/bin/jupyter notebook' > /var/log/jupyter.log 2>&1) &" | \
    bash -c "cat >>/etc/rc.local"
+# TODO: stop using rc.local, but until then, this is supposed to work:
+chmod +x /etc/rc.d/rc.local
 EOF
 	) ; prev_cmd_failed
 
