@@ -70,6 +70,18 @@ imagesource="$DATADIR/vmimages/centos-7.1.1511-x86_64-base/output/minimal-image.
 	    "$DATADIR/vmdir/kvm-boot.sh"
 
 
+	(
+	    $starting_step "Create centos user account"
+	    [ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
+		"$DATADIR/vmdir/ssh-to-kvm.sh" [ -d /home/centos ] 2>/dev/null
+	    }
+	    $skip_step_if_already_done ; set -e
+
+	    "$DATADIR/vmdir/ssh-to-kvm.sh" <<EOF
+adduser centos
+EOF
+	)
+
 	for p in wget bzip2; do
 	    (
 		$starting_step "Install $p"
@@ -89,21 +101,23 @@ EOF
 	    $starting_step "Do short set of script lines to install jupyter"
 	    [ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
 		[ -f "$DATADIR/vmdir/1box-openvz-w-jupyter.raw.tar.gz" ] || \
-		    [ "$("$DATADIR/vmdir/ssh-to-kvm.sh" which jupyter 2>/dev/null)" = "/root/anaconda3/bin/jupyter" ]
+		    [ "$("$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<<"which jupyter" 2>/dev/null)" = "/home/centos/anaconda3/bin/jupyter" ]
 	    }
 	    $skip_step_if_already_done ; set -e
 
-	    "$DATADIR/vmdir/ssh-to-kvm.sh" <<'EOF'
-wget  --progress=dot:mega \
-   https://3230d63b5fc54e62148e-c95ac804525aac4b6dba79b00b39d1d3.ssl.cf1.rackcdn.com/Anaconda3-2.4.1-Linux-x86_64.sh
+	    "$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<'EOF'
+if ! [ -f Anaconda3-2.4.1-Linux-x86_64.sh ]; then
+  wget  --progress=dot:mega \
+     https://3230d63b5fc54e62148e-c95ac804525aac4b6dba79b00b39d1d3.ssl.cf1.rackcdn.com/Anaconda3-2.4.1-Linux-x86_64.sh
+fi
 
 chmod +x Anaconda3-2.4.1-Linux-x86_64.sh
 
 ./Anaconda3-2.4.1-Linux-x86_64.sh -b
 
-echo 'export PATH="/root/anaconda3/bin:$PATH"' >>.bashrc
+echo 'export PATH="/home/centos/anaconda3/bin:$PATH"' >>.bashrc
 
-export PATH="/root/anaconda3/bin:$PATH"
+export PATH="/home/centos/anaconda3/bin:$PATH"
 
 conda install -y jupyter
 EOF
@@ -114,11 +128,11 @@ EOF
 	    [ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
 		## TODO: the next -f test is probably covered by the group
 		[ -f "$DATADIR/vmdir/1box-openvz-w-jupyter.raw.tar.gz" ] || \
-		    "$DATADIR/vmdir/ssh-to-kvm.sh" '[ -d ./anaconda3/lib/python3.5/site-packages/bash_kernel ]' 2>/dev/null
+		    "$DATADIR/vmdir/ssh-to-kvm.sh" '[ -d /home/centos/anaconda3/lib/python3.5/site-packages/bash_kernel ]' 2>/dev/null
 	    }
 	    $skip_step_if_already_done; set -e
 
-	    "$DATADIR/vmdir/ssh-to-kvm.sh" <<'EOF'
+	    "$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<'EOF'
 pip install bash_kernel
 python -m bash_kernel.install
 EOF
@@ -136,11 +150,11 @@ EOF
 	(
 	    $starting_step "Install nbextensions to VM"
 	    [ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
-		"$DATADIR/vmdir/ssh-to-kvm.sh" 'pip list | grep nbextensions' 2>/dev/null
+		"$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<<'pip list | grep nbextensions' 2>/dev/null
 	    }
 	    $skip_step_if_already_done; set -e
 
-	    "$DATADIR/vmdir/ssh-to-kvm.sh" <<'EOF'
+	    "$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<'EOF'
 
 pip install https://github.com/ipython-contrib/IPython-notebook-extensions/archive/master.zip --user
 
@@ -167,7 +181,7 @@ EOF
 		}
 		$skip_step_if_already_done; set -e
 
-		"$DATADIR/vmdir/ssh-to-kvm.sh" jupyter nbextension enable $ext
+		"$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<<"jupyter nbextension enable $ext"
 	    ) ; prev_cmd_failed
 	done
 
