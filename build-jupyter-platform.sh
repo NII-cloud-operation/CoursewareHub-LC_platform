@@ -231,3 +231,28 @@ EOF
 	tar czSvf minimal-image-w-jupyter.raw.tar.gz minimal-image.raw
     ) ; prev_cmd_failed
 ) ; prev_cmd_failed
+
+(
+    $starting_step "Expand fresh image from snapshot of image with Jupyter installed"
+    [ -f "$DATADIR/vmdir/minimal-image.raw" ]
+    $skip_step_if_already_done ; set -e
+    cd "$DATADIR/vmdir/"
+    tar xzSvf minimal-image-w-jupyter.raw.tar.gz
+) ; prev_cmd_failed
+
+# TODO: this guard is awkward.
+[ -x "$DATADIR/vmdir/kvm-boot.sh" ] && \
+    "$DATADIR/vmdir/kvm-boot.sh"
+
+(
+    $starting_step "Install Docker"
+    [ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
+	"$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<<"which docker" 2>/dev/null 1>&2
+    }
+    $skip_step_if_already_done; set -e
+    "$DATADIR/vmdir/ssh-to-kvm.sh" "curl -fsSL https://get.docker.com/ | sh"
+    "$DATADIR/vmdir/ssh-to-kvm.sh" "usermod -aG docker centos"
+    "$DATADIR/vmdir/ssh-to-kvm.sh" "service docker start"
+    
+) ; prev_cmd_failed
+    "$DATADIR/vmdir/ssh-to-kvm.sh" "service docker start"
