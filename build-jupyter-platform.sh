@@ -61,8 +61,8 @@ imagesource="$DATADIR/vmimages/centos-7.1.1511-x86_64-base/output/minimal-image.
     ) ; prev_cmd_failed
 
     (
-	$starting_group "Install Jupyter in the OpenVZ 1box image"
-	[ -f "$DATADIR/vmdir/1box-openvz-w-jupyter.raw.tar.gz" ]
+	$starting_group "Install Jupyter in the Centos 7 image"
+	[ -f "$DATADIR/vmdir/minimal-image-w-jupyter.raw.tar.gz" ]
 	$skip_group_if_unnecessary
 
 	# TODO: this guard is awkward.
@@ -86,7 +86,7 @@ EOF
 	    (
 		$starting_step "Install $p"
 		[ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
-		    [ -f "$DATADIR/vmdir/1box-openvz-w-jupyter.raw.tar.gz" ] || \
+		    [ -f "$DATADIR/vmdir/minimal-image-w-jupyter.raw.tar.gz" ] || \
 			[[ "$("$DATADIR/vmdir/ssh-to-kvm.sh" which $p 2>/dev/null)" = *$p* ]]
 		}
 		$skip_step_if_already_done ; set -e
@@ -100,7 +100,7 @@ EOF
 	(
 	    $starting_step "Do short set of script lines to install jupyter"
 	    [ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
-		[ -f "$DATADIR/vmdir/1box-openvz-w-jupyter.raw.tar.gz" ] || \
+		[ -f "$DATADIR/vmdir/minimal-image-w-jupyter.raw.tar.gz" ] || \
 		    [ "$("$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<<"which jupyter" 2>/dev/null)" = "/home/centos/anaconda3/bin/jupyter" ]
 	    }
 	    $skip_step_if_already_done ; set -e
@@ -127,7 +127,7 @@ EOF
 	    $starting_step "Install bash_kernel"
 	    [ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
 		## TODO: the next -f test is probably covered by the group
-		[ -f "$DATADIR/vmdir/1box-openvz-w-jupyter.raw.tar.gz" ] || \
+		[ -f "$DATADIR/vmdir/minimal-image-w-jupyter.raw.tar.gz" ] || \
 		    "$DATADIR/vmdir/ssh-to-kvm.sh" '[ -d /home/centos/anaconda3/lib/python3.5/site-packages/bash_kernel ]' 2>/dev/null
 	    }
 	    $skip_step_if_already_done; set -e
@@ -189,7 +189,7 @@ EOF
 	    $starting_step "Set default password for jupyter, plus other easy initial setup"
 	    JCFG="/home/centos/.jupyter/jupyter_notebook_config.py"
 	    [ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
-		[ -f "$DATADIR/vmdir/1box-openvz-w-jupyter.raw.tar.gz" ] || \
+		[ -f "$DATADIR/vmdir/minimal-image-w-jupyter.raw.tar.gz" ] || \
 		    "$DATADIR/vmdir/ssh-to-kvm.sh" grep sha1 "$JCFG" 2>/dev/null 1>&2
 	    }
 	    $skip_step_if_already_done ; set -e
@@ -225,7 +225,7 @@ EOF
 
     (
 	$starting_step "Make snapshot of image with jupyter installed"
-	[ -f "$DATADIR/vmdir/1box-openvz-w-jupyter.raw.tar.gz" ]
+	[ -f "$DATADIR/vmdir/minimal-image-w-jupyter.raw.tar.gz" ]
 	$skip_step_if_already_done ; set -e
 	cd "$DATADIR/vmdir/"
 	tar czSvf minimal-image-w-jupyter.raw.tar.gz minimal-image.raw
