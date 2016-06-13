@@ -177,7 +177,7 @@ EOF
 	    (
 		$starting_step "Enable extension: $ext"
 		[ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
-		    "$DATADIR/vmdir/ssh-to-kvm.sh" "grep $ext $cfg_path" 2>/dev/null 1>&2
+		    "$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<<"grep $ext $cfg_path" 2>/dev/null 1>&2
 		}
 		$skip_step_if_already_done; set -e
 
