@@ -253,6 +253,26 @@ EOF
     "$DATADIR/vmdir/ssh-to-kvm.sh" "curl -fsSL https://get.docker.com/ | sh"
     "$DATADIR/vmdir/ssh-to-kvm.sh" "usermod -aG docker centos"
     "$DATADIR/vmdir/ssh-to-kvm.sh" "service docker start"
-    
+    touch "$DATADIR/extrareboot" # necessary to make the usermod take effect in Jupyter environment
 ) ; prev_cmd_failed
+
+if [ "$extrareboot" != "" ] || \
+       [ -f "$DATADIR/extrareboot" ] ; then  # this flag can also be set before calling ./build-nii.sh
+    rm -f "$DATADIR/extrareboot"
+    [ -x "$DATADIR/vmdir/kvm-shutdown-via-ssh.sh" ] && \
+	"$DATADIR/vmdir/kvm-shutdown-via-ssh.sh"
+fi
+
+if [ -x "$DATADIR/vmdir/kvm-boot.sh" ]; then
+    "$DATADIR/vmdir/kvm-boot.sh"
+fi
+
+(  # TODO, redo this the systemd way
+    $starting_step "Make sure Docker is started"
+    [ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
+	out="$("$DATADIR/vmdir/ssh-to-kvm.sh" "service docker status" 2>/dev/null)"
+	[[ "$out" == *running* ]]
+    }
+    $skip_step_if_already_done; set -e
     "$DATADIR/vmdir/ssh-to-kvm.sh" "service docker start"
+) ; prev_cmd_failed
