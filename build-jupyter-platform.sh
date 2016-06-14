@@ -83,7 +83,7 @@ echo 'centos ALL=(ALL) NOPASSWD: ALL' >>/etc/sudoers
 EOF
 	)
 
-	for p in wget bzip2; do
+	for p in wget bzip2 rsync; do
 	    (
 		$starting_step "Install $p"
 		[ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
