@@ -276,3 +276,42 @@ fi
     $skip_step_if_already_done; set -e
     "$DATADIR/vmdir/ssh-to-kvm.sh" "service docker start"
 ) ; prev_cmd_failed
+
+(
+    $starting_group "Try to load cached Jupyter docker image"
+    ! [ -f "$DATADIR/jupyter-in-docker-cached.tar.gz" ]
+    $skip_group_if_unnecessary
+
+    (
+	$starting_step "Load cached jupyter/notebook image"
+	"$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<EOF 2>/dev/null
+docker images | grep jupyter/notebook >/dev/null
+EOF
+	$skip_step_if_already_done
+	# Note: in next line stdin is used for data, not a script to bash
+	cat "$DATADIR/jupyter-in-docker-cached.tar.gz" | gunzip - | \
+	    "$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c "'docker load'" centos
+    )
+)
+
+
+(
+    $starting_step "Do docker pull jupyter/notebook"
+    "$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<EOF 2>/dev/null
+docker images | grep jupyter/notebook >/dev/null
+EOF
+    $skip_step_if_already_done
+    "$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<EOF
+docker pull jupyter/notebook
+EOF
+)
+
+(
+    $starting_step "Save cached Jupyter docker image"
+    [ -f "$DATADIR/jupyter-in-docker-cached.tar.gz" ]
+    $skip_step_if_already_done
+    "$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<EOF | gzip - >"$DATADIR/jupyter-in-docker-cached.tar.gz"
+set -x
+docker save jupyter/notebook
+EOF
+)    
