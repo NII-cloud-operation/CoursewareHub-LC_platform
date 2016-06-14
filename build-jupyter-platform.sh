@@ -318,12 +318,11 @@ EOF
 )    
 
 (
-    $starting_step "Synchronize bin/ and notebooks/.downloads to VM"
+    $starting_step "Synchronize bin/ to VM"
     [ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
-	"$DATADIR/vmdir/ssh-to-kvm.sh" '[ "$(ls bin)" != "" ]' 2>/dev/null
+	"$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<<'[ "$(ls bin)" != "" ]' 2>/dev/null
     }
     $skip_step_if_already_done; set -e
     
     "$DATADIR/notebooks-sync.sh" tovm bin
-    "$DATADIR/notebooks-sync.sh" tovm notebooks/.downloads
 ) ; prev_cmd_failed

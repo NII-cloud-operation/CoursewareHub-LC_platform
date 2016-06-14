@@ -1,0 +1,9 @@
+#!/bin/bash
+
+reportfailed()
+{
+    echo "Script failed...exiting. ($*)" 1>&2
+    exit 255
+}
+
+echo TODO
