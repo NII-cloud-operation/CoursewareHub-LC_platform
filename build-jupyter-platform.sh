@@ -150,7 +150,7 @@ EOF
 	(
 	    $starting_step "Install nbextensions to VM"
 	    [ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
-		"$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<<'pip list | grep nbextensions' 2>/dev/null
+		"$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<<'pip list | grep nbextensions' 2>/dev/null 1>/dev/null
 	    }
 	    $skip_step_if_already_done; set -e
 
