@@ -79,6 +79,7 @@ imagesource="$DATADIR/vmimages/centos-7.1.1511-x86_64-base/output/minimal-image.
 
 	    "$DATADIR/vmdir/ssh-to-kvm.sh" <<EOF
 adduser centos
+echo 'centos ALL=(ALL) NOPASSWD: ALL' >>/etc/sudoers
 EOF
 	)
 
