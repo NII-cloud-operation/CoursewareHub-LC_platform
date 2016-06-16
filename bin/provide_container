@@ -6,4 +6,45 @@ reportfailed()
     exit 255
 }
 
-echo TODO
+imageid="$1"
+hostpath="$2"
+containerpath="$3"
+
+: ${containerpath:="/home/jovyan/work"}
+
+usage()
+{
+    cat <<EOF
+
+Usage:
+  ${0##*/} <image_id> <host_dir_path> <container_dir_path>
+EOF
+    exit 1
+}
+
+[ "$#" -eq 2 ] || [ "$#" -eq 3 ] || usage
+
+[ -d "$hostpath" ] || {
+    echo "Directory '$hostpath' does not exist"
+    usage
+}
+
+docker inspect --type image "$imageid" 1>/dev/null 2>&1 || {
+    echo "Image '$imageid' is not a valid image id"
+    usage
+}
+
+contid="$(docker run -d -it -p 8000-8500:8888 -v "$hostpath:$containerpath" "$imageid")"
+rc1="$?"
+
+port="$(docker inspect --type container \
+        --format='{{(index (index .NetworkSettings.Ports "8888/tcp") 0).HostPort}}' \
+        "$contid")"
+rc2="$?"
+
+{
+    [ "$rc1" != "0" ] && echo "Warning: docker run command return code was $rc1"
+    [ "$rc2" != "0" ] && echo "Warning: docker inspect command return code was $rc2"
+} 1>&2
+
+echo "ID=${contid:0:12}   PORT=$port"
