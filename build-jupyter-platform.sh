@@ -326,3 +326,31 @@ EOF
     
     "$DATADIR/notebooks-sync.sh" tovm bin
 ) ; prev_cmd_failed
+
+(
+    $starting_group "Synchronize axsh/notebook-openvnet-gettingstarted/ to VM, if openvnetsync=true"
+    [ "$openvnetsync" != "true" ]
+    $skip_group_if_unnecessary
+
+    (
+	$starting_step "Clone axsh/notebook-openvnet-gettingstarted/"
+	[ -d "$DATADIR/github-clones/notebook-openvnet-gettingstarted" ]
+	$skip_step_if_already_done; set -e
+	cd "$DATADIR"
+	mkdir -p github-clones
+	cd github-clones
+	git clone git@github.com:axsh/notebook-openvnet-gettingstarted.git
+    ) ; prev_cmd_failed
+
+    (
+	$starting_step "Synchronize cloned notebook-openvnet-gettingstarted to VM"
+	[ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
+	    "$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<<'[ "$(ls notebooks)" != "" ]' 2>/dev/null
+	}
+	$skip_step_if_already_done; set -e
+	cd "$DATADIR"
+	rsync -avz -e ./vmdir/ssh-to-kvm.sh \
+	      "$DATADIR/github-clones/notebook-openvnet-gettingstarted/notebooks/" \
+	      :/home/centos/notebooks
+    ) ; prev_cmd_failed
+) ; prev_cmd_failed
