@@ -284,9 +284,9 @@ fi
     $skip_group_if_unnecessary
 
     (
-	$starting_step "Load cached jupyter/notebook image"
+	$starting_step "Load cached jupyter/minimal-notebook image"
 	"$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<EOF 2>/dev/null
-docker images | grep jupyter/notebook >/dev/null
+docker images | grep jupyter/minimal-notebook >/dev/null
 EOF
 	$skip_step_if_already_done
 	# Note: in next line stdin is used for data, not a script to bash
@@ -297,13 +297,13 @@ EOF
 
 
 (
-    $starting_step "Do docker pull jupyter/notebook"
+    $starting_step "Do docker pull jupyter/minimal-notebook"
     "$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<EOF 2>/dev/null
-docker images | grep jupyter/notebook >/dev/null
+docker images | grep jupyter/minimal-notebook >/dev/null
 EOF
     $skip_step_if_already_done
     "$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<EOF
-docker pull jupyter/notebook
+docker pull jupyter/minimal-notebook
 EOF
 )
 
@@ -313,7 +313,7 @@ EOF
     $skip_step_if_already_done
     "$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<EOF | gzip - >"$DATADIR/jupyter-in-docker-cached.tar.gz"
 set -x
-docker save jupyter/notebook
+docker save jupyter/minimal-notebook
 EOF
 )    
 
