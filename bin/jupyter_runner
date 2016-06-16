@@ -1,0 +1,38 @@
+#!/bin/bash
+
+copyfrom="$1"
+copyto="$2"
+
+usage()
+{
+    cat <<EOF
+
+Usage:
+  ${0##*/} <original_notebook.ipynb> <notebook_copy.ipynb>
+
+EOF
+    exit 1
+}
+
+[ "$#" -eq 2 ] || {
+    usage
+}
+
+[ -f "$copyfrom" ] || {
+    echo "Notebook '$copyfrom' does not exist"
+    usage
+}
+
+[ -f "$copyto" ] && {
+    echo "Notebook '$copyto' already exists"
+    usage
+}
+
+[ -d "$(dirname "$copyto")" ] || {
+    echo "Parent directory of '$copyto' does not exist"
+    usage
+}
+
+if cp "$copyfrom" "$copyto"; then
+    time jupyter nbconvert --execute  --inplace  --ExecutePreprocessor.timeout=-1 "$copyto"
+fi
