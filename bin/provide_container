@@ -42,6 +42,10 @@ port="$(docker inspect --type container \
         "$contid")"
 rc2="$?"
 
+# Upload scripts (mainly jupyter_runner) to container
+tar c -C /home/centos bin | docker exec -i "$contid" tar x -C /home/jovyan
+docker exec "$contid" bash -c "echo 'PATH=~/bin:\$PATH' >>~/.bashrc"
+
 {
     [ "$rc1" != "0" ] && echo "Warning: docker run command return code was $rc1"
     [ "$rc2" != "0" ] && echo "Warning: docker inspect command return code was $rc2"
