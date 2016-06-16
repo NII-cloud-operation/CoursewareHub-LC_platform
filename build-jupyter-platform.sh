@@ -354,3 +354,13 @@ EOF
 	      :/home/centos/notebooks
     ) ; prev_cmd_failed
 ) ; prev_cmd_failed
+
+(
+    ## TODO: Change the default ssh login to vmdir to use centos user, and propagate related changes
+    $starting_step "Workaround for rsync as root: set all files to owner=centos"
+    [ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
+	"$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<<'[ "$(find ! -user centos)" == "" ]' 2>/dev/null
+    }
+    $skip_step_if_already_done; set -e
+    "$DATADIR/vmdir/ssh-to-kvm.sh" chown -R centos:centos /home/centos
+) ; prev_cmd_failed
