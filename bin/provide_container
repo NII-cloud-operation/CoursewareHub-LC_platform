@@ -24,7 +24,8 @@ EOF
 
 [ "$#" -eq 2 ] || [ "$#" -eq 3 ] || usage
 
-[ -d "$hostpath" ] || {
+# -v seems to require full absolute path
+abshostpath="$(cd "$hostpath" && pwd -P)" || {
     echo "Directory '$hostpath' does not exist"
     usage
 }
@@ -34,7 +35,7 @@ docker inspect --type image "$imageid" 1>/dev/null 2>&1 || {
     usage
 }
 
-contid="$(docker run -d -it -p 8000-8500:8888 -v "$hostpath:$containerpath" "$imageid")"
+contid="$(docker run -d -it -p 8000-8500:8888 -v "$abshostpath:$containerpath" "$imageid")"
 rc1="$?"
 
 port="$(docker inspect --type container \
