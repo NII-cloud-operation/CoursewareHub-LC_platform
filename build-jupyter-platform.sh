@@ -318,6 +318,29 @@ EOF
 )    
 
 (
+    $starting_step "Customize Jupyter docker image to make localbuild/customized"
+    "$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<EOF 2>/dev/null
+docker images | grep localbuild/customized >/dev/null
+EOF
+    $skip_step_if_already_done
+    "$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<EOF
+set -x
+rm -fr dbuild
+mkdir dbuild
+cd dbuild
+
+cat <<EOF2 >Dockerfile
+From jupyter/minimal-notebook
+
+RUN pip install bash_kernel && python -m bash_kernel.install
+EOF2
+
+docker build -t localbuild/customized .
+
+EOF
+)    
+
+(
     $starting_step "Synchronize bin/ to VM"
     [ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
 	"$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<<'[ "$(ls bin)" != "" ]' 2>/dev/null
