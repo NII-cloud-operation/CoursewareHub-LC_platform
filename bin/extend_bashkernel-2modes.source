@@ -1,0 +1,335 @@
+[ "$already_loaded" = "" ] || {
+    echo "Already Loaded"
+    return
+}
+
+export BASHK_PID="$BASHPID"
+
+set +m
+(
+export already_loaded=true
+
+mkpipe()
+{
+    tmpfifo=/tmp/tmpfifo-$$-$RANDOM
+    mkfifo "$tmpfifo"
+    exec 92< <(cat "$tmpfifo")
+    exec 91>"$tmpfifo"
+    rm -f "$tmpfifo"
+}
+mkpipe
+
+exec 0<&1 # undo automatic setting of fd0 to /dev/null
+trap 'echo received-usr1 >>/tmp/usr1 ; echo fakesigint >&91' USR1
+
+# Keep an open file descriptor on this source file so we can
+# use lsof to track down processes that do not exit properly.
+exec 77<"$BASH_SOURCE"
+
+exec 9<&1
+echo $$ >/tmp/bpid
+
+echopat='echo $\?'
+
+blockingread()
+{
+   while sleep 0.2; do
+      [ -d /proc/$BASHK_PID ] || exit  # exit when bash_kernel is reset
+      IFS= read -r ln
+      if [[ "$ln" == $echopat ]]; then
+         # give Jupyter a return code when it asks for one
+         echo "0" >&9
+         echo -n "$PS1" >&9
+         continue
+      fi
+      ## When uncommented, this line makes cells that start with a linefeed hang.
+      ## Will remove these comments if removing it causes no other troubles.
+      # [ "$ln" = "" ] && continue
+      break
+   done
+}
+
+readcell_inline()
+{
+    blockingread
+    input="$ln"
+    echo -n "$PS2">&9
+    # read rest of the cell contents
+    echo SIG-startloop0 >>/tmp/usr1
+    while true; do
+	[ -d /proc/$BASHK_PID ] || exit  # exit when bash_kernel is reset
+	IFS= read -t 0.2 -r lnr
+	rc="$?"
+	{ read -t 0 f && read f  && echo "$f",SIG >>/tmp/usr1 ;  } 0<&92 && [[ "$f" == *fakesigint* ]] && break
+	[ "$rc" -gt 128 ] && { # timeout
+            echo SIG-readerror >>/tmp/usr1
+	    continue
+	}
+        echo SIG-startloop1 >>/tmp/usr1
+	## if message sent on pipe && the message is fakesigint && break
+
+	## The following end-of-cell markers still work, but should not be needed anymore
+	[[ "$lnr" == *endofcell* ]] && break
+	[[ "$lnr" == \#.* ]] && break
+	input="${input}"$'\n'"${lnr}"
+
+	# Send $PS2 so that Jupyter will send us the next line, or SIGINT to the parent process if no more lines
+	echo -n "$PS2">&9
+        echo SIG-endloop1 >>/tmp/usr1
+	lnr=''
+    done
+    echo SIG-readcell >>/tmp/usr1
+}
+
+readcell() # just example code.  Not used for now.
+{
+    echo "$(readcell_inline; echo "$input")"
+}
+
+echo "Ready."
+echo -n "$PS1"
+
+basedir="$(pwd)"
+
+default_dir="$basedir" # can be set to '' to turn off this feature
+export default_dir
+
+new_job_dir()
+{
+    mkdir -p "$basedir/.jobs"
+    jobn=1000
+    while [ -d "$basedir/.jobs/j-$jobn" ]; do
+        (( jobn++ ))
+    done
+    mkdir "$basedir/.jobs/j-$jobn"
+    echo "$basedir/.jobs/j-$jobn"
+}
+
+get_step_id()
+{
+    # (version 1) line of the form: # (
+    # but only if it is the first line
+    pat='#(*'
+    while read ln; do
+        nospaces="${ln// /}"
+        if [[ "$nospaces" == $pat ]]; then
+            afterparen="${nospaces#*\(}"
+            id="${afterparen%%\)*}"
+            echo "$id"
+            return 0
+        fi
+	break # give up if not on the first line
+    done <<<"$1"
+    # (version 2) first line of the form: # Task: thetoken
+    pat='#[tT]ask:*'
+    while read ln; do
+        nospaces="${ln// /}"
+        if [[ "$nospaces" == $pat ]]; then
+            read commentchar tasktoken thetoken therest <<<"$ln"
+            echo "$thetoken"
+            return 0
+        fi
+    done <<<"$1"
+    return 255
+}
+
+get_cell_command()
+{
+    id="$1"
+    inputtoscan="$2"
+
+    # Give version 2 priority.
+    # (version 2) first line of the form: # Evaluation Mode: token1 token2 token3
+    # where token1 is a file name in the ./stepdefs directory.
+    pat='#*'
+    while read ln; do
+        read commentchar evaluationtoken modetoken token1 othertokens <<<"${ln}"
+	[[ "$evaluationtoken" != [eE]valuation ]] && continue
+	[[ "$modetoken" != [mM]ode: ]] && continue
+        script_path="$basedir/stepdefs/s-$id/$token1.sh"
+        if [ -f "$script_path" ]; then
+            echo "$script_path $othertokens"
+            return 0
+        fi
+    done <<<"$inputtoscan"
+
+    # (version 1) first line of the form: # token1 token2 token3
+    # where token1 is a file name in the ./stepdefs directory.
+    pat='#*'
+    while read ln; do
+        if [[ "$ln" == $pat ]]; then
+            read commentchars ln <<<"${ln}"
+	fi
+        read token1 othertokens <<<"${ln}"
+        script_path="$basedir/stepdefs/s-$id/$token1.sh"
+        if [ -f "$script_path" ]; then
+            echo "$script_path $othertokens"
+            return 0
+        fi
+    done <<<"$inputtoscan"
+    return 255
+}
+
+global_mode=none
+
+set_if_cell_includes()
+{
+    token="$1"
+    var_name="$2"
+    if [[ "$input" == *"$token"* ]] ; then
+        set_value=true
+        read value <<< "${input#*$token}"
+        value="${value//\"/}"
+        value="${value//\'/}"
+        export "$var_name"="$value"
+        var_name="${var_name//_/ }"
+        echo "Changing ${var_name,,} to '$value'"
+    fi
+}
+
+# the "${command%% *}" is necessary because command may have parameters
+# (although for now this is an unused feature)
+
+do-my-script-logic()
+{
+    if command="$(get_cell_command "$stepid" "$input")"; then
+	case "${command%% *}" in
+	    */load.sh | */template.sh | */check.sh)
+		# these modes are done, because global_mode = "my-script"
+		echo "$command" >"$jd/command"
+		echo "$input" | bash $command | tee "$jd/output" 2>&1
+		echo "$?" >"$jd/rc"
+		;;
+	    *)
+		echo "Cell being skipped because global mode is $global_mode." | tee "$jd/output" 2>&1
+		;;
+	    # NOTE: myscript cells themself are run, but that is done
+	    # by code elsewhere that handles unmarked cells
+	esac
+    else
+	echo "Mode not implemented for this step" | tee "$jd/output" 2>&1
+    fi
+}
+
+do-provided-script-logic()
+{
+    if command="$(get_cell_command "$stepid" "$input")"; then
+	case "${command%% *}" in
+	    */provided-script.sh | */template.sh | */check.sh)
+		# these modes are done, because global_mode = "my-script"
+		echo "$command" >"$jd/command"
+		echo "$input" | bash $command | tee "$jd/output" 2>&1
+		echo "$?" >"$jd/rc"
+		;;
+	    *)
+		echo "Cell being skipped because global mode is $global_mode." | tee "$jd/output" 2>&1
+		;;
+	esac
+    else
+	echo "Mode not implemented for this step" | tee "$jd/output" 2>&1
+    fi
+}
+
+# for testing:
+while sleep 0.2; do
+    [ "$default_dir" != "" ] && cd "$default_dir" 2>/dev/null
+    ls -l /proc/$BASHPID/fd >>/tmp/sbash.log
+
+    readcell_inline
+
+    if [[ "$input" == quit.* ]]; then
+      echo "bye"
+      # the PS1 will be sent by the parent bash (the one created by jupyter)
+      break
+    fi
+
+    set_value=false
+
+    set_if_cell_includes set-global-evaluation-mode global_mode
+    set_if_cell_includes set-github-user GITHUB_USER
+    set_if_cell_includes set-github-repo GITHUB_REPO
+    set_if_cell_includes set-hipchat-id HIPCHAT_ID
+    set_if_cell_includes set-hipchat-token HIPCHAT_TOKEN
+
+    if $set_value ; then
+         echo -n "$PS1"
+         continue
+    fi
+
+    jd="$(new_job_dir)"
+    echo "$input" >"$jd/input"
+
+    didcmd=false
+    if stepid="$(get_step_id "$input")"; then
+        # the cell is labeled with a step name
+        stepdir="$basedir/stepdefs/s-$stepid"
+        if [ -d "$stepdir" ]; then
+	    # and that step name exists
+	    case "$global_mode" in
+		my-script)
+		    do-my-script-logic
+		    ;;
+		provided-script)
+		    do-provided-script-logic
+		    ;;
+		none)
+		    if command="$(get_cell_command "$stepid" "$input")"; then
+			# mode exists and global_mode=none, so do exactly what the
+			# mode says to do
+			echo "$command" >"$jd/command"
+			echo "$input" | bash $command | tee "$jd/output" 2>&1
+			echo "$?" >"$jd/rc"
+			didcmd=true
+		    else
+			echo "Mode not implemented for this step" | tee "$jd/output" 2>&1
+		    fi
+		    ;;
+		*)
+                    echo "No $global_mode mode for this cell" | tee "$jd/output" 2>&1
+                    didcmd=true
+		    ;;
+	    esac
+	else
+	    echo "Step name is not implemented" | tee "$jd/output" 2>&1
+	fi
+    else
+	# it is an unmarked cell, so assume it is a my-script cell
+	case "$global_mode" in
+	    my-script)
+		# for default, execute code like normal bash cell
+		# (Note: running the file in bash through standard input allows
+		#  a cell code to have an ssh line, followed by lines that
+		#  will be sent to ssh session.)
+		exec 78> >(exec tee -a "$jd/output" 2>&1)
+		bgtee=$!
+
+		# The next line "sources" the whole cell, so local variable
+		# assignments will persist in this process
+		source "$jd/input" >&78 2>&1
+		echo "$?" >"$jd/rc"
+		
+		exec 78>&-  # close the tee
+		# the tee is a subprocess of this process, but for some
+		# reason the wait call does not agree, so the next
+		# line is a workaround to wait until sure that tee has finished
+		while [ -d /proc/$bgtee ] ; do sleep 0.1 ; done
+		;;
+	    *)
+		echo "Cell being skipped because global mode is $global_mode." | tee "$jd/output" 2>&1
+		;;
+	esac
+    fi
+    echo -n "$PS1"
+done
+)  &
+
+inputpid="$!"
+trap 'echo sent-usr1-$inputpid >>/tmp/usr1 ;  kill -USR1 $inputpid' INT
+
+while  [ -d /proc/$inputpid ]; do
+    wait
+done
+
+set -m
+trap - INT
+
