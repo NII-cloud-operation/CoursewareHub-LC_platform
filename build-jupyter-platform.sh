@@ -27,8 +27,7 @@ imagesource="$DATADIR/vmimages/centos-7.1.1511-x86_64-base/output/minimal-image.
     $starting_group "Build minimal Centos 7 image"
     [ -f "$imagesource" ]
     $skip_group_if_unnecessary ; set -e
-    cd "$DATADIR/vmimages"
-    ./build.sh centos-7.1.1511-x86_64-base/
+    "$DATADIR/vmimages/centos-7.1.1511-x86_64-base/build.sh"
 ) ; prev_cmd_failed
 
 (
