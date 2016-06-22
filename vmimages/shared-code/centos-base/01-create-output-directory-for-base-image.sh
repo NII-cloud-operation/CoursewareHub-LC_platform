@@ -6,7 +6,7 @@
     exit 255
 }
 
-$starting_checks "Create output directory for base image"
+$starting_step "Create output directory for base image"
 [  -d "$DATADIR" ]
-$skip_rest_if_already_done
+$skip_step_if_already_done; set -e
 mkdir "$DATADIR"

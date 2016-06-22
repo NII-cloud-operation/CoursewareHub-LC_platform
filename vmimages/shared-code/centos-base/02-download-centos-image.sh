@@ -9,11 +9,10 @@
 # These must be set by the caller.  Exit if not set:
 : ${CENTOSISO:?} ${CENTOSMIRROR:?} ${ISOMD5:?}
 
-$starting_checks "Download CentOS ISO install image"
+$starting_step "Download CentOS ISO install image"
 [ -f "$DATADIR/$CENTOSISO" ] &&
     [[ "$(< "$DATADIR/$CENTOSISO.md5")" = *$ISOMD5* ]]
-$skip_rest_if_already_done
-set -e
+$skip_step_if_already_done; set -e
 if [ -f "$CODEDIR/$CENTOSISO" ]; then
     # to avoid the download while debugging
     cp -al "$CODEDIR/$CENTOSISO" "$DATADIR/$CENTOSISO"

@@ -6,9 +6,8 @@
     exit 255
 }
 
-$starting_checks "Tar minimal image"
+$starting_step "Tar minimal image"
 [ -f "$DATADIR/minimal-image.raw.tar.gz" ]
-$skip_rest_if_already_done
-set -e
+$skip_step_if_already_done; set -e
 cd "$DATADIR/"
 time tar czSvf minimal-image.raw.tar.gz minimal-image.raw

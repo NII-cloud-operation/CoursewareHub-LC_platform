@@ -6,10 +6,9 @@
     exit 255
 }
 
-$starting_checks "Generate ssh key pair and kickstart file"
+$starting_step "Generate ssh key pair and kickstart file"
 [ -f "$DATADIR/ks-sshpair.cfg" ]
-$skip_rest_if_already_done
-set -e
+$skip_step_if_already_done; set -e
 [ -f "$DATADIR/tmp-sshkeypair" ] || ssh-keygen -f "$DATADIR/tmp-sshkeypair" -N ""
 ks_text="$(cat "$CODEDIR/anaconda-ks.cfg")"
 sshkey_text="$(cat "$DATADIR/tmp-sshkeypair.pub")"
