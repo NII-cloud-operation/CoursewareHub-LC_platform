@@ -360,8 +360,21 @@ EOF
 docker images | grep localbuild/customized >/dev/null
 EOF
     $skip_step_if_already_done
+    "$DATADIR/vmdir/ssh-to-kvm.sh" yum install -y nc  # as root
     "$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<EOF
 set -x
+
+tar c multi_outputs-master/ | nc -l 7890 & # a little tar server
+
+# another little server until we figure out how to do
+# heredocs in dockerfiles
+cat <<EOF3 | nc -l 7111 &
+{
+  "nbext_hide_incompat": false
+}
+EOF3
+
+
 rm -fr dbuild
 mkdir dbuild
 cd dbuild
@@ -370,6 +383,25 @@ cat <<EOF2 >Dockerfile
 From jupyter/minimal-notebook
 
 RUN pip install bash_kernel && python -m bash_kernel.install
+
+RUN pip install https://github.com/ipython-contrib/IPython-notebook-extensions/archive/master.zip --user
+
+RUN jupyter nbextension enable  usability/collapsible_headings/main
+
+RUN jupyter nbextension enable  usability/runtools/main
+
+RUN jupyter nbextension enable  usability/toc2/main
+
+RUN /bin/bash -c 'tar xv </dev/tcp/10.0.2.15/7890'
+
+RUN cp -a multi_outputs-master /home/jovyan/.local/share/jupyter/nbextensions/multi_outputs
+
+RUN rm -fr multi_outputs-master
+
+RUN jupyter nbextension enable multi_outputs/main
+
+RUN /bin/bash -c 'cat >/home/jovyan/.jupyter/nbconfig/common.json </dev/tcp/10.0.2.15/7111'
+
 EOF2
 
 docker build -t localbuild/customized .
