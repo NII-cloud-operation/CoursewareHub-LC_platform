@@ -164,11 +164,12 @@ EOF
 	## Dynamically generate the steps for these:
 	enable_these="
   usability/collapsible_headings/main
-  usability/init_cell/main
   usability/runtools/main
   usability/toc2/main
 "
-
+# removed   usability/init_cell/main
+# from the above list because it conflicts with multi_output (below)
+	
 	# Note, it seems that collapsible_heading has replaced hierarchical_collapse,
 	# Therefore from the above I just removed this:  testing/hierarchical_collapse/main
 
@@ -184,6 +185,43 @@ EOF
 		"$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<<"jupyter nbextension enable $ext"
 	    ) ; prev_cmd_failed
 	done
+
+	(
+	    $starting_step "Install multi_output nbextension"
+	    [ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
+		## TODO: the next -f test is probably covered by the group
+		"$DATADIR/vmdir/ssh-to-kvm.sh" '[ -d /home/centos/.local/share/jupyter/nbextensions/multi_outputs ]' 2>/dev/null
+	    }
+	    $skip_step_if_already_done; set -e
+	    cd "$DATADIR/resources"
+	    # Note: in next line stdin is used for data, not a script to bash
+	    tar c multi_outputs-master | \
+		"$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c "'tar xv'" centos
+	    "$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<'EOF'
+cp -a multi_outputs-master /home/centos/.local/share/jupyter/nbextensions/multi_outputs
+jupyter nbextension enable multi_outputs/main # This will report "Validating: problems found..."
+
+cjpath=/home/centos/.jupyter/nbconfig/common.json
+
+# TODO: what is a general way to create/edit json files?
+if [ -f $cjpath ]; then
+   if [ "$(< $cjpath)" == *nbext_hide_incompat* ];
+      then
+        sed -i 's/"nbext_hide_incompat.*true/nbext_hide_incompat": false/' $cjpath
+      else
+        echo "case where nbext_hide_incompat is not in $cjpath not implemented" 1>&2
+        exit -1
+   fi
+else
+  cat >$cjpath <<EOF2
+{
+  "nbext_hide_incompat": false
+}
+EOF2
+fi
+
+EOF
+	) ; prev_cmd_failed
 
 	(
 	    $starting_step "Set default password for jupyter, plus other easy initial setup"
