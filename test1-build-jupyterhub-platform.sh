@@ -53,7 +53,7 @@ VMDIR=jhvmdir
     $starting_group "Setup clean VM for Jupterhub"
     [ -f "$DATADIR/$VMDIR/minimal-image-w-jupyter.raw.tar.gz" ]
     $skip_group_if_unnecessary
-    
+
     (
 	$starting_step "Make $VMDIR"
 	[ -d "$DATADIR/$VMDIR" ]
@@ -108,24 +108,23 @@ EOF
 	echo "centos" >"$DATADIR/$VMDIR/sshuser"
     ) ; prev_cmd_failed
 
-	for p in wget bzip2 rsync nc netstat strace lsof; do
-	    (
-		$starting_step "Install $p"
-		[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
-		    [ -f "$DATADIR/$VMDIR/minimal-image-w-jupyter.raw.tar.gz" ] || \
-			[[ "$("$DATADIR/$VMDIR/ssh-to-kvm.sh" which $p 2>/dev/null)" = *$p* ]]
-		}
-		$skip_step_if_already_done ; set -e
-		package=$p
-		[ "$p" = "netstat" ] && package=net-tools
-		"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+    for p in wget bzip2 rsync nc netstat strace lsof; do
+	(
+	    $starting_step "Install $p"
+	    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
+		[ -f "$DATADIR/$VMDIR/minimal-image-w-jupyter.raw.tar.gz" ] || \
+		    [[ "$("$DATADIR/$VMDIR/ssh-to-kvm.sh" which $p 2>/dev/null)" = *$p* ]]
+	    }
+	    $skip_step_if_already_done ; set -e
+	    package=$p
+	    [ "$p" = "netstat" ] && package=net-tools
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
 sudo yum install -y $package
 EOF
-	    ) ; prev_cmd_failed
-	done
+	) ; prev_cmd_failed
+    done
 
 ) ; prev_cmd_failed
-
 
 (
     $starting_step "Install Docker"
