@@ -139,9 +139,9 @@ EOF
 	$skip_step_if_already_done
 	# Note: in next line stdin is used for data, not a script to bash
 	cat "$DATADIR/jupyter-in-docker-cached.tar.gz" | gunzip - | \
-	    "$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c "'docker load'" centos
-    )
-)
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" su -l -c "'docker load'" centos
+    ) ; prev_cmd_failed
+) ; prev_cmd_failed
 
 (
     $starting_step "Do docker pull jupyter/minimal-notebook"
@@ -152,7 +152,7 @@ EOF
     "$DATADIR/$VMDIR/ssh-to-kvm.sh" su -l -c bash centos <<EOF
 docker pull jupyter/minimal-notebook
 EOF
-)
+) ; prev_cmd_failed
 
 (
     $starting_step "Save cached Jupyter docker image"
@@ -162,4 +162,4 @@ EOF
 set -x
 docker save jupyter/minimal-notebook
 EOF
-)    
+) ; prev_cmd_failed
