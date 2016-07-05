@@ -195,3 +195,24 @@ set -x
 docker save jupyter/minimal-notebook
 EOF
 ) ; prev_cmd_failed
+
+(
+    $starting_step "Install epel-release"
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+    [ -f /etc/yum.repos.d/epel.repo ]
+EOF
+    $skip_step_if_already_done
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+sudo yum install -y epel-release
+EOF
+) ; prev_cmd_failed
+
+(
+    $starting_step "Install python3"
+    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+	[[ "$("$DATADIR/$VMDIR/ssh-to-kvm.sh" sudo which python3  2>/dev/null)" = *python3* ]]
+    $skip_step_if_already_done
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+sudo yum install -y python34
+EOF
+) ; prev_cmd_failed
