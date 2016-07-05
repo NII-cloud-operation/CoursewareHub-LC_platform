@@ -40,34 +40,36 @@ imagesource="$DATADIR/vmimages/centos-7.1.1511-x86_64-base/output/minimal-image.
     ) ; prev_cmd_failed
 ) ; prev_cmd_failed
 
+VMDIR=jhvmdir
+
 (
     $starting_group "Setup clean VM for Jupterhub"
-    [ -f "$DATADIR/vmdir/minimal-image-w-jupyter.raw.tar.gz" ]
+    [ -f "$DATADIR/$VMDIR/minimal-image-w-jupyter.raw.tar.gz" ]
     $skip_group_if_unnecessary
     
     (
-	$starting_step "Make vmdir"
-	[ -d "$DATADIR/vmdir" ]
+	$starting_step "Make $VMDIR"
+	[ -d "$DATADIR/$VMDIR" ]
 	$skip_step_if_already_done ; set -e
-	mkdir "$DATADIR/vmdir"
+	mkdir "$DATADIR/$VMDIR"
 	# increase default mem to give room for a wakame instance or two
-	echo ': ${KVMMEM:=4096}' >>"$DATADIR/vmdir/datadir.conf"
+	echo ': ${KVMMEM:=4096}' >>"$DATADIR/$VMDIR/datadir.conf"
     ) ; prev_cmd_failed
 
-    DATADIR="$DATADIR/vmdir" \
+    DATADIR="$DATADIR/$VMDIR" \
 	   "$ORGCODEDIR/ind-steps/kvmsteps/kvm-setup.sh" \
 	   "$DATADIR/vmimages/centos-7.1.1511-x86_64-base/output/minimal-image.raw.tar.gz"
 
-    "$DATADIR/vmdir/kvm-boot.sh"
+    "$DATADIR/$VMDIR/kvm-boot.sh"
     
     (
 	$starting_step "Create centos user account"
-	[ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
-	    "$DATADIR/vmdir/ssh-to-kvm.sh" [ -d /home/centos ] 2>/dev/null
+	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" [ -d /home/centos ] 2>/dev/null
 	}
 	$skip_step_if_already_done ; set -e
 
-	"$DATADIR/vmdir/ssh-to-kvm.sh" <<EOF
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
 adduser centos
 echo 'centos ALL=(ALL) NOPASSWD: ALL' >>/etc/sudoers
 EOF
@@ -76,13 +78,13 @@ EOF
 	for p in wget bzip2 rsync; do
 	    (
 		$starting_step "Install $p"
-		[ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
-		    [ -f "$DATADIR/vmdir/minimal-image-w-jupyter.raw.tar.gz" ] || \
-			[[ "$("$DATADIR/vmdir/ssh-to-kvm.sh" which $p 2>/dev/null)" = *$p* ]]
+		[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
+		    [ -f "$DATADIR/$VMDIR/minimal-image-w-jupyter.raw.tar.gz" ] || \
+			[[ "$("$DATADIR/$VMDIR/ssh-to-kvm.sh" which $p 2>/dev/null)" = *$p* ]]
 		}
 		$skip_step_if_already_done ; set -e
 
-		"$DATADIR/vmdir/ssh-to-kvm.sh" <<EOF
+		"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
 yum install -y $p
 EOF
 	    ) ; prev_cmd_failed
@@ -93,35 +95,35 @@ EOF
 
 (
     $starting_step "Install Docker"
-    [ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
-	"$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<<"which docker" 2>/dev/null 1>&2
+    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" su -l -c bash centos <<<"which docker" 2>/dev/null 1>&2
     }
     $skip_step_if_already_done; set -e
-    "$DATADIR/vmdir/ssh-to-kvm.sh" "curl -fsSL https://get.docker.com/ | sh"
-    "$DATADIR/vmdir/ssh-to-kvm.sh" "usermod -aG docker centos"
-    "$DATADIR/vmdir/ssh-to-kvm.sh" "service docker start"
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "curl -fsSL https://get.docker.com/ | sh"
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "usermod -aG docker centos"
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "service docker start"
     touch "$DATADIR/extrareboot" # necessary to make the usermod take effect in Jupyter environment
 ) ; prev_cmd_failed
 
 if [ "$extrareboot" != "" ] || \
        [ -f "$DATADIR/extrareboot" ] ; then  # this flag can also be set before calling ./build-nii.sh
     rm -f "$DATADIR/extrareboot"
-    [ -x "$DATADIR/vmdir/kvm-shutdown-via-ssh.sh" ] && \
-	"$DATADIR/vmdir/kvm-shutdown-via-ssh.sh"
+    [ -x "$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" ] && \
+	"$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh"
 fi
 
-if [ -x "$DATADIR/vmdir/kvm-boot.sh" ]; then
-    "$DATADIR/vmdir/kvm-boot.sh"
+if [ -x "$DATADIR/$VMDIR/kvm-boot.sh" ]; then
+    "$DATADIR/$VMDIR/kvm-boot.sh"
 fi
 
 (  # TODO, redo this the systemd way
     $starting_step "Make sure Docker is started"
-    [ -x "$DATADIR/vmdir/ssh-to-kvm.sh" ] && {
-	out="$("$DATADIR/vmdir/ssh-to-kvm.sh" "service docker status" 2>/dev/null)"
+    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
+	out="$("$DATADIR/$VMDIR/ssh-to-kvm.sh" "service docker status" 2>/dev/null)"
 	[[ "$out" == *running* ]]
     }
     $skip_step_if_already_done; set -e
-    "$DATADIR/vmdir/ssh-to-kvm.sh" "service docker start"
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "service docker start"
 ) ; prev_cmd_failed
 
 (
@@ -131,7 +133,7 @@ fi
 
     (
 	$starting_step "Load cached jupyter/minimal-notebook image"
-	"$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<EOF 2>/dev/null
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" su -l -c bash centos <<EOF 2>/dev/null
 docker images | grep jupyter/minimal-notebook >/dev/null
 EOF
 	$skip_step_if_already_done
@@ -143,11 +145,11 @@ EOF
 
 (
     $starting_step "Do docker pull jupyter/minimal-notebook"
-    "$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<EOF 2>/dev/null
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" su -l -c bash centos <<EOF 2>/dev/null
 docker images | grep jupyter/minimal-notebook >/dev/null
 EOF
     $skip_step_if_already_done
-    "$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<EOF
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" su -l -c bash centos <<EOF
 docker pull jupyter/minimal-notebook
 EOF
 )
@@ -156,7 +158,7 @@ EOF
     $starting_step "Save cached Jupyter docker image"
     [ -f "$DATADIR/jupyter-in-docker-cached.tar.gz" ]
     $skip_step_if_already_done
-    "$DATADIR/vmdir/ssh-to-kvm.sh" su -l -c bash centos <<EOF | gzip - >"$DATADIR/jupyter-in-docker-cached.tar.gz"
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" su -l -c bash centos <<EOF | gzip - >"$DATADIR/jupyter-in-docker-cached.tar.gz"
 set -x
 docker save jupyter/minimal-notebook
 EOF
