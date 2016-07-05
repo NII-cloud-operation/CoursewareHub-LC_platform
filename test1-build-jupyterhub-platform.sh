@@ -86,8 +86,6 @@ chown -R centos:centos /home/centos/.ssh
 EOF
     ) ; prev_cmd_failed
 
-    echo "root" >"$DATADIR/$VMDIR/sshuser"
-
     (
 	$starting_step "Allow sudo without tty"
 	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
