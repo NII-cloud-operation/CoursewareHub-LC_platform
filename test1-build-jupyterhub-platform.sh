@@ -60,8 +60,10 @@ VMDIR=jhvmdir
 	   "$ORGCODEDIR/ind-steps/kvmsteps/kvm-setup.sh" \
 	   "$DATADIR/vmimages/centos-7.1.1511-x86_64-base/output/minimal-image.raw.tar.gz"
 
-    "$DATADIR/$VMDIR/kvm-boot.sh"
-    
+    # TODO: this guard is awkward.
+    [ -x "$DATADIR/$VMDIR/kvm-boot.sh" ] && \
+	"$DATADIR/$VMDIR/kvm-boot.sh"
+
     (
 	$starting_step "Create centos user account"
 	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
