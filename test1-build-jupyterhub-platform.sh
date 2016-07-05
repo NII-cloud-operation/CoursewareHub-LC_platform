@@ -129,12 +129,12 @@ EOF
 (
     $starting_step "Install Docker"
     [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" su -l -c bash centos <<<"which docker" 2>/dev/null 1>&2
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<<"which docker" 2>/dev/null 1>&2
     }
     $skip_step_if_already_done; set -e
-    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "curl -fsSL https://get.docker.com/ | sh"
-    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "usermod -aG docker centos"
-    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "service docker start"
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "curl -fsSL https://get.docker.com/ | sudo sh"
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "sudo usermod -aG docker centos"
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "sudo service docker start"
     touch "$DATADIR/extrareboot" # necessary to make the usermod take effect in Jupyter environment
 ) ; prev_cmd_failed
 
@@ -152,11 +152,11 @@ fi
 (  # TODO, redo this the systemd way
     $starting_step "Make sure Docker is started"
     [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
-	out="$("$DATADIR/$VMDIR/ssh-to-kvm.sh" "service docker status" 2>/dev/null)"
+	out="$("$DATADIR/$VMDIR/ssh-to-kvm.sh" "sudo service docker status" 2>/dev/null)"
 	[[ "$out" == *running* ]]
     }
     $skip_step_if_already_done; set -e
-    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "service docker start"
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "sudo service docker start"
 ) ; prev_cmd_failed
 
 (
@@ -166,23 +166,23 @@ fi
 
     (
 	$starting_step "Load cached jupyter/minimal-notebook image"
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" su -l -c bash centos <<EOF 2>/dev/null
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
 docker images | grep jupyter/minimal-notebook >/dev/null
 EOF
 	$skip_step_if_already_done
 	# Note: in next line stdin is used for data, not a script to bash
 	cat "$DATADIR/jupyter-in-docker-cached.tar.gz" | gunzip - | \
-	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" su -l -c "'docker load'" centos
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "docker load"
     ) ; prev_cmd_failed
 ) ; prev_cmd_failed
 
 (
     $starting_step "Do docker pull jupyter/minimal-notebook"
-    "$DATADIR/$VMDIR/ssh-to-kvm.sh" su -l -c bash centos <<EOF 2>/dev/null
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
 docker images | grep jupyter/minimal-notebook >/dev/null
 EOF
     $skip_step_if_already_done
-    "$DATADIR/$VMDIR/ssh-to-kvm.sh" su -l -c bash centos <<EOF
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
 docker pull jupyter/minimal-notebook
 EOF
 ) ; prev_cmd_failed
@@ -191,7 +191,7 @@ EOF
     $starting_step "Save cached Jupyter docker image"
     [ -f "$DATADIR/jupyter-in-docker-cached.tar.gz" ]
     $skip_step_if_already_done
-    "$DATADIR/$VMDIR/ssh-to-kvm.sh" su -l -c bash centos <<EOF | gzip - >"$DATADIR/jupyter-in-docker-cached.tar.gz"
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF | gzip - >"$DATADIR/jupyter-in-docker-cached.tar.gz"
 set -x
 docker save jupyter/minimal-notebook
 EOF
