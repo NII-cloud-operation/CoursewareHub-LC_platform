@@ -86,6 +86,21 @@ chown -R centos:centos /home/centos/.ssh
 EOF
     ) ; prev_cmd_failed
 
+    echo "root" >"$DATADIR/$VMDIR/sshuser"
+
+    (
+	$starting_step "Allow sudo without tty"
+	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+! grep '^Defaults[[:space:]]*requiretty' /etc/sudoers
+EOF
+	}
+	$skip_step_if_already_done ; set -e
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+    sed -i "s/^\(^Defaults[[:space:]]*requiretty.*\)/# \1/" /etc/sudoers
+EOF
+    ) ; prev_cmd_failed
+
     (
 	$starting_step "Change default login user to centos"
 	[ $(< "$DATADIR/$VMDIR/sshuser") = "centos" ]
@@ -104,7 +119,7 @@ EOF
 		package=$p
 		[ "$p" = "netstat" ] && package=net-tools
 		"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
-yum install -y $p
+sudo yum install -y $package
 EOF
 	    ) ; prev_cmd_failed
 	done
