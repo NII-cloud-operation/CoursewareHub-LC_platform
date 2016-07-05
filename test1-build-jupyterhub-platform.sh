@@ -74,14 +74,23 @@ VMDIR=jhvmdir
     (
 	$starting_step "Create centos user account"
 	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
-	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" [ -d /home/centos ] 2>/dev/null
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" [ -d /home/centos/.ssh ] 2>/dev/null
 	}
 	$skip_step_if_already_done ; set -e
 
 	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
 adduser centos
 echo 'centos ALL=(ALL) NOPASSWD: ALL' >>/etc/sudoers
+cp -a /root/.ssh /home/centos
+chown -R centos:centos /home/centos/.ssh
 EOF
+    ) ; prev_cmd_failed
+
+    (
+	$starting_step "Change default login user to centos"
+	[ $(< "$DATADIR/$VMDIR/sshuser") = "centos" ]
+	$skip_step_if_already_done ; set -e
+	echo "centos" >"$DATADIR/$VMDIR/sshuser"
     ) ; prev_cmd_failed
 
 	for p in wget bzip2 rsync nc netstat strace lsof; do
