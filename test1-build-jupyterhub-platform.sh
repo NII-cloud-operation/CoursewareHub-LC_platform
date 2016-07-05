@@ -84,7 +84,7 @@ echo 'centos ALL=(ALL) NOPASSWD: ALL' >>/etc/sudoers
 EOF
     ) ; prev_cmd_failed
 
-	for p in wget bzip2 rsync; do
+	for p in wget bzip2 rsync nc netstat strace lsof; do
 	    (
 		$starting_step "Install $p"
 		[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
@@ -92,7 +92,8 @@ EOF
 			[[ "$("$DATADIR/$VMDIR/ssh-to-kvm.sh" which $p 2>/dev/null)" = *$p* ]]
 		}
 		$skip_step_if_already_done ; set -e
-
+		package=$p
+		[ "$p" = "netstat" ] && package=net-tools
 		"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
 yum install -y $p
 EOF
