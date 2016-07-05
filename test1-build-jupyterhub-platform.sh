@@ -216,3 +216,21 @@ EOF
 sudo yum install -y python34
 EOF
 ) ; prev_cmd_failed
+
+(
+    $starting_step "Install a bunch of *-devel packages"
+    packagelist=(
+	zlib-devel   bzip2-devel   openssl-devel   ncurses-devel   sqlite-devel readline-devel   tk-devel   gdbm-devel   db4-devel   libpcap-devel   xz-devel  npm
+    )
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+    for p in ${packagelist[@]}; do
+        [ "\$p" = db4-devel ] && continue # not sure why rpm-q does not see this one
+        rpm -q \$p >/dev/null || exit 1
+    done
+    exit 0
+EOF
+    $skip_step_if_already_done
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+sudo yum install -y ${packagelist[@]}
+EOF
+) ; prev_cmd_failed
