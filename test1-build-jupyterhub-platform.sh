@@ -15,11 +15,18 @@ if [ "$DATADIR" = "" ]; then
 fi
 source "$ORGCODEDIR/simple-defaults-for-bashsteps.source"
 
+# Maybe the multiple build scripts in this directory could share the
+# same .conf, but overall it is probably simpler to keep them
+# separate.  Hopefully there will be time to revisit this decision
+# when thinking more about best practices for bashsteps and $DATADIR.
+
+DATADIRCONF="$DATADIR/datadir-jh.conf"
+
 # avoids errors on first run, but maybe not good to change state
 # outside of a step
-touch "$DATADIR/datadir.conf"
+touch  "$DATADIRCONF"
 
-source "$DATADIR/datadir.conf"
+source "$DATADIRCONF"
 
 imagesource="$DATADIR/vmimages/centos-7.1.1511-x86_64-base/output/minimal-image.raw.tar.gz"
 
