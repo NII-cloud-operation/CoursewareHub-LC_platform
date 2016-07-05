@@ -89,7 +89,7 @@ EOF
     (
 	$starting_step "Allow sudo without tty"
 	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
-	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
 ! grep '^Defaults[[:space:]]*requiretty' /etc/sudoers
 EOF
 	}
