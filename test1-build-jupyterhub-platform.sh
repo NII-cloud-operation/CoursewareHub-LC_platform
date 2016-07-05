@@ -245,3 +245,18 @@ EOF
 sudo npm install -g configurable-http-proxy
 EOF
 ) ; prev_cmd_failed
+
+(
+    $starting_step "Install pip"
+    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+	[[ "$("$DATADIR/$VMDIR/ssh-to-kvm.sh" sudo which pip  2>/dev/null)" = *pip* ]]
+    $skip_step_if_already_done
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+set -e
+wget https://bootstrap.pypa.io/get-pip.py
+chmod +x ./get-pip.py
+sudo python3.4 get-pip.py
+sudo yum -y install python-devel  python34-devel
+sudo pip3 install jupyterhub ipython[notebook]
+EOF
+) ; prev_cmd_failed
