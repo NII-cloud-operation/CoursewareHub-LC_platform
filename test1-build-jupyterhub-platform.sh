@@ -234,3 +234,14 @@ EOF
 sudo yum install -y ${packagelist[@]}
 EOF
 ) ; prev_cmd_failed
+
+(
+    $starting_step "Install configurable-http-proxy"
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+    [ -f /bin/configurable-http-proxy ]
+EOF
+    $skip_step_if_already_done
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+sudo npm install -g configurable-http-proxy
+EOF
+) ; prev_cmd_failed
