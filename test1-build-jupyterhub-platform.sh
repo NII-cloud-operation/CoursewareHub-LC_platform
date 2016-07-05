@@ -111,11 +111,12 @@ EOF
 	    $starting_step "Install $p"
 	    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
 		[ -f "$DATADIR/$VMDIR/minimal-image-w-jupyter.raw.tar.gz" ] || \
-		    [[ "$("$DATADIR/$VMDIR/ssh-to-kvm.sh" which $p 2>/dev/null)" = *$p* ]]
+		    [[ "$("$DATADIR/$VMDIR/ssh-to-kvm.sh" sudo which $p 2>/dev/null)" = *$p* ]]
+		# note: "which lsof" fails unless sudo is used
 	    }
 	    $skip_step_if_already_done ; set -e
 	    package=$p
-	    [ "$p" = "netstat" ] && package=net-tools
+	    [ "$p" = "netstat" ] && package=net-tools # because package!=executable name
 	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
 sudo yum install -y $package
 EOF
