@@ -260,3 +260,5 @@ sudo yum -y install python-devel  python34-devel
 sudo pip3 install jupyterhub ipython[notebook]
 EOF
 ) ; prev_cmd_failed
+
+# at this point, "sudo jupyterhub --no-ssl" should work
