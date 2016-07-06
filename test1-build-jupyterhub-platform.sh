@@ -106,7 +106,7 @@ EOF
 	echo "centos" >"$DATADIR/$VMDIR/sshuser"
     ) ; prev_cmd_failed
 
-    for p in wget bzip2 rsync nc netstat strace lsof; do
+    for p in wget bzip2 rsync nc netstat strace lsof git tcpdump; do
 	(
 	    $starting_step "Install $p"
 	    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
