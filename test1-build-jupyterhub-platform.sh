@@ -287,3 +287,14 @@ sudo pip install -r requirements.txt
 sudo python3 setup.py install
 EOF
 ) ; prev_cmd_failed
+
+(
+    $starting_step "Do docker pull jupyterhub/singleuser"
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+docker images | grep jupyterhub/singleuser >/dev/null
+EOF
+    $skip_step_if_already_done
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+docker pull jupyterhub/singleuser
+EOF
+) ; prev_cmd_failed
