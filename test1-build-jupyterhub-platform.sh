@@ -262,3 +262,28 @@ EOF
 ) ; prev_cmd_failed
 
 # at this point, "sudo jupyterhub --no-ssl" should work
+
+(
+    $starting_step "Do git clone https://github.com/jupyterhub/dockerspawner"
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+    [ -d dockerspawner ]
+EOF
+    $skip_step_if_already_done
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+git clone https://github.com/jupyterhub/dockerspawner
+EOF
+) ; prev_cmd_failed
+
+(
+    $starting_step "Install dockerspawner"
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+    [ -f /usr/lib/python3.4/site-packages/dockerspawner-0.5.0.dev-py3.4.egg-info ]
+EOF
+    $skip_step_if_already_done
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+set -e ; set -x
+cd dockerspawner/
+sudo pip install -r requirements.txt
+sudo python3 setup.py install
+EOF
+) ; prev_cmd_failed
