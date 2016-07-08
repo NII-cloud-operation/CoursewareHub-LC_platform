@@ -298,3 +298,36 @@ EOF
 docker pull jupyterhub/singleuser
 EOF
 ) ; prev_cmd_failed
+
+(
+    $starting_step "Generate and modify jupyterhub_config.py"
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+    [ -f jupyterhub_config.py ] && grep -F '10.0.2.15' jupyterhub_config.py >/dev/null
+EOF
+    $skip_step_if_already_done
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<'EOF'
+set -e ; set -x
+jupyterhub --generate-config
+
+after_this_line_insert_this_line()
+{
+  text="${text/"$1"/$1$'\n'$2}"
+}
+
+text="$(cat jupyterhub_config.py)"
+
+after_this_line_insert_this_line \
+   "# c.JupyterHub.hub_ip = '127.0.0.1'" \
+   "c.JupyterHub.hub_ip = '10.0.2.15'"
+
+after_this_line_insert_this_line \
+   "# c.JupyterHub.spawner_class = 'jupyterhub.spawner.LocalProcessSpawner'" \
+   "c.JupyterHub.spawner_class = 'dockerspawner.DockerSpawner'"
+
+echo "$text" >jupyterhub_config.py
+
+EOF
+) ; prev_cmd_failed
+
+# at this point, "sudo jupyterhub --no-ssl" will deploy docker
+# containers on the same host
