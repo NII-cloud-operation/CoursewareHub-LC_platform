@@ -50,8 +50,10 @@ imagesource="$DATADIR/vmimages/centos-7.1.1511-x86_64-base/output/minimal-image.
 VMDIR=jhvmdir
 
 (
-    $starting_group "Setup clean VM for Jupterhub"
-    [ -f "$DATADIR/$VMDIR/minimal-image-w-jupyter.raw.tar.gz" ]
+    $starting_group "Setup clean VM for Jupterhub/Docker"
+    # not currently snapshotting this VM, but if the next snapshot exists
+    # then this group can be skipped.
+    [ -f "$DATADIR/$VMDIR/minimal-image-w-jupyterhub-docker.raw.tar.gz" ]
     $skip_group_if_unnecessary
 
     (
@@ -126,137 +128,142 @@ EOF
 ) ; prev_cmd_failed
 
 (
-    $starting_group "Docker stuff"
-    (
-	$starting_step "Install Docker"
-	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
-	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<<"which docker" 2>/dev/null 1>&2
-	}
-	$skip_step_if_already_done; set -e
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" "curl -fsSL https://get.docker.com/ | sudo sh"
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" "sudo usermod -aG docker centos"
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" "sudo service docker start"
-	touch "$DATADIR/extrareboot" # necessary to make the usermod take effect in Jupyter environment
-    ) ; prev_cmd_failed
-
-    if [ "$extrareboot" != "" ] || \
-	   [ -f "$DATADIR/extrareboot" ] ; then  # this flag can also be set before calling ./build-nii.sh
-	rm -f "$DATADIR/extrareboot"
-	[ -x "$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" ] && \
-	    "$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh"
-    fi
-
-    if [ -x "$DATADIR/$VMDIR/kvm-boot.sh" ]; then
-	"$DATADIR/$VMDIR/kvm-boot.sh"
-    fi
-
-    (  # TODO, redo this the systemd way
-	$starting_step "Make sure Docker is started"
-	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
-	    out="$("$DATADIR/$VMDIR/ssh-to-kvm.sh" "sudo service docker status" 2>/dev/null)"
-	    [[ "$out" == *running* ]]
-	}
-	$skip_step_if_already_done; set -e
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" "sudo service docker start"
-    ) ; prev_cmd_failed
+    $starting_group "Setup Jupterhub/Docker VM image"
+    [ -f "$DATADIR/$VMDIR/minimal-image-w-jupyterhub-docker.raw.tar.gz" ]
+    $skip_group_if_unnecessary
 
     (
-	$starting_group "Try to load cached Jupyter docker image"
-	! [ -f "$DATADIR/jupyter-in-docker-cached.tar.gz" ]
-	$skip_group_if_unnecessary
+	$starting_group "Docker stuff"
+	(
+	    $starting_step "Install Docker"
+	    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
+		"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<<"which docker" 2>/dev/null 1>&2
+	    }
+	    $skip_step_if_already_done; set -e
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "curl -fsSL https://get.docker.com/ | sudo sh"
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "sudo usermod -aG docker centos"
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "sudo service docker start"
+	    touch "$DATADIR/extrareboot" # necessary to make the usermod take effect in Jupyter environment
+	) ; prev_cmd_failed
+
+	if [ "$extrareboot" != "" ] || \
+	       [ -f "$DATADIR/extrareboot" ] ; then  # this flag can also be set before calling ./build-nii.sh
+	    rm -f "$DATADIR/extrareboot"
+	    [ -x "$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" ] && \
+		"$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh"
+	fi
+
+	if [ -x "$DATADIR/$VMDIR/kvm-boot.sh" ]; then
+	    "$DATADIR/$VMDIR/kvm-boot.sh"
+	fi
+
+	(  # TODO, redo this the systemd way
+	    $starting_step "Make sure Docker is started"
+	    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
+		out="$("$DATADIR/$VMDIR/ssh-to-kvm.sh" "sudo service docker status" 2>/dev/null)"
+		[[ "$out" == *running* ]]
+	    }
+	    $skip_step_if_already_done; set -e
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "sudo service docker start"
+	) ; prev_cmd_failed
 
 	(
-	    $starting_step "Load cached jupyter/minimal-notebook image"
+	    $starting_group "Try to load cached Jupyter docker image"
+	    ! [ -f "$DATADIR/jupyter-in-docker-cached.tar.gz" ]
+	    $skip_group_if_unnecessary
+
+	    (
+		$starting_step "Load cached jupyter/minimal-notebook image"
+		"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+docker images | grep jupyter/minimal-notebook >/dev/null
+EOF
+		$skip_step_if_already_done
+		# Note: in next line stdin is used for data, not a script to bash
+		cat "$DATADIR/jupyter-in-docker-cached.tar.gz" | gunzip - | \
+		    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "docker load"
+	    ) ; prev_cmd_failed
+	) ; prev_cmd_failed
+
+	(
+	    $starting_step "Do docker pull jupyter/minimal-notebook"
 	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
 docker images | grep jupyter/minimal-notebook >/dev/null
 EOF
 	    $skip_step_if_already_done
-	    # Note: in next line stdin is used for data, not a script to bash
-	    cat "$DATADIR/jupyter-in-docker-cached.tar.gz" | gunzip - | \
-		"$DATADIR/$VMDIR/ssh-to-kvm.sh" "docker load"
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+docker pull jupyter/minimal-notebook
+EOF
+	) ; prev_cmd_failed
+
+	(
+	    $starting_step "Save cached Jupyter docker image"
+	    [ -f "$DATADIR/jupyter-in-docker-cached.tar.gz" ]
+	    $skip_step_if_already_done
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF | gzip - >"$DATADIR/jupyter-in-docker-cached.tar.gz"
+set -x
+docker save jupyter/minimal-notebook
+EOF
 	) ; prev_cmd_failed
     ) ; prev_cmd_failed
 
     (
-	$starting_step "Do docker pull jupyter/minimal-notebook"
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
-docker images | grep jupyter/minimal-notebook >/dev/null
-EOF
-	$skip_step_if_already_done
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
-docker pull jupyter/minimal-notebook
-EOF
-    ) ; prev_cmd_failed
-
-    (
-	$starting_step "Save cached Jupyter docker image"
-	[ -f "$DATADIR/jupyter-in-docker-cached.tar.gz" ]
-	$skip_step_if_already_done
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF | gzip - >"$DATADIR/jupyter-in-docker-cached.tar.gz"
-set -x
-docker save jupyter/minimal-notebook
-EOF
-    ) ; prev_cmd_failed
-) ; prev_cmd_failed
-
-(
-    $starting_group "Jupterhub stuff"
-    (
-	$starting_step "Install epel-release"
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+	$starting_group "Jupterhub stuff"
+	(
+	    $starting_step "Install epel-release"
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
     [ -f /etc/yum.repos.d/epel.repo ]
 EOF
-	$skip_step_if_already_done
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+	    $skip_step_if_already_done
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
 sudo yum install -y epel-release
 EOF
-    ) ; prev_cmd_failed
+	) ; prev_cmd_failed
 
-    (
-	$starting_step "Install python3"
-	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
-	    [[ "$("$DATADIR/$VMDIR/ssh-to-kvm.sh" sudo which python3  2>/dev/null)" = *python3* ]]
-	$skip_step_if_already_done
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+	(
+	    $starting_step "Install python3"
+	    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+		[[ "$("$DATADIR/$VMDIR/ssh-to-kvm.sh" sudo which python3  2>/dev/null)" = *python3* ]]
+	    $skip_step_if_already_done
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
 sudo yum install -y python34
 EOF
-    ) ; prev_cmd_failed
+	) ; prev_cmd_failed
 
-    (
-	$starting_step "Install a bunch of *-devel packages"
-	packagelist=(
-	    zlib-devel   bzip2-devel   openssl-devel   ncurses-devel   sqlite-devel readline-devel   tk-devel   gdbm-devel   db4-devel   libpcap-devel   xz-devel  npm
-	)
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+	(
+	    $starting_step "Install a bunch of *-devel packages"
+	    packagelist=(
+		zlib-devel   bzip2-devel   openssl-devel   ncurses-devel   sqlite-devel readline-devel   tk-devel   gdbm-devel   db4-devel   libpcap-devel   xz-devel  npm
+	    )
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
     for p in ${packagelist[@]}; do
         [ "\$p" = db4-devel ] && continue # not sure why rpm-q does not see this one
         rpm -q \$p >/dev/null || exit 1
     done
     exit 0
 EOF
-	$skip_step_if_already_done
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+	    $skip_step_if_already_done
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
 sudo yum install -y ${packagelist[@]}
 EOF
-    ) ; prev_cmd_failed
+	) ; prev_cmd_failed
 
-    (
-	$starting_step "Install configurable-http-proxy"
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+	(
+	    $starting_step "Install configurable-http-proxy"
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
     [ -f /bin/configurable-http-proxy ]
 EOF
-	$skip_step_if_already_done
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+	    $skip_step_if_already_done
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
 sudo npm install -g configurable-http-proxy
 EOF
-    ) ; prev_cmd_failed
+	) ; prev_cmd_failed
 
-    (
-	$starting_step "Install pip"
-	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
-	    [[ "$("$DATADIR/$VMDIR/ssh-to-kvm.sh" sudo which pip  2>/dev/null)" = *pip* ]]
-	$skip_step_if_already_done
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+	(
+	    $starting_step "Install pip"
+	    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+		[[ "$("$DATADIR/$VMDIR/ssh-to-kvm.sh" sudo which pip  2>/dev/null)" = *pip* ]]
+	    $skip_step_if_already_done
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
 set -e
 wget https://bootstrap.pypa.io/get-pip.py
 chmod +x ./get-pip.py
@@ -264,53 +271,53 @@ sudo python3.4 get-pip.py
 sudo yum -y install python-devel  python34-devel
 sudo pip3 install jupyterhub ipython[notebook]
 EOF
-    ) ; prev_cmd_failed
+	) ; prev_cmd_failed
 
-    # at this point, "sudo jupyterhub --no-ssl" should work
+	# at this point, "sudo jupyterhub --no-ssl" should work
 
-    (
-	$starting_step "Do git clone https://github.com/jupyterhub/dockerspawner"
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+	(
+	    $starting_step "Do git clone https://github.com/jupyterhub/dockerspawner"
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
     [ -d dockerspawner ]
 EOF
-	$skip_step_if_already_done
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+	    $skip_step_if_already_done
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
 git clone https://github.com/jupyterhub/dockerspawner
 EOF
-    ) ; prev_cmd_failed
+	) ; prev_cmd_failed
 
-    (
-	$starting_step "Install dockerspawner"
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+	(
+	    $starting_step "Install dockerspawner"
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
     [ -f /usr/lib/python3.4/site-packages/dockerspawner-0.5.0.dev-py3.4.egg-info ]
 EOF
-	$skip_step_if_already_done
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+	    $skip_step_if_already_done
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
 set -e ; set -x
 cd dockerspawner/
 sudo pip install -r requirements.txt
 sudo python3 setup.py install
 EOF
-    ) ; prev_cmd_failed
+	) ; prev_cmd_failed
 
-    (
-	$starting_step "Do docker pull jupyterhub/singleuser"
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+	(
+	    $starting_step "Do docker pull jupyterhub/singleuser"
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
 docker images | grep jupyterhub/singleuser >/dev/null
 EOF
-	$skip_step_if_already_done
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+	    $skip_step_if_already_done
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
 docker pull jupyterhub/singleuser
 EOF
-    ) ; prev_cmd_failed
+	) ; prev_cmd_failed
 
-    (
-	$starting_step "Generate and modify jupyterhub_config.py"
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+	(
+	    $starting_step "Generate and modify jupyterhub_config.py"
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
     [ -f jupyterhub_config.py ] && grep -F '10.0.2.15' jupyterhub_config.py >/dev/null
 EOF
-	$skip_step_if_already_done
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<'EOF'
+	    $skip_step_if_already_done
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<'EOF'
 set -e ; set -x
 jupyterhub --generate-config
 
@@ -332,8 +339,9 @@ after_this_line_insert_this_line \
 echo "$text" >jupyterhub_config.py
 
 EOF
+	) ; prev_cmd_failed
     ) ; prev_cmd_failed
-) ; prev_cmd_failed
 
-# at this point, "sudo jupyterhub --no-ssl" will deploy docker
-# containers on the same host
+    # at this point, "sudo jupyterhub --no-ssl" will deploy docker
+    # containers on the same host
+) ; prev_cmd_failed
