@@ -144,7 +144,7 @@ EOF
 	    $skip_step_if_already_done; set -e
 	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "curl -fsSL https://get.docker.com/ | sudo sh"
 	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "sudo usermod -aG docker centos"
-	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "sudo service docker start"
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "sudo systemctl enable docker"
 	    touch "$DATADIR/extrareboot" # necessary to make the usermod take effect in Jupyter environment
 	) ; prev_cmd_failed
 
@@ -158,16 +158,6 @@ EOF
 	if [ -x "$DATADIR/$VMDIR/kvm-boot.sh" ]; then
 	    "$DATADIR/$VMDIR/kvm-boot.sh"
 	fi
-
-	(  # TODO, redo this the systemd way
-	    $starting_step "Make sure Docker is started"
-	    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
-		out="$("$DATADIR/$VMDIR/ssh-to-kvm.sh" "sudo service docker status" 2>/dev/null)"
-		[[ "$out" == *running* ]]
-	    }
-	    $skip_step_if_already_done; set -e
-	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" "sudo service docker start"
-	) ; prev_cmd_failed
 
 	(
 	    $starting_group "Try to load cached Jupyter docker image"
