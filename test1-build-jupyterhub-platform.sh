@@ -344,4 +344,16 @@ EOF
 
     # at this point, "sudo jupyterhub --no-ssl" will deploy docker
     # containers on the same host
+
+    [ -x "$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" ] && \
+	"$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh"
+
+    (
+	$starting_step "Make snapshot of image with jupyterhub/docker installed"
+	[ -f "$DATADIR/$VMDIR/minimal-image-w-jupyterhub-docker.raw.tar.gz" ]
+	$skip_step_if_already_done ; set -e
+	cd "$DATADIR/$VMDIR/"
+	tar czSvf  minimal-image-w-jupyterhub-docker.raw.tar.gz  minimal-image.raw
+    ) ; prev_cmd_failed
+
 ) ; prev_cmd_failed
