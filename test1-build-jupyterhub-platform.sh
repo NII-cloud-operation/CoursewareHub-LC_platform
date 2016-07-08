@@ -63,6 +63,8 @@ VMDIR=jhvmdir
 	mkdir "$DATADIR/$VMDIR"
 	# increase default mem to give room for a wakame instance or two
 	echo ': ${KVMMEM:=4096}' >>"$DATADIR/$VMDIR/datadir.conf"
+	[ -f "datadir-jh.conf" ] || reportfailed "datadir-jh.conf is required"
+	cat "datadir-jh.conf" >>"$DATADIR/$VMDIR/datadir.conf"
     ) ; prev_cmd_failed
 
     DATADIR="$DATADIR/$VMDIR" \
@@ -355,5 +357,48 @@ EOF
 	cd "$DATADIR/$VMDIR/"
 	tar czSvf  minimal-image-w-jupyterhub-docker.raw.tar.gz  minimal-image.raw
     ) ; prev_cmd_failed
+
+) ; prev_cmd_failed
+
+(
+    $starting_group "Boot thee VMs"
+
+    boot-one-vm()
+    {
+	avmdir="$1"
+	(
+	    $starting_step "Make $avmdir"
+	    [ -d "$DATADIR/$avmdir" ]
+	    $skip_step_if_already_done ; set -e
+	    mkdir "$DATADIR/$avmdir"
+	    # increase default mem to give room for a wakame instance or two
+	    echo ': ${KVMMEM:=4096}' >>"$DATADIR/$avmdir/datadir.conf"
+	    [ -f "datadir-jh.conf" ] || reportfailed "$3 is required"
+	    cat "$3" >>"$DATADIR/$VMDIR/datadir.conf"
+	) ; prev_cmd_failed
+
+	if ! [ -x "$DATADIR/$avmdir/kvm-boot.sh" ]; then
+	    DATADIR="$DATADIR/$avmdir" \
+		   "$ORGCODEDIR/ind-steps/kvmsteps/kvm-setup.sh" \
+		   "../$VMDIR/minimal-image-w-jupyterhub-docker.raw.tar.gz"
+	fi
+	# Note: the (two) steps above will be skipped for the main KVM
+
+	(
+	    $starting_step "Expand fresh image from snapshot for $2"
+	    [ -f "$DATADIR/$avmdir/minimal-image.raw" ]
+	    $skip_step_if_already_done ; set -e
+	    cd "$DATADIR/$avmdir/"
+	    tar xzSvf ../$VMDIR/minimal-image-w-jupyterhub-docker.raw.tar.gz
+	) ; prev_cmd_failed
+
+	# TODO: this guard is awkward.
+	[ -x "$DATADIR/$avmdir/kvm-boot.sh" ] && \
+	    "$DATADIR/$avmdir/kvm-boot.sh"
+    }
+
+    boot-one-vm "$VMDIR" "main KVM" datadir-jh.conf
+#    boot-one-vm "$VMDIR-node1" "node 1 KVM" datadir-jh-node1.conf
+#    boot-one-vm "$VMDIR-node2" "node 2 KVM" datadir-jh-node2.conf
 
 ) ; prev_cmd_failed
