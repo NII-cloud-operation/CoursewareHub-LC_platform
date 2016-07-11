@@ -63,8 +63,8 @@ VMDIR=jhvmdir
 	mkdir "$DATADIR/$VMDIR"
 	# increase default mem to give room for a wakame instance or two
 	echo ': ${KVMMEM:=4096}' >>"$DATADIR/$VMDIR/datadir.conf"
-	[ -f "datadir-jh.conf" ] || reportfailed "datadir-jh.conf is required"
-	cat "datadir-jh.conf" >>"$DATADIR/$VMDIR/datadir.conf"
+	[ -f "$DATADIR/datadir-jh.conf" ] || reportfailed "datadir-jh.conf is required"
+	cat "$DATADIR/datadir-jh.conf" >>"$DATADIR/$VMDIR/datadir.conf"
     ) ; prev_cmd_failed
 
     DATADIR="$DATADIR/$VMDIR" \
@@ -351,7 +351,7 @@ EOF
 ) ; prev_cmd_failed
 
 (
-    $starting_group "Boot thee VMs"
+    $starting_group "Boot three VMs"
 
     boot-one-vm()
     {
@@ -363,14 +363,19 @@ EOF
 	    mkdir "$DATADIR/$avmdir"
 	    # increase default mem to give room for a wakame instance or two
 	    echo ': ${KVMMEM:=4096}' >>"$DATADIR/$avmdir/datadir.conf"
-	    [ -f "datadir-jh.conf" ] || reportfailed "$3 is required"
-	    cat "$3" >>"$DATADIR/$VMDIR/datadir.conf"
+	    [ -f "$DATADIR/$3" ] || reportfailed "$3 is required"
+	    # copy specific port forwarding stuff to avmdir, so vmdir*/kvm-* scripts
+	    # will have all config info
+	    cat "$DATADIR/$3" >>"$DATADIR/$avmdir/datadir.conf"
+	    # copy ssh info from main VM to note VMs:
+	    cp "$DATADIR/$VMDIR/sshuser" "$DATADIR/$avmdir/sshuser"
+	    cp "$DATADIR/$VMDIR/sshkey" "$DATADIR/$avmdir/sshkey"
 	) ; prev_cmd_failed
 
 	if ! [ -x "$DATADIR/$avmdir/kvm-boot.sh" ]; then
 	    DATADIR="$DATADIR/$avmdir" \
 		   "$ORGCODEDIR/ind-steps/kvmsteps/kvm-setup.sh" \
-		   "../$VMDIR/minimal-image-w-jupyterhub-docker.raw.tar.gz"
+		   "$DATADIR/$VMDIR/minimal-image-w-jupyterhub-docker.raw.tar.gz"
 	fi
 	# Note: the (two) steps above will be skipped for the main KVM
 
@@ -388,7 +393,7 @@ EOF
     }
 
     boot-one-vm "$VMDIR" "main KVM" datadir-jh.conf
-#    boot-one-vm "$VMDIR-node1" "node 1 KVM" datadir-jh-node1.conf
-#    boot-one-vm "$VMDIR-node2" "node 2 KVM" datadir-jh-node2.conf
+    boot-one-vm "$VMDIR-node1" "node 1 KVM" datadir-jh-node1.conf
+    boot-one-vm "$VMDIR-node2" "node 2 KVM" datadir-jh-node2.conf
 
 ) ; prev_cmd_failed
