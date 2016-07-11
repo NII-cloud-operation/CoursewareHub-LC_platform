@@ -13,7 +13,7 @@ if [ "$DATADIR" = "" ]; then
     # Choose directory of symbolic link by default
     DATADIR="$CODEDIR"
 fi
-source "$ORGCODEDIR/../simple-defaults-for-bashsteps.source"
+source "$ORGCODEDIR/simple-defaults-for-bashsteps.source"
 source "$DATADIR/datadir.conf"
 
 kvm_is_running()
