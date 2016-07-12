@@ -390,6 +390,36 @@ EOF
 	# TODO: this guard is awkward.
 	[ -x "$DATADIR/$avmdir/kvm-boot.sh" ] && \
 	    "$DATADIR/$avmdir/kvm-boot.sh"
+
+	
+	(
+	    $starting_step "Setup private network for VM $avmdir"
+	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF 2>/dev/null
+[ -f /etc/sysconfig/network-scripts/ifcfg-ens3 ]
+EOF
+	    $skip_step_if_already_done
+	    addr=$(
+		case "$2" in
+		    *main*) echo 0 ;;
+		    *1*) echo 1 ;;
+		    *2*) echo 2 ;;
+		    *) reportfailed "BUG"
+		esac
+		)
+	    
+	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF
+sudo tee /etc/sysconfig/network-scripts/ifcfg-ens3 <<EOF2
+DEVICE=ens3
+BOOTPROTO=none
+ONBOOT=yes
+PREFIX=24
+IPADDR=192.168.11.$addr
+EOF2
+
+sudo service network restart
+
+EOF
+	) ; prev_cmd_failed
     }
 
     boot-one-vm "$VMDIR" "main KVM" datadir-jh.conf

@@ -48,6 +48,11 @@ calculate_ports
     ) ; prev_cmd_failed
     source "$DATADIR/datadir.conf"
 
+    # TODO: decide if it is worth generalizing kvmsteps to deal with cases like this:
+    [ "$mcastPORT" = "" ] && mcastPORT="1234"
+    [ "$mcastMAC" = "" ] && mcastMAC="52:54:00:12:00:00"
+    [ "$mcastnet" = "" ] && mcastnet="-net nic,vlan=1,macaddr=$mcastMAC  -net socket,vlan=1,mcast=230.0.0.1:$mcastPORT"
+
     build-cmd-line() # a function, not a step
     {
 	cat <<EOF
@@ -66,6 +71,8 @@ calculate_ports
 
 	    -net nic,vlan=0,macaddr=52:54:00:65:28:dd,model=virtio,addr=10
 	    -net user,vlan=0,hostfwd=tcp::$SSHPORT-:22$EXTRAHOSTFWD
+
+            $mcastnet
 EOF
     }
 
