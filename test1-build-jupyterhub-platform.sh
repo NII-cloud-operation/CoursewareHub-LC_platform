@@ -441,7 +441,7 @@ EOF
     $starting_group "Docker Swarm and Docker-Machine stuff"
 
     (
-	$starting_step "Install docker-machine to main server"
+	$starting_step "Install docker-machine to main KVM"
 	## https://docs.docker.com/machine/install-machine/
 	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
 [ -x /usr/local/bin/docker-machine ]
@@ -454,5 +454,19 @@ sudo curl -L https://github.com/docker/machine/releases/download/v0.7.0/docker-m
 EOF
     ) ; prev_cmd_failed
 
+    (
+	$starting_step "Copy private ssh key to main KVM"
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+[ -f .ssh/id_rsa ]
+EOF
+	$skip_step_if_already_done
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+set -x
+cat >.ssh/id_rsa <<EOF2
+$(< "$DATADIR/$VMDIR/sshkey")
+EOF2
+chmod 600 .ssh/id_rsa
+EOF
+    ) ; prev_cmd_failed
 
 ) ; prev_cmd_failed
