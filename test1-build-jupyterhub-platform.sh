@@ -521,4 +521,26 @@ thetoken="$(< swarm-token.txt)"
 EOF
     ) ; prev_cmd_failed
 
+    start-node-agent-one-vm()
+    {
+	avmdir="$1"
+	(
+	    $starting_step "Start node agent for $2"
+	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<'EOF' 2>/dev/null
+[[ "$(docker ps)" == *swarm\ join* ]]
+EOF
+	    $skip_step_if_already_done
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+set -x
+eval \$(docker-machine env $4)
+thetoken="\$(< swarm-token.txt)"
+docker run -d swarm join --addr=\$(docker-machine ip $4):2376 token://\$thetoken
+
+EOF
+	) ; prev_cmd_failed
+    }
+
+    start-node-agent-one-vm "$VMDIR-node1" "node 1 KVM" 1 node1
+    start-node-agent-one-vm "$VMDIR-node2" "node 2 KVM" 2 node2
+
 ) ; prev_cmd_failed
