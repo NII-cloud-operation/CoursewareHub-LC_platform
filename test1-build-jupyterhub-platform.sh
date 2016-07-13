@@ -337,6 +337,17 @@ EOF
     # at this point, "sudo jupyterhub --no-ssl" will deploy docker
     # containers on the same host
 
+    (
+	$starting_step "Remove /etc/docker/key.json to give swarm nodes unique keys"
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+[ -f /etc/docker/key.json ]
+EOF
+	$skip_step_if_already_done
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+sudo rm /etc/docker/key.json
+EOF
+    ) ; prev_cmd_failed
+
     [ -x "$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" ] && \
 	"$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh"
 
