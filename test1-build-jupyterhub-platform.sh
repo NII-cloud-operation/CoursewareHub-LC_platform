@@ -490,4 +490,19 @@ EOF
     dm-create-one-vm "$VMDIR-node1" "node 1 KVM" 1 node1
     dm-create-one-vm "$VMDIR-node2" "node 2 KVM" 2 node2
 
+    (
+	$starting_step "Create a Swarm discovery token"
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+[ -f swarm-token.txt ]
+EOF
+	$skip_step_if_already_done
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<'EOF'
+set -x
+eval $(docker-machine env manager)
+docker run --rm swarm create > swarm-token.txt
+echo "The new swarm token: '$(< swarm-token.txt)'"
+EOF
+    ) ; prev_cmd_failed
+
+
 ) ; prev_cmd_failed
