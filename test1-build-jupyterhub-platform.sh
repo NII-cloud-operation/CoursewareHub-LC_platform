@@ -469,4 +469,25 @@ chmod 600 .ssh/id_rsa
 EOF
     ) ; prev_cmd_failed
 
+    dm-create-one-vm()
+    {
+	avmdir="$1"
+	(
+	    $starting_step "Do 'docker-machine create' command for $2"
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+## TODO: is this a good way to check?
+/usr/local/bin/docker-machine ls | grep -F 192.168.11.$3 1>/dev/null
+EOF
+	    $skip_step_if_already_done
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+set -x
+/usr/local/bin/docker-machine create --driver generic   --generic-ip-address=192.168.11.$3 --generic-ssh-user=centos $4
+EOF
+	) ; prev_cmd_failed
+    }
+
+    dm-create-one-vm "$VMDIR" "main KVM" 99 main
+    dm-create-one-vm "$VMDIR-node1" "node 1 KVM" 1 node1
+    dm-create-one-vm "$VMDIR-node2" "node 2 KVM" 2 node2
+
 ) ; prev_cmd_failed
