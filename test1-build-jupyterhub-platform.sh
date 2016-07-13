@@ -400,7 +400,7 @@ EOF
 	    $skip_step_if_already_done
 	    addr=$(
 		case "$2" in
-		    *main*) echo 0 ;;
+		    *main*) echo 99 ;;
 		    *1*) echo 1 ;;
 		    *2*) echo 2 ;;
 		    *) reportfailed "BUG"
