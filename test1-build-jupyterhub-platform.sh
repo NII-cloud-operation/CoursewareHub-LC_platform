@@ -427,3 +427,12 @@ EOF
     boot-one-vm "$VMDIR-node2" "node 2 KVM" datadir-jh-node2.conf
 
 ) ; prev_cmd_failed
+
+(
+    $starting_step "Make sure mac addresses were configured"
+    # Make sure all three mac addresses are unique
+    [ $(grep -ho 'export.*mcastMAC.*' "$DATADIR"/jhvmdir*/*conf | sort -u | wc -l) -eq 3 ]
+    $skip_step_if_already_done
+    # always fail if this has not been done
+    reportfailed "Add mcastMAC= to: datadir-jh.conf datadir-jh-node2.conf datadir-jh-node1.conf"
+) ; prev_cmd_failed
