@@ -436,3 +436,23 @@ EOF
     # always fail if this has not been done
     reportfailed "Add mcastMAC= to: datadir-jh.conf datadir-jh-node2.conf datadir-jh-node1.conf"
 ) ; prev_cmd_failed
+
+(
+    $starting_group "Docker Swarm and Docker-Machine stuff"
+
+    (
+	$starting_step "Install docker-machine to main server"
+	## https://docs.docker.com/machine/install-machine/
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+[ -x /usr/local/bin/docker-machine ]
+EOF
+	$skip_step_if_already_done
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<'EOF'
+set -x
+sudo curl -L https://github.com/docker/machine/releases/download/v0.7.0/docker-machine-`uname -s`-`uname -m` -o /usr/local/bin/docker-machine && \
+  sudo chmod +x /usr/local/bin/docker-machine
+EOF
+    ) ; prev_cmd_failed
+
+
+) ; prev_cmd_failed
