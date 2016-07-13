@@ -504,5 +504,21 @@ echo "The new swarm token: '$(< swarm-token.txt)'"
 EOF
     ) ; prev_cmd_failed
 
+    (
+	$starting_step "Run a Swarm container that functions as the primary manager"
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<'EOF' 2>/dev/null
+set -x
+[[ "$(docker ps)" == *swarm\ manage* ]]
+EOF
+	$skip_step_if_already_done
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<'EOF'
+set -x
+eval $(docker-machine env main)
+thetoken="$(< swarm-token.txt)"
+## TODO: double check the /etc/docker part
+    docker run -d -p 3376:3376 -t -v /etc/docker:/certs:ro swarm manage -H 0.0.0.0:3376 --tlsverify --tlscacert=/certs/ca.pem --tlscert=/certs/server.pem --tlskey=/certs/server-key.pem token://$thetoken
+
+EOF
+    ) ; prev_cmd_failed
 
 ) ; prev_cmd_failed
