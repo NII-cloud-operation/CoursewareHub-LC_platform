@@ -74,6 +74,21 @@ rm /etc/update-motd.d/*
 EOF
     ) ; prev_cmd_failed
 
+    (
+	$starting_step "Install git, ansible"
+	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+which git && which ansible
+EOF
+	$skip_step_if_already_done ; set -e
+
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+sudo apt-get update
+sudo apt-get -y install git
+sudo apt-get -y install ansible
+EOF
+    ) ; prev_cmd_failed
+
     exit 44 # just test code above
 
     ###################  code below not modified ###################
