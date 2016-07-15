@@ -61,7 +61,7 @@ VMDIR=jhvmdir
 	"$DATADIR/$VMDIR/kvm-boot.sh"
 
     (
-	$starting_step "Allow sudo for ubuntu user account"
+	$starting_step "Allow sudo for ubuntu user account, remove mtod"
 	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
 	    SSHUSER=root "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
 grep 'ubuntu.*ALL' /etc/sudoers >/dev/null
@@ -70,6 +70,7 @@ EOF
 
 	SSHUSER=root "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
 echo 'ubuntu ALL=(ALL) NOPASSWD: ALL' >>/etc/sudoers
+rm /etc/update-motd.d/*
 EOF
     ) ; prev_cmd_failed
 
