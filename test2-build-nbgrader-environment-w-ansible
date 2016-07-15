@@ -60,24 +60,22 @@ VMDIR=jhvmdir
     [ -x "$DATADIR/$VMDIR/kvm-boot.sh" ] && \
 	"$DATADIR/$VMDIR/kvm-boot.sh"
 
+    (
+	$starting_step "Allow sudo for ubuntu user account"
+	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+	    SSHUSER=root "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+grep 'ubuntu.*ALL' /etc/sudoers >/dev/null
+EOF
+	$skip_step_if_already_done ; set -e
+
+	SSHUSER=root "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+echo 'ubuntu ALL=(ALL) NOPASSWD: ALL' >>/etc/sudoers
+EOF
+    ) ; prev_cmd_failed
+
     exit 44 # just test code above
 
     ###################  code below not modified ###################
-
-    (
-	$starting_step "Create centos user account"
-	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
-	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" [ -d /home/centos/.ssh ] 2>/dev/null
-	}
-	$skip_step_if_already_done ; set -e
-
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
-adduser centos
-echo 'centos ALL=(ALL) NOPASSWD: ALL' >>/etc/sudoers
-cp -a /root/.ssh /home/centos
-chown -R centos:centos /home/centos/.ssh
-EOF
-    ) ; prev_cmd_failed
 
     (
 	$starting_step "Allow sudo without tty"
