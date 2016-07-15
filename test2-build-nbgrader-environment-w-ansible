@@ -39,7 +39,7 @@ VMDIR=jhvmdir
     $starting_group "Setup clean VM for Jupterhub/Docker"
     # not currently snapshotting this VM, but if the next snapshot exists
     # then this group can be skipped.
-    [ -f "$DATADIR/$VMDIR/debian-before-nbgrader.tar.gz" ]
+    [ -f "$DATADIR/$VMDIR/ubuntu-before-nbgrader.tar.gz" ]
     $skip_group_if_unnecessary
 
     (
@@ -106,7 +106,7 @@ EOF
 
 (
     $starting_group "Snapshot base KVM image"
-    [ -f "$DATADIR/$VMDIR/debian-before-nbgrader.tar.gz" ]
+    [ -f "$DATADIR/$VMDIR/ubuntu-before-nbgrader.tar.gz" ]
     $skip_group_if_unnecessary
 
     [ -x "$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" ] && \
@@ -114,10 +114,10 @@ EOF
 
     (
 	$starting_step "Make snapshot of image with jupyterhub/docker installed"
-	[ -f "$DATADIR/$VMDIR/debian-before-nbgrader.tar.gz" ]
+	[ -f "$DATADIR/$VMDIR/ubuntu-before-nbgrader.tar.gz" ]
 	$skip_step_if_already_done ; set -e
 	cd "$DATADIR/$VMDIR/"
-	tar czSvf  debian-before-nbgrader.tar.gz ubuntu-14-instance-build.img
+	tar czSvf  ubuntu-before-nbgrader.tar.gz ubuntu-14-instance-build.img
     ) ; prev_cmd_failed
 
 ) ; prev_cmd_failed
@@ -147,7 +147,7 @@ EOF
 	if ! [ -x "$DATADIR/$avmdir/kvm-boot.sh" ]; then
 	    DATADIR="$DATADIR/$avmdir" \
 		   "$ORGCODEDIR/ind-steps/kvmsteps/kvm-setup.sh" \
-		   "$DATADIR/$VMDIR/debian-before-nbgrader.tar.gz"
+		   "$DATADIR/$VMDIR/ubuntu-before-nbgrader.tar.gz"
 	fi
 	# Note: the (two) steps above will be skipped for the main KVM
 
@@ -156,7 +156,7 @@ EOF
 	    [ -f "$DATADIR/$avmdir/ubuntu-14-instance-build.img" ]
 	    $skip_step_if_already_done ; set -e
 	    cd "$DATADIR/$avmdir/"
-	    tar xzSvf ../$VMDIR/debian-before-nbgrader.tar.gz
+	    tar xzSvf ../$VMDIR/ubuntu-before-nbgrader.tar.gz
 	) ; prev_cmd_failed
 
 	# TODO: this guard is awkward.
