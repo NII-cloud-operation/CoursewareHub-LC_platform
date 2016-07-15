@@ -39,7 +39,7 @@ VMDIR=jhvmdir
     $starting_group "Setup clean VM for Jupterhub/Docker"
     # not currently snapshotting this VM, but if the next snapshot exists
     # then this group can be skipped.
-    [ -f "$DATADIR/$VMDIR/minimal-ubuntu-image-w-jupyterhub-docker.raw.tar.gz" ]
+    [ -f "$DATADIR/$VMDIR/debian-before-nbgrader.tar.gz" ]
     $skip_group_if_unnecessary
 
     (
@@ -105,8 +105,8 @@ EOF
 ) ; prev_cmd_failed
 
 (
-    $starting_group "Setup Jupterhub/Docker VM image"
-    [ -f "$DATADIR/$VMDIR/minimal-image-w-jupyterhub-docker.raw.tar.gz" ]
+    $starting_group "Snapshot base KVM image"
+    [ -f "$DATADIR/$VMDIR/debian-before-nbgrader.tar.gz" ]
     $skip_group_if_unnecessary
 
     [ -x "$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" ] && \
@@ -114,10 +114,10 @@ EOF
 
     (
 	$starting_step "Make snapshot of image with jupyterhub/docker installed"
-	[ -f "$DATADIR/$VMDIR/minimal-image-w-jupyterhub-docker.raw.tar.gz" ]
+	[ -f "$DATADIR/$VMDIR/debian-before-nbgrader.tar.gz" ]
 	$skip_step_if_already_done ; set -e
 	cd "$DATADIR/$VMDIR/"
-	tar czSvf  minimal-image-w-jupyterhub-docker.raw.tar.gz  minimal-image.raw
+	tar czSvf  debian-before-nbgrader.tar.gz ubuntu-14-instance-build.img
     ) ; prev_cmd_failed
 
 ) ; prev_cmd_failed
