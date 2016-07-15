@@ -122,10 +122,6 @@ EOF
 
 ) ; prev_cmd_failed
 
-exit 44 # just test code above
-
-###################  code below not modified ###################
-
 (
     $starting_group "Boot three VMs"
 
@@ -151,27 +147,26 @@ exit 44 # just test code above
 	if ! [ -x "$DATADIR/$avmdir/kvm-boot.sh" ]; then
 	    DATADIR="$DATADIR/$avmdir" \
 		   "$ORGCODEDIR/ind-steps/kvmsteps/kvm-setup.sh" \
-		   "$DATADIR/$VMDIR/minimal-image-w-jupyterhub-docker.raw.tar.gz"
+		   "$DATADIR/$VMDIR/debian-before-nbgrader.tar.gz"
 	fi
 	# Note: the (two) steps above will be skipped for the main KVM
 
 	(
 	    $starting_step "Expand fresh image from snapshot for $2"
-	    [ -f "$DATADIR/$avmdir/minimal-image.raw" ]
+	    [ -f "$DATADIR/$avmdir/ubuntu-14-instance-build.img" ]
 	    $skip_step_if_already_done ; set -e
 	    cd "$DATADIR/$avmdir/"
-	    tar xzSvf ../$VMDIR/minimal-image-w-jupyterhub-docker.raw.tar.gz
+	    tar xzSvf ../$VMDIR/debian-before-nbgrader.tar.gz
 	) ; prev_cmd_failed
 
 	# TODO: this guard is awkward.
 	[ -x "$DATADIR/$avmdir/kvm-boot.sh" ] && \
 	    "$DATADIR/$avmdir/kvm-boot.sh"
-
 	
 	(
 	    $starting_step "Setup private network for VM $avmdir"
-	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF 2>/dev/null
-[ -f /etc/sysconfig/network-scripts/ifcfg-ens3 ]
+	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+grep eth1 /etc/network/interfaces
 EOF
 	    $skip_step_if_already_done
 	    addr=$(
@@ -182,17 +177,19 @@ EOF
 		    *) reportfailed "BUG"
 		esac
 		)
-	    
+
+	    # http://askubuntu.com/questions/441619/how-to-successfully-restart-a-network-without-reboot-over-ssh
 	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF
-sudo tee /etc/sysconfig/network-scripts/ifcfg-ens3 <<EOF2
-DEVICE=ens3
-BOOTPROTO=none
-ONBOOT=yes
-PREFIX=24
-IPADDR=192.168.11.$addr
+sudo tee -a /etc/network/interfaces <<EOF2
+
+auto eth1
+iface eth1 inet static
+    address 192.168.11.$addr
+    netmask 255.255.255.0
 EOF2
 
-sudo service network restart
+# sudo ifdown eth1
+sudo ifup eth1
 
 EOF
 	) ; prev_cmd_failed
@@ -212,6 +209,10 @@ EOF
     # always fail if this has not been done
     reportfailed "Add mcastMAC= to: datadir-jh.conf datadir-jh-node2.conf datadir-jh-node1.conf"
 ) ; prev_cmd_failed
+
+exit 44 # just test code above
+
+###################  code below not modified ###################
 
 (
     $starting_group "Docker Swarm and Docker-Machine stuff"
