@@ -293,6 +293,56 @@ EOF
     if [ -x "$DATADIR/$VMDIR/kvm-boot.sh" ]; then
 	"$DATADIR/$VMDIR/kvm-boot.sh"
     fi
+
+
+    # following guide at: https://github.com/compmodels/jupyterhub-deploy/blob/master/INSTALL.md
+
+    KEYMASTER="docker run --rm -v /home/ubuntu/jupyterhub-deploy/certificates/:/certificates/ cloudpipe/keymaster"
+
+    (
+	$starting_step "Gather random data from host"
+	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -f jupyterhub-deploy/certificates/password ]
+EOF
+	$skip_step_if_already_done ; set -e
+
+	# The access to /dev/random must be done on the host because
+	# it hangs in KVM
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+mkdir -p jupyterhub-deploy/certificates
+
+cat >jupyterhub-deploy/certificates/password <<EOF2
+$(cat /dev/random | head -c 128 | base64)
+EOF2
+
+${KEYMASTER} ca
+
+EOF
+    ) ; prev_cmd_failed
+
+    do-one-keypair()
+    {
+	(
+	    $starting_step "Generate a keypair for a server $1"
+	    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+false
+EOF
+	    $skip_step_if_already_done ; set -e
+	    
+	    # The access to /dev/random must be done on the host because
+	    # it hangs in KVM
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+set -e
+set -x
+cd jupyterhub-deploy/certificates
+${KEYMASTER} signed-keypair -n $1 -h $1.website.com -p both -s IP:192.168.11.$2
+EOF
+	) ; prev_cmd_failed
+    }
+    do-one-keypair node1 1
+    do-one-keypair node2 2
 )
 
 exit 44 # just test code above
