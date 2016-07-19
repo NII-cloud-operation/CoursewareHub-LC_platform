@@ -300,7 +300,7 @@ EOF
     KEYMASTER="docker run --rm -v /home/ubuntu/jupyterhub-deploy/certificates/:/certificates/ cloudpipe/keymaster"
 
     (
-	$starting_step "Gather random data from host"
+	$starting_step "Gather random data from host, set vault-password"
 	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
 	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
 [ -f jupyterhub-deploy/certificates/password ]
@@ -311,6 +311,8 @@ EOF
 	# it hangs in KVM
 	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
 mkdir -p jupyterhub-deploy/certificates
+
+echo ubuntu >/home/ubuntu/jupyterhub-deploy/vault-password
 
 cat >jupyterhub-deploy/certificates/password <<EOF2
 $(cat /dev/random | head -c 128 | base64)
@@ -344,6 +346,34 @@ EOF
     do-one-keypair node1 1
     do-one-keypair node2 2
 )
+
+
+(
+    $starting_step "Set users.vault"
+    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -f /home/ubuntu/jupyterhub-deploy/users.vault.yml.org ]
+EOF
+    $skip_step_if_already_done ; set -e
+    
+    # The access to /dev/random must be done on the host because
+    # it hangs in KVM
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+set -e
+set -x
+cd jupyterhub-deploy/
+cp users.vault.yml users.vault.yml.org
+cat >users.vault.yml <<EOF2
+jupyterhub_admins:
+- ubuntu
+jupyterhub_users:
+- ubuntu
+- student1
+- student2
+EOF2
+ansible-vault encrypt --vault-password-file vault-password users.vault.yml
+EOF
+) ; prev_cmd_failed
 
 exit 44 # just test code above
 
