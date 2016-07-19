@@ -329,7 +329,7 @@ EOF
 	    $starting_step "Generate a keypair for a server $1"
 	    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
 		"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
-false
+[ -f /home/ubuntu/jupyterhub-deploy/certificates/$1-key.pem ]
 EOF
 	    $skip_step_if_already_done ; set -e
 	    
