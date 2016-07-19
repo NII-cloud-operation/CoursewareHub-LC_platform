@@ -349,6 +349,29 @@ EOF
 
 
 (
+    $starting_step "Set secrets.vault"
+    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -f /home/ubuntu/jupyterhub-deploy/secrets.vault.yml.org ]
+EOF
+    $skip_step_if_already_done ; set -e
+    
+    # The access to /dev/random must be done on the host because
+    # it hangs in KVM
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+set -e
+set -x
+cd jupyterhub-deploy/
+cp secrets.vault.yml secrets.vault.yml.org
+
+# not sure yet how to set this:
+cp secrets.vault.yml.example secrets.vault.yml
+
+ansible-vault encrypt --vault-password-file vault-password secrets.vault.yml
+EOF
+) ; prev_cmd_failed
+
+(
     $starting_step "Set users.vault"
     [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
 	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
