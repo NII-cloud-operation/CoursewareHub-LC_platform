@@ -36,7 +36,7 @@ imagesource="$DATADIR/vmimages/centos-7.1.1511-x86_64-base/output/minimal-image.
 VMDIR=jhvmdir
 
 (
-    $starting_group "Setup clean VM for Jupterhub/Docker"
+    $starting_group "Setup clean VM for hub and nodes"
     # not currently snapshotting this VM, but if the next snapshot exists
     # then this group can be skipped.
     [ -f "$DATADIR/$VMDIR/ubuntu-before-nbgrader.tar.gz" ]
@@ -173,7 +173,7 @@ EOF
 	"$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh"
 
     (
-	$starting_step "Make snapshot of image with jupyterhub/docker installed"
+	$starting_step "Make snapshot of base image"
 	[ -f "$DATADIR/$VMDIR/ubuntu-before-nbgrader.tar.gz" ]
 	$skip_step_if_already_done ; set -e
 	cd "$DATADIR/$VMDIR/"
@@ -269,6 +269,31 @@ EOF
     # always fail if this has not been done
     reportfailed "Add mcastMAC= to: datadir-jh.conf datadir-jh-node2.conf datadir-jh-node1.conf"
 ) ; prev_cmd_failed
+
+(
+    $starting_group "Make TLS/SSL certificates with docker"
+    (
+	$starting_step "Install Docker in main KVM"
+	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<<"which docker" 2>/dev/null 1>&2
+	}
+	$skip_step_if_already_done; set -e
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" "curl -fsSL https://get.docker.com/ | sudo sh"
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" "sudo usermod -aG docker ubuntu"
+	touch "$DATADIR/extrareboot" # necessary to make the usermod take effect in Jupyter environment
+    ) ; prev_cmd_failed
+
+    if [ "$extrareboot" != "" ] || \
+	   [ -f "$DATADIR/extrareboot" ] ; then  # this flag can also be set before calling ./build-nii.sh
+	rm -f "$DATADIR/extrareboot"
+	[ -x "$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" ] && \
+	    "$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh"
+    fi
+
+    if [ -x "$DATADIR/$VMDIR/kvm-boot.sh" ]; then
+	"$DATADIR/$VMDIR/kvm-boot.sh"
+    fi
+)
 
 exit 44 # just test code above
 
