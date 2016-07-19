@@ -75,18 +75,78 @@ EOF
     ) ; prev_cmd_failed
 
     (
-	$starting_step "Install git, ansible"
+	$starting_step "Install git"
 	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
 	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
-which git && which ansible
+which git
 EOF
 	$skip_step_if_already_done ; set -e
 
 	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
 sudo apt-get update
 sudo apt-get -y install git
-sudo apt-get -y install ansible
 EOF
+    ) ; prev_cmd_failed
+
+    (
+	$starting_group "Install ansible from source"
+	# Installing from source because of note here:
+	# https://github.com/compmodels/jupyterhub-deploy#deploying
+	# also because install with "apt-get -y install ansible" raised this
+	# problem: http://tracker.ceph.com/issues/12380
+
+	#  Source install instructions:
+	#  https://michaelheap.com/installing-ansible-from-source-on-ubuntu/
+	#  http://docs.ansible.com/ansible/intro_installation.html
+
+	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+which ansible
+EOF
+	$skip_group_if_unnecessary
+
+	(
+	    $starting_step "Install ansible build dependencies"
+	    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+false # always do this, let group block it
+EOF
+	    $skip_step_if_already_done ; set -e
+
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+sudo apt-get update
+sudo apt-get -y install python2.7 python-yaml python-paramiko python-jinja2 python-httplib2 make python-pip
+EOF
+	) ; prev_cmd_failed
+
+	(
+	    $starting_step "Clone ansible repository"
+	    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -d ansible ]
+EOF
+	    $skip_step_if_already_done ; set -e
+
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+git clone https://github.com/ansible/ansible.git --recursive
+EOF
+	) ; prev_cmd_failed
+
+	(
+	    $starting_step "Make/install ansible"
+	    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -x /usr/local/bin/ansible ]
+EOF
+	    $skip_step_if_already_done ; set -e
+
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+set -e
+cd ansible
+sudo make install
+EOF
+	) ; prev_cmd_failed
+
     ) ; prev_cmd_failed
 
     (
