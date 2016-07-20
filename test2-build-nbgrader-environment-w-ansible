@@ -150,7 +150,7 @@ EOF
     ) ; prev_cmd_failed
 
     (
-	$starting_step "Clone https://github.com/compmodels/jupyterhub-deploy.git"
+	$starting_step "Clone https://github.com/(compmodels)/jupyterhub-deploy.git"
 	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
 	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
 [ -d jupyterhub-deploy ]
@@ -158,7 +158,9 @@ EOF
 	$skip_step_if_already_done ; set -e
 
 	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
-git clone https://github.com/compmodels/jupyterhub-deploy.git
+# clone from our exploration/debugging copy
+git clone https://github.com/triggers/jupyterhub-deploy.git
+#git clone https://github.com/compmodels/jupyterhub-deploy.git
 EOF
     ) ; prev_cmd_failed
 
