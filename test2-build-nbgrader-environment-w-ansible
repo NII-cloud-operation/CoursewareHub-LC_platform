@@ -406,17 +406,28 @@ EOF
 ) ; prev_cmd_failed
 
 (
-    $starting_step "Copy private ssh key to main KVM"
+    $starting_step "Copy private ssh key to main KVM, plus minimal ssh config"
     "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
 [ -f .ssh/id_rsa ]
 EOF
     $skip_step_if_already_done
     "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
 set -x
+
 cat >.ssh/id_rsa <<EOF2
 $(< "$DATADIR/$VMDIR/sshkey")
 EOF2
 chmod 600 .ssh/id_rsa
+
+cat >.ssh/config <<EOF2
+Host *
+        StrictHostKeyChecking no
+        TCPKeepAlive yes
+        UserKnownHostsFile /dev/null
+	ForwardAgent yes
+EOF2
+chmod 644 .ssh/config
+
 EOF
 ) ; prev_cmd_failed
 
