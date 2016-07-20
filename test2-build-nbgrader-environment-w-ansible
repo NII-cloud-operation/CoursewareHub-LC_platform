@@ -371,7 +371,15 @@ cp secrets.vault.yml secrets.vault.yml.org
 
 # not sure yet how to set this:
 cp secrets.vault.yml.example secrets.vault.yml
+
 sed -i "s,.*other_ssh_keys.*,other_ssh_keys: [ '\$(< "/home/ubuntu/.ssh/authorized_keys")' ]," secrets.vault.yml
+
+sed -i "s,.*configproxy_auth_token.*,configproxy_auth_token: '2fd34c8b5dc9ba64754e754114f37a7b33eff14b7f415e4f761d28a6b516a3be'," secrets.vault.yml
+
+sed -i "s,.*jupyterhub_admin_user.*,jupyterhub_admin_user: 'ubuntu'," secrets.vault.yml
+
+sed -i "s,.*cookie_secret.*,cookie_secret: 'cookie_secret'," secrets.vault.yml
+
 cp secrets.vault.yml secrets.vault.yml.tmp-for-debugging
 
 ansible-vault encrypt --vault-password-file vault-password secrets.vault.yml
