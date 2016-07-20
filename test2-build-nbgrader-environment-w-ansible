@@ -234,6 +234,7 @@ EOF
 	    addr=$(
 		case "$2" in
 		    *main*) echo 99 ;;
+		    *hub*) echo 88 ;;
 		    *1*) echo 1 ;;
 		    *2*) echo 2 ;;
 		    *) reportfailed "BUG"
@@ -258,6 +259,7 @@ EOF
     }
 
     boot-one-vm "$VMDIR" "main KVM" datadir-jh.conf
+    boot-one-vm "$VMDIR-hub" "hub KVM" datadir-jh-hub.conf
     boot-one-vm "$VMDIR-node1" "node 1 KVM" datadir-jh-node1.conf
     boot-one-vm "$VMDIR-node2" "node 2 KVM" datadir-jh-node2.conf
 
@@ -266,7 +268,7 @@ EOF
 (
     $starting_step "Make sure mac addresses were configured"
     # Make sure all three mac addresses are unique
-    [ $(grep -ho 'export.*mcastMAC.*' "$DATADIR"/jhvmdir*/*conf | sort -u | wc -l) -eq 3 ]
+    [ $(grep -ho 'export.*mcastMAC.*' "$DATADIR"/jhvmdir*/*conf | sort -u | wc -l) -eq 4 ]
     $skip_step_if_already_done
     # always fail if this has not been done
     reportfailed "Add mcastMAC= to: datadir-jh.conf datadir-jh-node2.conf datadir-jh-node1.conf"
@@ -345,6 +347,7 @@ ${KEYMASTER} signed-keypair -n $1 -h $1.website.com -p both -s IP:192.168.11.$2
 EOF
 	) ; prev_cmd_failed
     }
+    do-one-keypair hub 88
     do-one-keypair node1 1
     do-one-keypair node2 2
 )
