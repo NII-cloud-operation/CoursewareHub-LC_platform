@@ -368,6 +368,8 @@ cp secrets.vault.yml secrets.vault.yml.org
 
 # not sure yet how to set this:
 cp secrets.vault.yml.example secrets.vault.yml
+sed -i "s,.*other_ssh_keys.*,other_ssh_keys: [ '\$(< "/home/ubuntu/.ssh/authorized_keys")' ]," secrets.vault.yml
+cp secrets.vault.yml secrets.vault.yml.tmp-for-debugging
 
 ansible-vault encrypt --vault-password-file vault-password secrets.vault.yml
 EOF
