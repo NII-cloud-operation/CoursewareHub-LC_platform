@@ -354,6 +354,7 @@ EOF
 
 
 (
+    exit 0  # The contents here are now part of triggers/jupyterhub-deploy.git
     $starting_step "Set secrets.vault"
     [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
 	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
