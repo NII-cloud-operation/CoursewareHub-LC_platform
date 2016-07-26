@@ -405,7 +405,9 @@ cp users.vault.yml users.vault.yml.org
 cat >users.vault.yml <<EOF2
 jupyterhub_admins:
 - ubuntu
+- potter
 jupyterhub_users:
+- potter
 - ubuntu
 - student1
 - student2
