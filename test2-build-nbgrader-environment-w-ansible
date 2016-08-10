@@ -256,6 +256,29 @@ sudo ifup eth1
 
 EOF
 	) ; prev_cmd_failed
+
+	(
+	    $starting_step "Change hostname VM $avmdir"
+	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+[[ "\$(hostname)" != *ubuntu* ]]
+EOF
+	    $skip_step_if_already_done
+	    hn=$(
+		case "$2" in
+		    *main*) echo main ;;
+		    *hub*) echo hub ;;
+		    *1*) echo node1 ;;
+		    *2*) echo node2 ;;
+		    *) reportfailed "BUG"
+		esac
+		)
+
+	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF
+echo $hn | sudo tee /etc/hostname
+echo 127.0.0.1 $hn | sudo tee -a /etc/hosts
+sudo hostname $hn
+EOF
+	) ; prev_cmd_failed
     }
 
     boot-one-vm "$VMDIR" "main KVM" datadir-jh.conf
