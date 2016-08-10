@@ -464,3 +464,20 @@ chmod 644 .ssh/config
 
 EOF
 ) ; prev_cmd_failed
+
+(
+    $starting_step "Run ./script/assemble_certs (from the jupyterhub-deploy repository)"
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+cd jupyterhub-deploy
+[ -f ./host_vars/node2 ]
+EOF
+    $skip_step_if_already_done
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+set -x
+set -e
+
+cd jupyterhub-deploy
+./script/assemble_certs 
+
+EOF
+) ; prev_cmd_failed
