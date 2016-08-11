@@ -504,3 +504,19 @@ time ./script/deploy | tee -a deploylog.log
 
 EOF
 ) ; prev_cmd_failed
+
+(
+    $starting_step "Copy user ubuntu's .ssh dir to shared NFS area"
+    # TODO: share the actual home directory on hub
+    "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null
+[ -d /tmp/home/home/ubuntu/.ssh ]
+EOF
+    $skip_step_if_already_done
+    "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF
+set -x
+set -e
+
+sudo tar c /home/ubuntu/.ssh | ( cd /tmp/home && sudo tar xv )
+
+EOF
+) ; prev_cmd_failed
