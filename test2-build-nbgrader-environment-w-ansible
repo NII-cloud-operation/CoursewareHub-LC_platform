@@ -481,3 +481,26 @@ cd jupyterhub-deploy
 
 EOF
 ) ; prev_cmd_failed
+
+(
+    $starting_step "Run main Ansible script (from the jupyterhub-deploy repository)"
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+cd jupyterhub-deploy
+# last part of ansible log should show "failed=0" three times. e.g:
+#   PLAY RECAP *********************************************************************
+#   hub                        : ok=97   changed=84   unreachable=0    failed=0   
+#   node1                      : ok=41   changed=32   unreachable=0    failed=0   
+#   node2                      : ok=41   changed=32   unreachable=0    failed=0   
+count="\$(tail deploylog.log | grep -o "failed=0" | wc -l)"
+[ "\$count" -eq 3 ]
+EOF
+    $skip_step_if_already_done
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+set -x
+set -e
+
+cd jupyterhub-deploy
+time ./script/deploy | tee -a deploylog.log
+
+EOF
+) ; prev_cmd_failed
