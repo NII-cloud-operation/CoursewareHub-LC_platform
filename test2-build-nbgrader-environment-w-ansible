@@ -520,3 +520,30 @@ sudo tar c /home/ubuntu/.ssh | ( cd /tmp/home && sudo tar xv )
 
 EOF
 ) ; prev_cmd_failed
+
+(
+    $starting_step "Copy proxy's certificate and key to hub VM"
+    # TODO: find out why Ansible step did not do this correctly.
+    # When using Ansible to do this, all the end of line characters
+    # were stripped out.
+    # Note: the root_nginx_1 container probably needs restarting,
+    #       which seems to happen automatically eventually.
+    "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+lines=\$(cat /tmp/proxykey /tmp/proxycert | wc -l)
+[ "\$lines" -gt 10 ]
+EOF
+    $skip_step_if_already_done
+    "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF
+set -x
+set -e
+
+sudo tee /tmp/proxycert <<EOF2
+$("$DATADIR/$VMDIR/ssh-to-kvm.sh" cat jupyterhub-deploy/certificates/hub-cert.pem)
+EOF2
+
+sudo tee /tmp/proxykey <<EOF3
+$("$DATADIR/$VMDIR/ssh-to-kvm.sh" cat jupyterhub-deploy/certificates/hub-key.pem)
+EOF3
+
+EOF
+) ; prev_cmd_failed
