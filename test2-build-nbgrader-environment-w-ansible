@@ -626,6 +626,32 @@ sudo tee -a /etc/sysconfig/network-scripts/ifcfg-eth1 <<<"HWADDR=52:54:00:12:00:
 EOF
 	) ; prev_cmd_failed
 
+	(
+	    $starting_step "Add second address to br1"
+            false # always run if doing this group
+	    $skip_step_if_already_done ; set -e
+
+	    # https://dbiers.me/adding-secondary-ip-addresses-centosrhel/
+
+	    "$DATADIR/vmdir-1box/ssh-to-kvm.sh" <<EOF
+sudo tee /etc/sysconfig/network-scripts/ifcfg-br1:1 <<EOF2
+DEVICE=br1:1
+BOOTPROTO=static
+IPADDR=192.168.11.90
+NETMASK=255.255.255.0
+ONBOOT=yes
+EOF2
+EOF
+	    # TODO: Is this worth fixing?
+	    # [centos@wakame-vdc-1box ~]$ dmesg | tail
+	    # [ 1236.928591] eth1: received packet with own address as source address
+
+	    # ref: https://www.centos.org/forums/viewtopic.php?t=51612
+	    #  ((is it really a kernel bug?))
+	    #  ((1box is running: "CentOS release 6.4 (Final)"))
+
+	) ; prev_cmd_failed
+
 	[ -x "$DATADIR/vmdir-1box/kvm-shutdown-via-ssh.sh" ] && \
 	    "$DATADIR/vmdir-1box/kvm-shutdown-via-ssh.sh"
 
