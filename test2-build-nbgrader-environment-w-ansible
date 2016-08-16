@@ -550,3 +550,88 @@ EOF3
 
 EOF
 ) ; prev_cmd_failed
+
+DATADIR="$DATADIR" "$ORGCODEDIR/ind-steps/build-1box/build-1box.sh"
+
+(
+    $starting_group "Set up 1box VM"
+    (
+	$starting_group "Set up vmdir-1box"
+	[ -x "$DATADIR/vmdir-1box/kvm-boot.sh" ]
+	$skip_group_if_unnecessary
+	(
+	    $starting_step "Make vmdir-1box"
+	    [ -d "$DATADIR/vmdir-1box" ]
+	    $skip_step_if_already_done ; set -e
+	    mkdir "$DATADIR/vmdir-1box"
+	    # increase default mem to give room for a wakame instance or two
+	    # copy specific port forwarding stuff to avmdir, so vmdir*/kvm-* scripts
+	    # will have all config info
+	    cat "$DATADIR/datadir-1box.conf" >>"$DATADIR/vmdir-1box/datadir.conf"
+
+	    # disable second NIC for the first boot
+            echo 'export mcastnet=" "'  >>"$DATADIR/vmdir-1box/datadir.conf"
+
+	    echo ': ${KVMMEM:=4096}' >>"$DATADIR/vmdir-1box/datadir.conf"
+	) ; prev_cmd_failed
+
+	DATADIR="$DATADIR/vmdir-1box" \
+	       "$ORGCODEDIR/ind-steps/kvmsteps/kvm-setup.sh" \
+	       "$DATADIR/vmapp-vdc-1box/1box-openvz.netfilter.x86_64.raw.tar.gz"
+    ) ; prev_cmd_failed
+
+    # TODO: this guard is awkward.
+    [ -x "$DATADIR/vmdir-1box/kvm-boot.sh" ] && \
+	"$DATADIR/vmdir-1box/kvm-boot.sh"
+
+    (
+	$starting_group "Reboot with second NIC"
+	! grep mcastnet "$DATADIR/vmdir-1box/datadir.conf" 1>/dev/null 2>/dev/null 
+	$skip_group_if_unnecessary
+	
+	(
+	    $starting_step "Turn second mcast NIC back on"
+	    ! grep mcastnet "$DATADIR/vmdir-1box/datadir.conf" 1>/dev/null 2>/dev/null 
+	    $skip_step_if_already_done ; set -e
+	    before="$(cat "$DATADIR/vmdir-1box/datadir.conf")"
+	    echo "$before" | grep -v mcastnet >"$DATADIR/vmdir-1box/datadir.conf"
+	) ; prev_cmd_failed
+
+	(
+	    $starting_step "Append HWADDR to /etc/sysconfig/network-scripts/ifcfg-eth{0,1}"
+            false # always run if doing this group
+	    $skip_step_if_already_done ; set -e
+
+	    # from https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/3/html/Reference_Guide/s1-networkscripts-interfaces.html
+
+	    # HWADDR=<MAC-address>, where <MAC-address> is the
+	    # hardware address of the Ethernet device in the form
+	    # AA:BB:CC:DD:EE:FF. This directive is useful for machines
+	    # with multiple NICs to ensure that the interfaces are
+	    # assigned the correct device names regardless of the
+	    # configured load order for each NIC's module. This
+	    # directive should not be used in conjunction with
+	    # MACADDR.
+
+	    # MACADDR=<MAC-address>, where <MAC-address> is the
+	    # hardware address of the Ethernet device in the form
+	    # AA:BB:CC:DD:EE:FF. This directive is used to assign a
+	    # MAC address to an interface, overriding the one assigned
+	    # to the physical NIC. This directive should not be used
+	    # in conjunction with HWADDR.
+
+	    "$DATADIR/vmdir-1box/ssh-to-kvm.sh" <<EOF
+sudo tee -a /etc/sysconfig/network-scripts/ifcfg-eth0 <<<"HWADDR=52:54:00:65:28:dd"
+sudo tee -a /etc/sysconfig/network-scripts/ifcfg-eth1 <<<"HWADDR=52:54:00:12:00:03"
+EOF
+	) ; prev_cmd_failed
+
+	[ -x "$DATADIR/vmdir-1box/kvm-shutdown-via-ssh.sh" ] && \
+	    "$DATADIR/vmdir-1box/kvm-shutdown-via-ssh.sh"
+
+	[ -x "$DATADIR/vmdir-1box/kvm-boot.sh" ] && \
+	    "$DATADIR/vmdir-1box/kvm-boot.sh"
+	
+    ) ; prev_cmd_failed
+
+) ; prev_cmd_failed
