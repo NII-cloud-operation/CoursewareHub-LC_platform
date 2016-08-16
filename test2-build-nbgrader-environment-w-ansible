@@ -584,6 +584,8 @@ DATADIR="$DATADIR" "$ORGCODEDIR/ind-steps/build-1box/build-1box.sh"
     [ -x "$DATADIR/vmdir-1box/kvm-boot.sh" ] && \
 	"$DATADIR/vmdir-1box/kvm-boot.sh"
 
+    "$DATADIR/wakame-customization-steps.sh" "$DATADIR"
+
     (
 	$starting_group "Reboot with second NIC"
 	! grep mcastnet "$DATADIR/vmdir-1box/datadir.conf" 1>/dev/null 2>/dev/null 
@@ -657,7 +659,8 @@ EOF
 
 	[ -x "$DATADIR/vmdir-1box/kvm-boot.sh" ] && \
 	    "$DATADIR/vmdir-1box/kvm-boot.sh"
-	
+
+	true # needed so the group does not throw an error because of the awkwardness in the previous comman	
     ) ; prev_cmd_failed
 
 ) ; prev_cmd_failed
