@@ -732,5 +732,17 @@ EOF
 	tar c adapt-notebooks-for-user.sh | "$VMDIR-hub/ssh-to-kvm.sh" sudo tar xv -C /srv
     ) ; prev_cmd_failed
 
+    (
+	$starting_step "Clone sshuttle to 192.168.11.99 VM"
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+which sshuttle
+EOF
+	$skip_step_if_already_done; set -e
+	cd "$DATADIR"
+	echo "hint: sshuttle -l 0.0.0.0 -vr centos@192.168.11.90 10.0.2.0/24" >sshuttle-hint
+	"$VMDIR/ssh-to-kvm.sh" git clone https://github.com/apenwarr/sshuttle.git
+	cd sshuttle
+	sudo ./setup.py install
+    ) ; prev_cmd_failed
 
 ) ; prev_cmd_failed
