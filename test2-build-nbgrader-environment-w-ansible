@@ -578,8 +578,16 @@ DATADIR="$DATADIR" "$ORGCODEDIR/ind-steps/build-1box/build-1box.sh"
 	DATADIR="$DATADIR/vmdir-1box" \
 	       "$ORGCODEDIR/ind-steps/kvmsteps/kvm-setup.sh" \
 	       "$DATADIR/vmapp-vdc-1box/1box-openvz.netfilter.x86_64.raw.tar.gz"
-    ) ; prev_cmd_failed
 
+	(
+	    $starting_step "Set only the 1box VM to use 10.0.2.0/24"
+	    ! grep -F 'user,net=10.0.3.0' "$DATADIR/vmdir-1box/kvm-boot.sh" 2>/dev/null 1>&2
+	    $skip_step_if_already_done ; set -e
+	    sed -i 's,10.0.3.0,10.0.2.0,' "$DATADIR/vmdir-1box/kvm-boot.sh"
+	) ; prev_cmd_failed
+
+    ) ; prev_cmd_failed
+    
     # TODO: this guard is awkward.
     [ -x "$DATADIR/vmdir-1box/kvm-boot.sh" ] && \
 	"$DATADIR/vmdir-1box/kvm-boot.sh"
