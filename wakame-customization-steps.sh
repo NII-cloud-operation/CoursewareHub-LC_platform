@@ -57,6 +57,29 @@ EOS
 						  --display-name cicddemo
     } # end of register_hva() function
 
+    vdc-manage-is-active()
+    {
+	out="$("$DATADIR/vmdir-1box/ssh-to-kvm.sh" /opt/axsh/wakame-vdc/dcmgr/bin/vdc-manage keypair show 2>/dev/null)"
+	[[ "$out" == *ssh-demo* ]]
+    }
+    
+    (
+	$starting_step "Wait for vdc-manage to become active"
+	vdc-manage-is-active
+	$skip_step_if_already_done
+	rc="1"
+	for i in $(seq 1 20) ; do
+	    if vdc-manage-is-active; then
+		rc="0"
+		echo "vdc-manage could access the database"
+		break
+	    fi
+	    echo "Waiting 10 seconds for vdc-manage to be able to access the database"
+	    sleep 10
+	done
+	exit "$rc"
+    ) ; prev_cmd_failed
+    
     (
 	$starting_step "Install sshkey into Wakame-vdc database"
 	echo "select * from ssh_key_pairs; " | \
