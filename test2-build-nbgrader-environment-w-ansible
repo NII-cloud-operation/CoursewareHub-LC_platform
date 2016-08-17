@@ -592,7 +592,7 @@ DATADIR="$DATADIR" "$ORGCODEDIR/ind-steps/build-1box/build-1box.sh"
     [ -x "$DATADIR/vmdir-1box/kvm-boot.sh" ] && \
 	"$DATADIR/vmdir-1box/kvm-boot.sh"
 
-    "$DATADIR/wakame-customization-steps.sh" "$DATADIR"
+    "$DATADIR/wakame-customization-steps.sh" "$DATADIR" ; prev_cmd_failed
 
     (
 	$starting_group "Reboot with second NIC"

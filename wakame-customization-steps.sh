@@ -69,7 +69,7 @@ EOS
 	) | bash -x "$DATADIR/vmdir-1box/ssh-to-kvm.sh"
 	# this step was adapted from code at:
 	# https://github.com/axsh/nii-image-and-enshuu-scripts/blob/changes-for-the-2nd-class/wakame-bootstrap/wakame-vdc-install-hierarchy.sh#L426-L477
-    )
+    ) ; prev_cmd_failed
     
     (
 	$starting_step "Install security group into Wakame-vdc database"
@@ -92,7 +92,7 @@ tcp:8080,8080,ip4:0.0.0.0/0
 EOS
 	# this step was adapted from code at:
 	# https://github.com/axsh/nii-image-and-enshuu-scripts/blob/changes-for-the-2nd-class/wakame-bootstrap/wakame-vdc-install-hierarchy.sh#L486-L506
-    )
+    ) ; prev_cmd_failed
 
     (
 	$starting_step "Hack Wakame-vdc to always set openvz's privvmpages to unlimited"
@@ -119,7 +119,7 @@ EOF
 	    done <<<"$orgcode" | sudo bash -c "cat >'$rubysource'"
 EOF
 	) | "$DATADIR/vmdir-1box/ssh-to-kvm.sh"
-    )
+    ) ; prev_cmd_failed
     
     (
 	$starting_step "Hack Wakame-vdc to always set each openvz VM's DISKSPACE to 10G:15G"
@@ -146,7 +146,7 @@ EOF
 	    done <<<"$orgcode" | sudo bash -c "cat >'$rubysource'"
 EOF
 	) | "$DATADIR/vmdir-1box/ssh-to-kvm.sh"
-    )
+    ) ; prev_cmd_failed
     
     (
 	$starting_group "Install customized machine image into OpenVZ 1box image"
