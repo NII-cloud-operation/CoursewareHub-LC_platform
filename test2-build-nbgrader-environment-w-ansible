@@ -484,8 +484,7 @@ EOF
 
 (
     $starting_step "Copy user ubuntu's .ssh dir to shared NFS area"
-
-    "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null
+    "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>&2
 [ -d /mnt/nfs/home/ubuntu/.ssh ]
 EOF
     $skip_step_if_already_done
