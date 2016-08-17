@@ -55,6 +55,7 @@ calculate_ports
 
     build-cmd-line() # a function, not a step
     {
+        ## Putting all non-wakame nodes on 10.0.3.0/24 so Wakame instances can be accessed at 10.0.2.0/24
 	cat <<EOF
 	    $KVMBIN
 
@@ -70,7 +71,7 @@ calculate_ports
 	    -device virtio-blk-pci,id=vol-tu3y7qj4,drive=vol-tu3y7qj4-drive,bootindex=0,bus=pci.0,addr=0x4
 
 	    -net nic,vlan=0,macaddr=52:54:00:65:28:dd,model=virtio,addr=10
-	    -net user,vlan=0,hostfwd=tcp::$SSHPORT-:22$EXTRAHOSTFWD
+	    -net user,net=10.0.3.0/24,vlan=0,hostfwd=tcp::$SSHPORT-:22$EXTRAHOSTFWD
 
             $mcastnet
 EOF
