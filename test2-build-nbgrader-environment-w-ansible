@@ -684,3 +684,25 @@ EOF
     ) ; prev_cmd_failed
 
 ) ; prev_cmd_failed
+
+(
+    $starting_group "Misc steps"
+
+    (
+	$starting_step "Clone old repository that has notebooks"
+	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+[ -d /srv/nii-project-2016 ]
+EOF
+	$skip_step_if_already_done
+	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF
+set -x
+set -e
+
+cd /srv
+sudo git clone https://github.com/axsh/nii-project-2016.git
+
+EOF
+    ) ; prev_cmd_failed
+
+
+) ; prev_cmd_failed
