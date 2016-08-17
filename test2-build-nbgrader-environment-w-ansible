@@ -722,5 +722,15 @@ EOF
 EOF
     ) ; prev_cmd_failed
 
+    (
+	$starting_step "Copy in adapt-notebooks-for-user.sh"
+	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+[ -f /srv/adapt-notebooks-for-user.sh ]
+EOF
+	$skip_step_if_already_done; set -e
+	cd "$DATADIR"
+	tar c adapt-notebooks-for-user.sh | "$VMDIR-hub/ssh-to-kvm.sh" sudo tar xv -C /srv
+    ) ; prev_cmd_failed
+
 
 ) ; prev_cmd_failed
