@@ -442,6 +442,7 @@ cat >users.vault.yml <<EOF2
 jupyterhub_admins:
 - ubuntu
 - potter
+- test4jupyter
 jupyterhub_users:
 - potter
 - ubuntu
