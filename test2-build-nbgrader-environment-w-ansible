@@ -704,5 +704,23 @@ sudo git clone https://github.com/axsh/nii-project-2016.git
 EOF
     ) ; prev_cmd_failed
 
+    (
+	$starting_step "Download Oracle Java rpm"
+	targetfile=jdk-8u73-linux-x64.rpm
+	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+[ -f /srv/nii-project-2016/notebooks/.downloads/$targetfile ]
+EOF
+	$skip_step_if_already_done; set -e
+	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF
+        set -x
+        set -e
+	sudo mkdir -p "/srv/nii-project-2016/notebooks/.downloads"
+	sudo wget --progress=dot:mega --no-check-certificate --no-cookies \
+	     --header "Cookie: oraclelicense=accept-securebackup-cookie" \
+	     http://download.oracle.com/otn-pub/java/jdk/8u73-b02/$targetfile \
+	     -O "/srv/nii-project-2016/notebooks/.downloads/$targetfile"
+EOF
+    ) ; prev_cmd_failed
+
 
 ) ; prev_cmd_failed
