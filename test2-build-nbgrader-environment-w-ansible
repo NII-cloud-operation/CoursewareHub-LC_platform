@@ -281,6 +281,7 @@ EOF
 	) ; prev_cmd_failed
 
 	(
+	    [ "$avmdir" = "$VMDIR" ] && exit 0 # skip for main VM
 	    $starting_step "Add routing entry for Wakame-vdc's 10.0.2.0/24 network to VM $avmdir"
 	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
 [[ "\$(route -n)" == *10.0.2.0* ]]
@@ -288,7 +289,9 @@ EOF
 	    $skip_step_if_already_done
 
 	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF
-sudo route add -net 10.0.2.0 netmask 255.255.255.0 dev eth1
+# All 10.0.2.0 connections will be routed through the main VM
+# and relayed to 1box via sshuttle.
+sudo route add -net 10.0.2.0 netmask 255.255.255.0 gw 192.168.11.99
 EOF
 	) ; prev_cmd_failed
 
@@ -621,7 +624,7 @@ DATADIR="$DATADIR" "$ORGCODEDIR/ind-steps/build-1box/build-1box.sh"
 	) ; prev_cmd_failed
 
 	(
-	    $starting_step "Append HWADDR to /etc/sysconfig/network-scripts/ifcfg-eth{0,1}"
+	    $starting_step "Append HWADDR to /etc/sysconfig/network-scripts/ifcfg-eth{0,1}(always says 'not done')"
             false # always run if doing this group
 	    $skip_step_if_already_done ; set -e
 
@@ -650,7 +653,7 @@ EOF
 	) ; prev_cmd_failed
 
 	(
-	    $starting_step "Add second address to br1"
+	    $starting_step "Add second address to br1 (always says 'not done')"
             false # always run if doing this group
 	    $skip_step_if_already_done ; set -e
 
