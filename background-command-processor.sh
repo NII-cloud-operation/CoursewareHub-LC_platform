@@ -29,11 +29,14 @@ distribute-notebooks()
 	rm "/home/$studentid"/* -fr  # TODO: rethink this
 
 	# Copy teacher notebooks to student container via NFS:
-	cp -a "/home/teacherid"/*  "/home/$studentid/"
+	echo "Copying notebooks..."
+	cp -a "/home/$teacherid"/*  "/home/$studentid/"
 	chown -R "$studentid:$studentid" "/home/$studentid/"
 	# Also make read-only copy:
+	echo "Creating role_model directory..."
 	mkdir "/home/$studentid/role_model"
-	cp -al "/home/teacherid"/*  "/home/$studentid/role_model"
+	cp -al "/home/$teacherid"/*  "/home/$studentid/role_model"
+	echo "Done."
     done
 }
 
