@@ -43,7 +43,7 @@ process-one-command()
     justcmd="${cmdtext/EOCommand/}"
     case "$justcmd" in
 	fortesting*)
-	    bash <<<"${cmdtext/fortesting/}" >>"$cmdfile"
+	    bash <<<"${justcmd/fortesting/}" >>"$cmdfile"
 	    ;;
 	distribute-notebooks*)
 	    read stripcmd teacherid sids <<<"$justcmd"
