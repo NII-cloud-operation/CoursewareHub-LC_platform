@@ -58,8 +58,10 @@ EOS
 shopt -s dotglob
 if ! [ -s "$udir/notebooks" ]; then
     cp -a "$original_notebooks"/* "$udir"
-    find "$udir" -type f -exec sed -i -e "s,/home/centos,/home/$username,g" {} \;
-    find "$udir" -type f -exec sed -i -e "s,\.\./mykeypair,/home/$username/mykeypair,g" {} \;
+    # Note: using ~/ here as the result of the global search/replace
+    # assumes none of the targets are in quotes, which seems to be true.
+    find "$udir" -type f -exec sed -i -e "s,/home/centos,~,g" {} \;
+    find "$udir" -type f -exec sed -i -e "s,\.\./mykeypair,~/mykeypair,g" {} \;
     find "$udir" -type f -exec sed -i -e "s,sudo ip -s,# sudo ip -s,g" {} \;
     chown -R "$username:$username" "$udir"
 fi
