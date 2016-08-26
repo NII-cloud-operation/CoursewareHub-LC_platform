@@ -11,7 +11,31 @@
 # Information is only appended to the file.  Polling is done on the
 # EOCommand and EOResult tags to wait for complete info.
 
-distribute-notebooks()
+initialize-teacher-notebooks()
+{
+    teacherid="$1"
+    shift
+    
+    if ! [ -d "/home/$teacherid" ]; then
+	echo "No teacher with id=$studentid"
+	return
+    fi
+
+    studentid="$*"
+    if [ "$studentid" != "$teacherid" ]; then
+	echo "Required first parameter should be the teacher id (i.e. $teacherid)"
+	return
+    fi
+
+    echo "Deleting existing notebooks of $studentid."
+    rm "/home/$studentid"/* -fr  # TODO: rethink this
+
+    echo "Initializing notebooks for $studentid."
+    /srv/adapt-notebooks-for-user.sh "$studentid"
+    echo "Done."
+}
+
+clear-notebooks()
 {
     teacherid="$1"
     shift
@@ -26,6 +50,28 @@ distribute-notebooks()
 	    echo "No student with id=$studentid"
 	    continue
 	fi
+	echo "Deleting existing notebooks of $studentid."
+	rm "/home/$studentid"/* -fr  # TODO: rethink this
+	echo "Done."
+    done
+}
+
+distribute-notebooks()
+{
+    teacherid="$1"
+    shift
+    
+    if ! [ -d "/home/$teacherid" ]; then
+	echo "No teacher with id=$teacherid"
+	return
+    fi
+
+    for studentid in "$@"; do
+	if ! [ -d "/home/$studentid" ]; then
+	    echo "No student with id=$studentid"
+	    continue
+	fi
+	echo "Deleting existing notebooks of $studentid."
 	rm "/home/$studentid"/* -fr  # TODO: rethink this
 
 	# Copy teacher notebooks to student container via NFS:
@@ -51,6 +97,14 @@ process-one-command()
 	distribute-notebooks*)
 	    read stripcmd teacherid sids <<<"$justcmd"
 	    distribute-notebooks $teacherid $sids >>"$cmdfile"
+	    ;;
+	clear-notebooks*)
+	    read stripcmd teacherid sids <<<"$justcmd"
+	    clear-notebooks $teacherid $sids >>"$cmdfile"
+	    ;;
+	initialize-teacher-notebooks*)
+	    read stripcmd teacherid sids <<<"$justcmd"
+	    initialize-teacher-notebooks $teacherid $sids >>"$cmdfile"
 	    ;;
     esac
     echo EOResult >>"$cmdfile"
