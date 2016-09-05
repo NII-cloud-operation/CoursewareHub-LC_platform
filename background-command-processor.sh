@@ -80,8 +80,8 @@ distribute-notebooks()
 	chown -R "$studentid:$studentid" "/home/$studentid/"
 	# Also make read-only copy:
 	echo "Creating role_model directory..."
-	mkdir "/home/$studentid/role_model"
-	cp -al "/home/$teacherid"/*  "/home/$studentid/role_model"
+	rm -fr "/home/$studentid/role_model"
+	ln -sf "/home/.others/$teacherid"  "/home/$studentid/role_model"
 	echo "Done."
     done
 }
