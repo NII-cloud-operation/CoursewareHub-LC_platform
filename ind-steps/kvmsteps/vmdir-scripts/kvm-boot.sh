@@ -18,7 +18,7 @@ source "$DATADIR/datadir.conf"
 [ -d "$DATADIR/runinfo" ] || mkdir "$DATADIR/runinfo"
 : ${KVMMEM:=1024}
 : ${VNCPORT:=$(( 11100 - 5900 ))}
-# Note: EXTRAHOSTFWD can be set to something like ",hostfwd=tcp::$18080-:8888"
+# Note: EXTRAHOSTFWD can be set to something like ",hostfwd=tcp::18080-:8888"
 calculate_ports()
 {
     echo ${VNCPORT} >"$DATADIR/runinfo/port.vnc"
