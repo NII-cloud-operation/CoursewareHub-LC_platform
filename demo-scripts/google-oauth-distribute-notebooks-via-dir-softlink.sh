@@ -13,19 +13,23 @@ rootdir="${ORGCODEDIR%/*}"
 [ -f "$rootdir/test2-build-nbgrader-environment-w-ansible" ] || reportfailed "bug1"
 
 randomport="$(( 5000 + ( $RANDOM % 5000 ) ))"
-rand3digits="$(( 100 + ( $RANDOM % 25 ) ))"
+
+
 
 mkdir-conf-file()
 {
     [ -f "$3" ] && return
     cat >"$3" <<EOF
-baseport=$rand3digits$1
+# Not all of these are used on every VM
+export EXTRAHOSTFWD=""
 
-export EXTRAHOSTFWD=,hostfwd=tcp::\$(( baseport + 8 ))-:8888
-
-for i in \$(seq 0 5); do
-    EXTRAHOSTFWD=\$EXTRAHOSTFWD,hostfwd=tcp::\$(( baseport + i ))-:\$(( 8000 + i ))
-done
+# port 22 is already assigned by kvmsteps
+EXTRAHOSTFWD=\$EXTRAHOSTFWD,hostfwd=tcp::43-:43
+EXTRAHOSTFWD=\$EXTRAHOSTFWD,hostfwd=tcp::80-:80
+EXTRAHOSTFWD=\$EXTRAHOSTFWD,hostfwd=tcp::81-:8001
+EXTRAHOSTFWD=\$EXTRAHOSTFWD,hostfwd=tcp::83-:8000
+EXTRAHOSTFWD=\$EXTRAHOSTFWD,hostfwd=tcp::84-:8888
+EXTRAHOSTFWD=\$EXTRAHOSTFWD,hostfwd=tcp::90-:9000
 
 export mcastMAC="$2"
 export mcastPORT=$randomport
