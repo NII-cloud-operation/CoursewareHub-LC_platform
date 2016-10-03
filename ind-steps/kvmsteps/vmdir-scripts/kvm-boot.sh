@@ -19,12 +19,33 @@ source "$DATADIR/datadir.conf"
 : ${KVMMEM:=1024}
 : ${VNCPORT:=$(( 11100 - 5900 ))}
 # Note: EXTRAHOSTFWD can be set to something like ",hostfwd=tcp::18080-:8888"
+#       EXTRAHOSTFWDREL works the same, except the first port number
+#       after each hostfwd=tcp gets replaced with $VNCPORT added to that number.
+#       Therefore, using EXTRAHOSTFWDREL lets this script try different ports
+#       whenever there is a port collision.
+
 calculate_ports()
 {
     echo ${VNCPORT} >"$DATADIR/runinfo/port.vnc"
     echo ${SSHPORT:=$(( VNCPORT + 22 ))} >"$DATADIR/runinfo/port.ssh"
     echo ${MONPORT:=$(( VNCPORT + 30 ))} >"$DATADIR/runinfo/port.monitor"
     echo ${SERPORT:=$(( VNCPORT + 40 ))} >"$DATADIR/runinfo/port.serial"
+    rewriteme="$EXTRAHOSTFWDREL"  # e.g. ",hostfwd=tcp::80-:8888,...."
+    hostfwdrel=""
+    set -x
+    while [[ "$rewriteme" == *hostfwd=tcp* ]]; do
+	portatfront="${rewriteme#*hostfwd=tcp:*:}"   # e.g. "80-:8888,...."
+	afterport="${portatfront#*-}"  # e.g. ":8888,...."
+	theport="${portatfront%$afterport}"  # e.g. 80-
+	theport="${theport%-}"  # e.g. 80
+	if [ "$theport" == "" ] || [ "${theport//[0-9]/}" != "" ]; then
+	    reportfailed "Non digit character in port number in $EXTRAHOSTFWDREL"
+	fi
+	hostfwdrel="$hostfwdrel${rewriteme%$portatfront}"  # e.g. ",hostfwd=tcp::"
+	hostfwdrel="$hostfwdrel$(( theport + VNCPORT ))"  # e.g. ",hostfwd=tcp::18080"
+	rewriteme="-$afterport"  # e.g. "-:8888,...."
+    done
+    hostfwdrel="$hostfwdrel$rewriteme"  # append rest
 }
 calculate_ports
 
@@ -71,7 +92,7 @@ calculate_ports
 	    -device virtio-blk-pci,id=vol-tu3y7qj4,drive=vol-tu3y7qj4-drive,bootindex=0,bus=pci.0,addr=0x4
 
 	    -net nic,vlan=0,macaddr=52:54:00:65:28:dd,model=virtio,addr=10
-	    -net user,net=10.0.3.0/24,vlan=0,hostfwd=tcp::$SSHPORT-:22$EXTRAHOSTFWD
+	    -net user,net=10.0.3.0/24,vlan=0,hostfwd=tcp::$SSHPORT-:22$EXTRAHOSTFWD$hostfwdrel
 
             $mcastnet
 EOF
