@@ -21,15 +21,15 @@ mkdir-conf-file()
     [ -f "$3" ] && return
     cat >"$3" <<EOF
 # Not all of these are used on every VM
-export EXTRAHOSTFWD=""
+export EXTRAHOSTFWDREL=""
 
 # port 22 is already assigned by kvmsteps
-EXTRAHOSTFWD=\$EXTRAHOSTFWD,hostfwd=tcp::43-:43
-EXTRAHOSTFWD=\$EXTRAHOSTFWD,hostfwd=tcp::80-:80
-EXTRAHOSTFWD=\$EXTRAHOSTFWD,hostfwd=tcp::81-:8001
-EXTRAHOSTFWD=\$EXTRAHOSTFWD,hostfwd=tcp::83-:8000
-EXTRAHOSTFWD=\$EXTRAHOSTFWD,hostfwd=tcp::84-:8888
-EXTRAHOSTFWD=\$EXTRAHOSTFWD,hostfwd=tcp::90-:9000
+EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::43-:43
+EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::80-:80
+EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::81-:8001
+EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::83-:8000
+EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::84-:8888
+EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::90-:9000
 
 export mcastMAC="$2"
 export mcastPORT=$randomport
