@@ -27,7 +27,7 @@ source "$DATADIR/datadir.conf"
 (
     $starting_group "Build fresh openvz 1box image"
     [ -f "$DATADIR/vmapp-vdc-1box/1box-openvz.netfilter.x86_64.raw.sshkey" ] && \
-	[ -f "$DATADIR/vmapp-vdc-1box/1box-openvz.netfilter.x86_64.raw.tar.gz" ]
+	[ -f "$DATADIR/1box-image-resources/1box-openvz.netfilter.x86_64.raw.tar.gz" ]
     $skip_group_if_unnecessary
     (
 	$starting_step "Clone axsh/vmapp-vdc-1box from github"
@@ -87,5 +87,20 @@ EOF
 	$skip_step_if_already_done ; set -e
 	cd "$DATADIR/vmapp-vdc-1box"
 	tar czSvf 1box-openvz.netfilter.x86_64.raw.tar.gz 1box-openvz.netfilter.x86_64.raw
+    ) ; prev_cmd_failed
+
+    (
+	$starting_step "Copy out tar snapshot to its own directory for easy sharing"
+	[ -f "$DATADIR/1box-image-resources/1box-openvz.netfilter.x86_64.raw.tar.gz" ]
+	$skip_step_if_already_done ; set -e
+	cd "$DATADIR/vmapp-vdc-1box"
+	mkdir -p "$DATADIR/1box-image-resources"
+	files=(
+	    1box-openvz.netfilter.x86_64.raw.tar.gz
+	    1box-openvz.netfilter.x86_64.raw.sshkey
+	    1box-openvz.netfilter.x86_64.raw.sshkey.pub
+	    1box-openvz.netfilter.x86_64.raw.sshuser
+	)
+	cp -al "${files[@]}" "$DATADIR/1box-image-resources"
     ) ; prev_cmd_failed
 )
