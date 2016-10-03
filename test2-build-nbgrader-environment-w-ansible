@@ -579,7 +579,7 @@ EOF3
 EOF
 ) ; prev_cmd_failed
 
-DATADIR="$DATADIR" "$ORGCODEDIR/ind-steps/build-1box/build-1box.sh"
+DATADIR="$DATADIR" "$ORGCODEDIR/ind-steps/build-1box/build-1box.sh" || reportfailed
 
 (
     $starting_group "Set up 1box VM"

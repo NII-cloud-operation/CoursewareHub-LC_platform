@@ -103,4 +103,4 @@ EOF
 	)
 	cp -al "${files[@]}" "$DATADIR/1box-image-resources"
     ) ; prev_cmd_failed
-)
+) ; prev_cmd_failed
