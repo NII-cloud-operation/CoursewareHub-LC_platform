@@ -22,6 +22,19 @@ source "$ORGCODEDIR/simple-defaults-for-bashsteps.source"
 
 DATADIRCONF="$DATADIR/datadir-jh.conf"
 
+# These are expected to exist before running the first time:
+conffiles=(
+    datadir-jh.conf
+    datadir-jh-hub.conf
+    datadir-jh-node1.conf
+    datadir-jh-node2.conf
+    datadir-1box.conf
+)
+
+for i in "${conffiles[@]}"; do
+    [ -f "$DATADIR/$i" ] || reportfailed "$i is required"
+done
+
 # avoids errors on first run, but maybe not good to change state
 # outside of a step
 touch  "$DATADIRCONF"
