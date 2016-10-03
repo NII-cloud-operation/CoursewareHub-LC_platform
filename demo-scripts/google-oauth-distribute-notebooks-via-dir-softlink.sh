@@ -12,9 +12,20 @@ rootdir="${ORGCODEDIR%/*}"
 
 [ -f "$rootdir/test2-build-nbgrader-environment-w-ansible" ] || reportfailed "bug1"
 
+
+
+if [[ "$*" == *final-setup* ]]; then
+    [ -d letsencrypt ] || reportfailed
+    cat ./letsencrypt/archive/opty.jp/fullchain1.pem | ./jhvmdir-hub/ssh-to-kvm.sh sudo tee /tmp/proxycert
+    cat ./letsencrypt/archive/opty.jp/privkey1.pem | ./jhvmdir-hub/ssh-to-kvm.sh sudo tee /tmp/proxykey
+    ./jhvmdir-hub/ssh-to-kvm.sh sudo docker stop root_nginx_1
+    ./jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_nginx_1
+    exit 0
+fi
+
+# default....do initial setup and checks
+
 randomport="$(( 5000 + ( $RANDOM % 5000 ) ))"
-
-
 
 mkdir-conf-file()
 {
