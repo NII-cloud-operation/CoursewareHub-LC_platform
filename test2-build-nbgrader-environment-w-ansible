@@ -775,4 +775,16 @@ sudo ./setup.py install
 EOF
     ) ; prev_cmd_failed
 
+    (
+	$starting_step "Start background-command-processor.sh in background on 192.168.11.88 (hub) VM"
+	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+ps auxwww | tee /tmp/why | grep background-command-processo[r] 1>/dev/null 2>&1
+EOF
+	$skip_step_if_already_done; set -e
+	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF
+set -x
+cd /srv
+sudo bash -c 'setsid ./background-command-processor.sh 1>bcp.log 2>&1 </dev/null &'
+EOF
+    ) ; prev_cmd_failed
 ) ; prev_cmd_failed
