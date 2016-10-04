@@ -1,0 +1,7 @@
+#!/bin/bash
+
+source send-command-via-nfs.sh just-source
+
+teacherid="$USER"
+
+send_command_via_nfs distribute-notebooks "$teacherid" "$@"

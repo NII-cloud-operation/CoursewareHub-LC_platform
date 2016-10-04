@@ -1,0 +1,7 @@
+baseport=22000
+
+export EXTRAHOSTFWD=,hostfwd=tcp::$(( baseport + 888 ))-:8888
+
+for i in $(seq 0 20); do
+    EXTRAHOSTFWD=$EXTRAHOSTFWD,hostfwd=tcp::$(( baseport + i ))-:$(( 8000 + i ))
+done

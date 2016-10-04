@@ -1,0 +1,824 @@
+#!/bin/bash
+
+reportfailed()
+{
+    echo "Script failed...exiting. ($*)" 1>&2
+    exit 255
+}
+
+export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
+
+if [ "$DATADIR" = "" ]; then
+    # Default to putting output in the code directory, which means
+    # a separate clone of the repository for each build
+    DATADIR="$ORGCODEDIR"
+fi
+source "$ORGCODEDIR/simple-defaults-for-bashsteps.source"
+
+# Maybe the multiple build scripts in this directory could share the
+# same .conf, but overall it is probably simpler to keep them
+# separate.  Hopefully there will be time to revisit this decision
+# when thinking more about best practices for bashsteps and $DATADIR.
+
+DATADIRCONF="$DATADIR/datadir-jh.conf"
+
+# These are expected to exist before running the first time:
+conffiles=(
+    datadir-jh.conf
+    datadir-jh-hub.conf
+    datadir-jh-node1.conf
+    datadir-jh-node2.conf
+    datadir-1box.conf
+)
+
+for i in "${conffiles[@]}"; do
+    [ -f "$DATADIR/$i" ] || reportfailed "$i is required"
+done
+
+# avoids errors on first run, but maybe not good to change state
+# outside of a step
+touch  "$DATADIRCONF"
+
+source "$DATADIRCONF"
+
+imagesource="$DATADIR/vmimages/centos-7.1.1511-x86_64-base/output/minimal-image.raw.tar.gz"
+
+## This script assumes link to ubuntu image is already at
+## "$DATADIR/ubuntu-image-links/ubuntu-image.tar.gz"
+
+VMDIR=jhvmdir
+
+(
+    $starting_group "Setup clean VM for hub and nodes"
+    # not currently snapshotting this VM, but if the next snapshot exists
+    # then this group can be skipped.
+    [ -f "$DATADIR/$VMDIR/ubuntu-before-nbgrader.tar.gz" ]
+    $skip_group_if_unnecessary
+
+    (
+	$starting_step "Make $VMDIR"
+	[ -d "$DATADIR/$VMDIR" ]
+	$skip_step_if_already_done ; set -e
+	mkdir "$DATADIR/$VMDIR"
+	# increase default mem to give room for a wakame instance or two
+	echo ': ${KVMMEM:=4096}' >>"$DATADIR/$VMDIR/datadir.conf"
+	[ -f "$DATADIR/datadir-jh.conf" ] || reportfailed "datadir-jh.conf is required"
+	cat "$DATADIR/datadir-jh.conf" >>"$DATADIR/$VMDIR/datadir.conf"
+    ) ; prev_cmd_failed
+
+    DATADIR="$DATADIR/$VMDIR" \
+	   "$ORGCODEDIR/ind-steps/kvmsteps/kvm-setup.sh" \
+	   "$DATADIR/ubuntu-image-links/ubuntu-image.tar.gz"
+    # TODO: this guard is awkward.
+    [ -x "$DATADIR/$VMDIR/kvm-boot.sh" ] && \
+	"$DATADIR/$VMDIR/kvm-boot.sh"
+
+    (
+	$starting_step "Allow sudo for ubuntu user account, remove mtod"
+	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+	    SSHUSER=root "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+grep 'ubuntu.*ALL' /etc/sudoers >/dev/null
+EOF
+	$skip_step_if_already_done ; set -e
+
+	SSHUSER=root "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+echo 'ubuntu ALL=(ALL) NOPASSWD: ALL' >>/etc/sudoers
+rm /etc/update-motd.d/*
+EOF
+    ) ; prev_cmd_failed
+
+    (
+	$starting_step "Added step to give VMs 8.8.8.8 for dns"
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+grep -F "8.8.8.8" /etc/dhcp/dhclient.conf
+EOF
+	$skip_step_if_already_done
+
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+# the next line is necessary or docker pulls do not work reliably
+# related: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=625689
+echo "prepend domain-name-servers 8.8.8.8;" | sudo tee -a /etc/dhcp/dhclient.conf
+EOF
+    ) ; prev_cmd_failed
+
+    (
+	$starting_step "Install git"
+	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+which git
+EOF
+	$skip_step_if_already_done ; set -e
+
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+sudo apt-get update
+sudo apt-get -y install git
+EOF
+    ) ; prev_cmd_failed
+
+    (
+	$starting_group "Install ansible from source"
+	# Installing from source because of note here:
+	# https://github.com/compmodels/jupyterhub-deploy#deploying
+	# also because install with "apt-get -y install ansible" raised this
+	# problem: http://tracker.ceph.com/issues/12380
+
+	#  Source install instructions:
+	#  https://michaelheap.com/installing-ansible-from-source-on-ubuntu/
+	#  http://docs.ansible.com/ansible/intro_installation.html
+
+	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+which ansible
+EOF
+	$skip_group_if_unnecessary
+
+	(
+	    $starting_step "Install ansible build dependencies"
+	    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+false # always do this, let group block it
+EOF
+	    $skip_step_if_already_done ; set -e
+
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+sudo apt-get update
+sudo apt-get -y install python2.7 python-yaml python-paramiko python-jinja2 python-httplib2 make python-pip
+EOF
+	) ; prev_cmd_failed
+
+	(
+	    $starting_step "Clone ansible repository"
+	    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -d ansible ]
+EOF
+	    $skip_step_if_already_done ; set -e
+
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+set -e
+
+### git clone https://github.com/ansible/ansible.git --recursive
+
+git clone https://github.com/ansible/ansible.git
+cd ansible
+
+# reset to older version so that this error does not occur:
+#
+# TASK [nfs_server : bind home volume] *******************************************
+# fatal: [hub]: FAILED! => {"changed": false, "failed": true, "msg": "Error mounting //home: /bin/mount: invalid option -- 'T'
+
+git reset --hard a2d0bbed8c3f9de5d9c993e9b6f27f8af3eea438
+git submodule update --init --recursive
+
+EOF
+	) ; prev_cmd_failed
+
+	(
+	    $starting_step "Make/install ansible"
+	    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -x /usr/local/bin/ansible ]
+EOF
+	    $skip_step_if_already_done ; set -e
+
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+set -e
+cd ansible
+sudo make install
+EOF
+	) ; prev_cmd_failed
+
+    ) ; prev_cmd_failed
+
+    (
+	$starting_step "Clone https://github.com/(compmodels)/jupyterhub-deploy.git"
+	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -d jupyterhub-deploy ]
+EOF
+	$skip_step_if_already_done ; set -e
+
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+# clone from our exploration/debugging copy
+git clone https://github.com/triggers/jupyterhub-deploy.git
+#git clone https://github.com/compmodels/jupyterhub-deploy.git
+EOF
+    ) ; prev_cmd_failed
+
+) ; prev_cmd_failed
+
+(
+    $starting_group "Snapshot base KVM image"
+    [ -f "$DATADIR/$VMDIR/ubuntu-before-nbgrader.tar.gz" ]
+    $skip_group_if_unnecessary
+
+    [ -x "$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" ] && \
+	"$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh"
+
+    (
+	$starting_step "Make snapshot of base image"
+	[ -f "$DATADIR/$VMDIR/ubuntu-before-nbgrader.tar.gz" ]
+	$skip_step_if_already_done ; set -e
+	cd "$DATADIR/$VMDIR/"
+	tar czSvf  ubuntu-before-nbgrader.tar.gz ubuntu-14-instance-build.img
+    ) ; prev_cmd_failed
+
+) ; prev_cmd_failed
+
+(
+    $starting_group "Boot three VMs"
+
+    boot-one-vm()
+    {
+	avmdir="$1"
+	(
+	    $starting_step "Make $avmdir"
+	    [ -d "$DATADIR/$avmdir" ]
+	    $skip_step_if_already_done ; set -e
+	    mkdir "$DATADIR/$avmdir"
+	    # increase default mem to give room for a wakame instance or two
+	    echo ': ${KVMMEM:=4096}' >>"$DATADIR/$avmdir/datadir.conf"
+	    [ -f "$DATADIR/$3" ] || reportfailed "$3 is required"
+	    # copy specific port forwarding stuff to avmdir, so vmdir*/kvm-* scripts
+	    # will have all config info
+	    cat "$DATADIR/$3" >>"$DATADIR/$avmdir/datadir.conf"
+	    # copy ssh info from main VM to note VMs:
+	    cp "$DATADIR/$VMDIR/sshuser" "$DATADIR/$avmdir/sshuser"
+	    cp "$DATADIR/$VMDIR/sshkey" "$DATADIR/$avmdir/sshkey"
+	) ; prev_cmd_failed
+
+	if ! [ -x "$DATADIR/$avmdir/kvm-boot.sh" ]; then
+	    DATADIR="$DATADIR/$avmdir" \
+		   "$ORGCODEDIR/ind-steps/kvmsteps/kvm-setup.sh" \
+		   "$DATADIR/$VMDIR/ubuntu-before-nbgrader.tar.gz"
+	fi
+	# Note: the (two) steps above will be skipped for the main KVM
+
+	(
+	    $starting_step "Expand fresh image from snapshot for $2"
+	    [ -f "$DATADIR/$avmdir/ubuntu-14-instance-build.img" ]
+	    $skip_step_if_already_done ; set -e
+	    cd "$DATADIR/$avmdir/"
+	    tar xzSvf ../$VMDIR/ubuntu-before-nbgrader.tar.gz
+	) ; prev_cmd_failed
+
+	# TODO: this guard is awkward.
+	[ -x "$DATADIR/$avmdir/kvm-boot.sh" ] && \
+	    "$DATADIR/$avmdir/kvm-boot.sh"
+	
+	(
+	    $starting_step "Setup private network for VM $avmdir"
+	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+grep eth1 /etc/network/interfaces
+EOF
+	    $skip_step_if_already_done
+	    addr=$(
+		case "$2" in
+		    *main*) echo 99 ;;
+		    *hub*) echo 88 ;;
+		    *1*) echo 1 ;;
+		    *2*) echo 2 ;;
+		    *) reportfailed "BUG"
+		esac
+		)
+
+	    # http://askubuntu.com/questions/441619/how-to-successfully-restart-a-network-without-reboot-over-ssh
+	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF
+sudo tee -a /etc/network/interfaces <<EOF2
+
+auto eth1
+iface eth1 inet static
+    address 192.168.11.$addr
+    netmask 255.255.255.0
+EOF2
+
+# sudo ifdown eth1
+sudo ifup eth1
+
+EOF
+	) ; prev_cmd_failed
+
+	(
+	    $starting_step "Change hostname VM $avmdir"
+	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+[[ "\$(hostname)" != *ubuntu* ]]
+EOF
+	    $skip_step_if_already_done
+	    hn=$(
+		case "$2" in
+		    *main*) echo main ;;
+		    *hub*) echo hub ;;
+		    *1*) echo node1 ;;
+		    *2*) echo node2 ;;
+		    *) reportfailed "BUG"
+		esac
+		)
+
+	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF
+echo $hn | sudo tee /etc/hostname
+echo 127.0.0.1 $hn | sudo tee -a /etc/hosts
+sudo hostname $hn
+EOF
+	) ; prev_cmd_failed
+
+	(
+	    [ "$avmdir" = "$VMDIR" ] && exit 0 # skip for main VM
+	    $starting_step "Add routing entry for Wakame-vdc's 10.0.2.0/24 network to VM $avmdir"
+	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+[[ "\$(route -n)" == *10.0.2.0* ]]
+EOF
+	    $skip_step_if_already_done
+
+	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF
+# All 10.0.2.0 connections will be routed through the main VM
+# and relayed to 1box via sshuttle.
+sudo route add -net 10.0.2.0 netmask 255.255.255.0 gw 192.168.11.99
+EOF
+	) ; prev_cmd_failed
+
+    }
+
+    boot-one-vm "$VMDIR" "main KVM" datadir-jh.conf
+    boot-one-vm "$VMDIR-hub" "hub KVM" datadir-jh-hub.conf
+    boot-one-vm "$VMDIR-node1" "node 1 KVM" datadir-jh-node1.conf
+    boot-one-vm "$VMDIR-node2" "node 2 KVM" datadir-jh-node2.conf
+
+) ; prev_cmd_failed
+
+(
+    $starting_step "Make sure mac addresses were configured"
+    # Make sure all three mac addresses are unique
+    [ $(grep -ho 'export.*mcastMAC.*' "$DATADIR"/jhvmdir*/*conf | sort -u | wc -l) -eq 4 ]
+    $skip_step_if_already_done
+    # always fail if this has not been done
+    reportfailed "Add mcastMAC= to: datadir-jh.conf datadir-jh-node2.conf datadir-jh-node1.conf"
+) ; prev_cmd_failed
+
+(
+    $starting_group "Make TLS/SSL certificates with docker"
+    (
+	$starting_step "Install Docker in main KVM"
+	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<<"which docker" 2>/dev/null 1>&2
+	}
+	$skip_step_if_already_done; set -e
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" "curl -fsSL https://get.docker.com/ | sudo sh"
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" "sudo usermod -aG docker ubuntu"
+	touch "$DATADIR/extrareboot" # necessary to make the usermod take effect in Jupyter environment
+    ) ; prev_cmd_failed
+
+    if [ "$extrareboot" != "" ] || \
+	   [ -f "$DATADIR/extrareboot" ] ; then  # this flag can also be set before calling ./build-nii.sh
+	rm -f "$DATADIR/extrareboot"
+	[ -x "$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" ] && \
+	    "$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh"
+    fi
+
+    if [ -x "$DATADIR/$VMDIR/kvm-boot.sh" ]; then
+	"$DATADIR/$VMDIR/kvm-boot.sh"
+    fi
+
+
+    # following guide at: https://github.com/compmodels/jupyterhub-deploy/blob/master/INSTALL.md
+
+    KEYMASTER="docker run --rm -v /home/ubuntu/jupyterhub-deploy/certificates/:/certificates/ cloudpipe/keymaster"
+
+    (
+	$starting_step "Gather random data from host, set vault-password"
+	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -f jupyterhub-deploy/certificates/password ]
+EOF
+	$skip_step_if_already_done ; set -e
+
+	# The access to /dev/random must be done on the host because
+	# it hangs in KVM
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+mkdir -p jupyterhub-deploy/certificates
+
+echo ubuntu >/home/ubuntu/jupyterhub-deploy/vault-password
+
+cat >jupyterhub-deploy/certificates/password <<EOF2
+$(cat /dev/random | head -c 128 | base64)
+EOF2
+
+${KEYMASTER} ca
+
+EOF
+    ) ; prev_cmd_failed
+
+    do-one-keypair()
+    {
+	(
+	    $starting_step "Generate a keypair for a server $1"
+	    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -f /home/ubuntu/jupyterhub-deploy/certificates/$1-key.pem ]
+EOF
+	    $skip_step_if_already_done ; set -e
+	    
+	    # The access to /dev/random must be done on the host because
+	    # it hangs in KVM
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+set -e
+set -x
+cd jupyterhub-deploy/certificates
+${KEYMASTER} signed-keypair -n $1 -h $1.website.com -p both -s IP:192.168.11.$2
+EOF
+	) ; prev_cmd_failed
+    }
+    do-one-keypair hub 88
+    do-one-keypair node1 1
+    do-one-keypair node2 2
+)
+
+
+(
+    exit 0  # The contents here are now part of triggers/jupyterhub-deploy.git
+    $starting_step "Set secrets.vault"
+    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -f /home/ubuntu/jupyterhub-deploy/secrets.vault.yml.org ]
+EOF
+    $skip_step_if_already_done ; set -e
+    
+    # The access to /dev/random must be done on the host because
+    # it hangs in KVM
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+set -e
+set -x
+cd jupyterhub-deploy/
+cp secrets.vault.yml secrets.vault.yml.org
+
+# not sure yet how to set this:
+cp secrets.vault.yml.example secrets.vault.yml
+
+sed -i "s,.*other_ssh_keys.*,other_ssh_keys: [ '\$(< "/home/ubuntu/.ssh/authorized_keys")' ]," secrets.vault.yml
+
+sed -i "s,.*configproxy_auth_token.*,configproxy_auth_token: '2fd34c8b5dc9ba64754e754114f37a7b33eff14b7f415e4f761d28a6b516a3be'," secrets.vault.yml
+
+sed -i "s,.*jupyterhub_admin_user.*,jupyterhub_admin_user: 'ubuntu'," secrets.vault.yml
+
+sed -i "s,.*cookie_secret.*,cookie_secret: 'cookie_secret'," secrets.vault.yml
+
+cp secrets.vault.yml secrets.vault.yml.tmp-for-debugging
+
+ansible-vault encrypt --vault-password-file vault-password secrets.vault.yml
+EOF
+) ; prev_cmd_failed
+
+(
+    $starting_step "Set users.vault"
+    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -f /home/ubuntu/jupyterhub-deploy/users.vault.yml.org ]
+EOF
+    $skip_step_if_already_done ; set -e
+    
+    # The access to /dev/random must be done on the host because
+    # it hangs in KVM
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+set -e
+set -x
+cd jupyterhub-deploy/
+cp users.vault.yml users.vault.yml.org
+cat >users.vault.yml <<EOF2
+jupyterhub_admins:
+- potter
+- test4jupyter
+jupyterhub_users:
+- student1jupyter
+- student2jupyter
+- student3jupyter
+EOF2
+ansible-vault encrypt --vault-password-file vault-password users.vault.yml
+EOF
+) ; prev_cmd_failed
+
+(
+    $starting_step "Copy private ssh key to main KVM, plus minimal ssh config"
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+[ -f .ssh/id_rsa ]
+EOF
+    $skip_step_if_already_done
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+set -x
+
+cat >.ssh/id_rsa <<EOF2
+$(< "$DATADIR/$VMDIR/sshkey")
+EOF2
+chmod 600 .ssh/id_rsa
+
+cat >.ssh/config <<EOF2
+Host *
+        StrictHostKeyChecking no
+        TCPKeepAlive yes
+        UserKnownHostsFile /dev/null
+	ForwardAgent yes
+EOF2
+chmod 644 .ssh/config
+
+EOF
+) ; prev_cmd_failed
+
+(
+    $starting_step "Run ./script/assemble_certs (from the jupyterhub-deploy repository)"
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+cd jupyterhub-deploy
+[ -f ./host_vars/node2 ]
+EOF
+    $skip_step_if_already_done
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+set -x
+set -e
+
+cd jupyterhub-deploy
+./script/assemble_certs 
+
+EOF
+) ; prev_cmd_failed
+
+(
+    $starting_step "Copy user ubuntu's .ssh dir to shared NFS area"
+    "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>&2
+[ -d /mnt/nfs/home/ubuntu/.ssh ]
+EOF
+    $skip_step_if_already_done
+    "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF
+set -x
+set -e
+
+sudo mkdir -p /mnt/nfs
+sudo tar c /home/ubuntu/.ssh | ( cd /mnt/nfs && sudo tar xv )
+
+EOF
+) ; prev_cmd_failed
+
+(
+    $starting_step "Run main **Ansible script** (from the jupyterhub-deploy repository)"
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+cd jupyterhub-deploy
+# last part of ansible log should show "failed=0" three times. e.g:
+#   PLAY RECAP *********************************************************************
+#   hub                        : ok=97   changed=84   unreachable=0    failed=0   
+#   node1                      : ok=41   changed=32   unreachable=0    failed=0   
+#   node2                      : ok=41   changed=32   unreachable=0    failed=0   
+count="\$(tail deploylog.log | grep -o "failed=0" | wc -l)"
+[ "\$count" -eq 3 ]
+EOF
+    $skip_step_if_already_done
+    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+set -x
+set -e
+
+cd jupyterhub-deploy
+time ./script/deploy | tee -a deploylog.log
+
+EOF
+) ; prev_cmd_failed
+
+(
+    $starting_step "Copy proxy's certificate and key to hub VM"
+    # TODO: find out why Ansible step did not do this correctly.
+    # When using Ansible to do this, all the end of line characters
+    # were stripped out.
+    # Note: the root_nginx_1 container probably needs restarting,
+    #       which seems to happen automatically eventually.
+    "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+lines=\$(cat /tmp/proxykey /tmp/proxycert | wc -l)
+[ "\$lines" -gt 10 ]
+EOF
+    $skip_step_if_already_done
+    "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF
+set -x
+set -e
+
+# For now, just reusing the self-signed cert used for the hub.
+
+sudo tee /tmp/proxycert <<EOF2
+$("$DATADIR/$VMDIR/ssh-to-kvm.sh" cat jupyterhub-deploy/certificates/hub-cert.pem)
+EOF2
+
+sudo tee /tmp/proxykey <<EOF3
+$("$DATADIR/$VMDIR/ssh-to-kvm.sh" cat jupyterhub-deploy/certificates/hub-key.pem)
+EOF3
+
+EOF
+) ; prev_cmd_failed
+
+DATADIR="$DATADIR" "$ORGCODEDIR/ind-steps/build-1box/build-1box.sh" || reportfailed
+
+(
+    $starting_group "Set up 1box VM"
+    (
+	$starting_group "Set up vmdir-1box"
+	[ -x "$DATADIR/vmdir-1box/kvm-boot.sh" ]
+	$skip_group_if_unnecessary
+	(
+	    $starting_step "Make vmdir-1box"
+	    [ -d "$DATADIR/vmdir-1box" ]
+	    $skip_step_if_already_done ; set -e
+	    mkdir "$DATADIR/vmdir-1box"
+	    # increase default mem to give room for a wakame instance or two
+	    # copy specific port forwarding stuff to avmdir, so vmdir*/kvm-* scripts
+	    # will have all config info
+	    cat "$DATADIR/datadir-1box.conf" >>"$DATADIR/vmdir-1box/datadir.conf"
+
+	    # disable second NIC for the first boot
+            echo 'export mcastnet=" "'  >>"$DATADIR/vmdir-1box/datadir.conf"
+
+	    echo ': ${KVMMEM:=4096}' >>"$DATADIR/vmdir-1box/datadir.conf"
+	) ; prev_cmd_failed
+
+	DATADIR="$DATADIR/vmdir-1box" \
+	       "$ORGCODEDIR/ind-steps/kvmsteps/kvm-setup.sh" \
+	       "$DATADIR/1box-image-resources/1box-openvz.netfilter.x86_64.raw.tar.gz"
+
+	(
+	    $starting_step "Set only the 1box VM to use 10.0.2.0/24"
+	    ! grep -F 'user,net=10.0.3.0' "$DATADIR/vmdir-1box/kvm-boot.sh" 2>/dev/null 1>&2
+	    $skip_step_if_already_done ; set -e
+	    sed -i 's,10.0.3.0,10.0.2.0,' "$DATADIR/vmdir-1box/kvm-boot.sh"
+	) ; prev_cmd_failed
+
+    ) ; prev_cmd_failed
+    
+    # TODO: this guard is awkward.
+    [ -x "$DATADIR/vmdir-1box/kvm-boot.sh" ] && \
+	"$DATADIR/vmdir-1box/kvm-boot.sh"
+
+    "$DATADIR/wakame-customization-steps.sh" "$DATADIR" ; prev_cmd_failed
+
+    (
+	$starting_group "Reboot with second NIC"
+	! grep mcastnet "$DATADIR/vmdir-1box/datadir.conf" 1>/dev/null 2>/dev/null 
+	$skip_group_if_unnecessary
+	
+	(
+	    $starting_step "Turn second mcast NIC back on"
+	    ! grep mcastnet "$DATADIR/vmdir-1box/datadir.conf" 1>/dev/null 2>/dev/null 
+	    $skip_step_if_already_done ; set -e
+	    before="$(cat "$DATADIR/vmdir-1box/datadir.conf")"
+	    echo "$before" | grep -v mcastnet >"$DATADIR/vmdir-1box/datadir.conf"
+	) ; prev_cmd_failed
+
+	(
+	    $starting_step "Append HWADDR to /etc/sysconfig/network-scripts/ifcfg-eth{0,1}(always says 'not done')"
+            false # always run if doing this group
+	    $skip_step_if_already_done ; set -e
+
+	    # from https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/3/html/Reference_Guide/s1-networkscripts-interfaces.html
+
+	    # HWADDR=<MAC-address>, where <MAC-address> is the
+	    # hardware address of the Ethernet device in the form
+	    # AA:BB:CC:DD:EE:FF. This directive is useful for machines
+	    # with multiple NICs to ensure that the interfaces are
+	    # assigned the correct device names regardless of the
+	    # configured load order for each NIC's module. This
+	    # directive should not be used in conjunction with
+	    # MACADDR.
+
+	    # MACADDR=<MAC-address>, where <MAC-address> is the
+	    # hardware address of the Ethernet device in the form
+	    # AA:BB:CC:DD:EE:FF. This directive is used to assign a
+	    # MAC address to an interface, overriding the one assigned
+	    # to the physical NIC. This directive should not be used
+	    # in conjunction with HWADDR.
+
+	    "$DATADIR/vmdir-1box/ssh-to-kvm.sh" <<EOF
+sudo tee -a /etc/sysconfig/network-scripts/ifcfg-eth0 <<<"HWADDR=52:54:00:65:28:dd"
+sudo tee -a /etc/sysconfig/network-scripts/ifcfg-eth1 <<<"HWADDR=52:54:00:12:00:90"
+EOF
+	) ; prev_cmd_failed
+
+	(
+	    $starting_step "Add second address to br1 (always says 'not done')"
+            false # always run if doing this group
+	    $skip_step_if_already_done ; set -e
+
+	    # https://dbiers.me/adding-secondary-ip-addresses-centosrhel/
+
+	    "$DATADIR/vmdir-1box/ssh-to-kvm.sh" <<EOF
+sudo tee /etc/sysconfig/network-scripts/ifcfg-br1:1 <<EOF2
+DEVICE=br1:1
+BOOTPROTO=static
+IPADDR=192.168.11.90
+NETMASK=255.255.255.0
+ONBOOT=yes
+EOF2
+EOF
+	    # TODO: Is this worth fixing?
+	    # [centos@wakame-vdc-1box ~]$ dmesg | tail
+	    # [ 1236.928591] eth1: received packet with own address as source address
+
+	    # ref: https://www.centos.org/forums/viewtopic.php?t=51612
+	    #  ((is it really a kernel bug?))
+	    #  ((1box is running: "CentOS release 6.4 (Final)"))
+
+	) ; prev_cmd_failed
+
+	[ -x "$DATADIR/vmdir-1box/kvm-shutdown-via-ssh.sh" ] && \
+	    "$DATADIR/vmdir-1box/kvm-shutdown-via-ssh.sh"
+
+	[ -x "$DATADIR/vmdir-1box/kvm-boot.sh" ] && \
+	    "$DATADIR/vmdir-1box/kvm-boot.sh"
+
+	true # needed so the group does not throw an error because of the awkwardness in the previous comman	
+    ) ; prev_cmd_failed
+
+) ; prev_cmd_failed
+
+(
+    $starting_group "Misc steps"
+
+    (
+	$starting_step "Clone old repository that has notebooks"
+	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+[ -d /srv/nii-project-2016 ]
+EOF
+	$skip_step_if_already_done
+	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF
+set -x
+set -e
+
+cd /srv
+sudo git clone https://github.com/axsh/nii-project-2016.git
+
+EOF
+    ) ; prev_cmd_failed
+
+    (
+	$starting_step "Download Oracle Java rpm"
+	targetfile=jdk-8u73-linux-x64.rpm
+	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+[ -f /srv/nii-project-2016/notebooks/.downloads/$targetfile ]
+EOF
+	$skip_step_if_already_done; set -e
+	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF
+        set -x
+        set -e
+	sudo mkdir -p "/srv/nii-project-2016/notebooks/.downloads"
+	sudo wget --progress=dot:mega --no-check-certificate --no-cookies \
+	     --header "Cookie: oraclelicense=accept-securebackup-cookie" \
+	     http://download.oracle.com/otn-pub/java/jdk/8u73-b02/$targetfile \
+	     -O "/srv/nii-project-2016/notebooks/.downloads/$targetfile"
+EOF
+    ) ; prev_cmd_failed
+
+    (
+	$starting_step "Copy in adapt-notebooks-for-user.sh and background-command-processor.sh"
+	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+[ -f /srv/adapt-notebooks-for-user.sh ] && [ -f /srv/background-command-processor.sh ]
+EOF
+	$skip_step_if_already_done; set -e
+	cd "$DATADIR"
+	tar c adapt-notebooks-for-user.sh background-command-processor.sh | "$VMDIR-hub/ssh-to-kvm.sh" sudo tar xv -C /srv
+    ) ; prev_cmd_failed
+
+    (
+	$starting_step "Clone sshuttle to 192.168.11.99 VM"
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+which sshuttle
+EOF
+	$skip_step_if_already_done; set -e
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+git clone https://github.com/apenwarr/sshuttle.git
+echo "hint: sshuttle -l 0.0.0.0 -vr centos@192.168.11.90 10.0.2.0/24" >sshuttle-hint
+cd sshuttle
+sudo ./setup.py install
+EOF
+    ) ; prev_cmd_failed
+
+    (
+	$starting_step "Start background-command-processor.sh in background on 192.168.11.88 (hub) VM"
+	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+ps auxwww | grep 'background-command-processo[r]' 1>/dev/null 2>&1
+EOF
+	$skip_step_if_already_done; set -e
+	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF
+set -x
+cd /srv
+sudo bash -c 'setsid ./background-command-processor.sh 1>>bcp.log 2>&1 </dev/null &'
+EOF
+    ) ; prev_cmd_failed
+
+    (
+	$starting_step "Start background sshuttle on 192.168.11.99 (ansible main) VM"
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+ps auxwww | grep 'sshuttl[e]' 1>/dev/null 2>&1 >/tmp/aa
+EOF
+	$skip_step_if_already_done; set -e
+	# see the step: "Add routing entry for Wakame-vdc's 10.0.2.0/24 network to VM $avmdir"
+	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+set -x
+cat >wakame-sshkey  <<EOF2
+$(cat "$DATADIR/vmdir-1box/sshkey")
+EOF2
+chmod 600 wakame-sshkey
+eval \$(ssh-agent -s)
+ssh-add wakame-sshkey
+ssh-add -l
+setsid sshuttle -l 0.0.0.0 -r centos@192.168.11.90 10.0.2.0/24 1>>sshuttle.log 2>&1 </dev/null &
+EOF
+    ) ; prev_cmd_failed
+) ; prev_cmd_failed
