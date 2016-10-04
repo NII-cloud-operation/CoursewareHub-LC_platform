@@ -6,13 +6,29 @@ reportfailed()
     exit 255
 }
 
+usage()
+{
+    cat <<EOF
+
+One parameter required.  Either "initial setup", before running the
+test2-build-nbgrader-environment-w-ansible script, or "final-setup", after
+the script runs successfully.
+
+After running with final-setup, all that should be necessary is to do
+port forwarding from port 443 of the machine used for the letsencrypt
+certificates to the local host port that is forwarded to 192.168.11.88:433,
+which can be deduced by looking at values in jhvmdir-hub/datadir.conf.
+
+EOF
+}
+
 export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
 
 rootdir="${ORGCODEDIR%/*}"
 
 [ -f "$rootdir/test2-build-nbgrader-environment-w-ansible" ] || reportfailed "bug1"
 
-
+cd "$rootdir" || reportfailed
 
 final_setup()
 {
@@ -37,7 +53,7 @@ initial-setup()
 export EXTRAHOSTFWDREL=""
 
 # port 22 is already assigned by kvmsteps
-EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::43-${2}:43
+EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::43-${2}:443
 EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::80-${2}:80
 EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::81-${2}:8001
 EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::83-${2}:8000
@@ -67,6 +83,12 @@ EOF
     # make sure mcast addresses are the same
 
     [ "$(grep -h -o mcastPORT.* *.conf | sort -u | wc -l)" -eq 1 ] || reportfailed "macPORT values differ in *.conf"
+
+
+    for i in 1box-image-resources ubuntu-image-resources letsencrypt; do
+	[ -d "$i" ] && continue
+	[ -d ~/"$i" ] && cp -al ~/"$i" "$i"
+    done
 
     resourcelist=(
 	1box-image-resources/1box-openvz.netfilter.x86_64.raw.sshkey.pub
@@ -101,17 +123,6 @@ a63168df5cad8a39aa723cfcab25c4d6  ubuntu-image-resources/ubuntu-14-instance-buil
 	echo "Required resources not set up correctly."
     fi
     exit 0
-}
-
-usage()
-{
-    cat <<EOF
-
-One parameter required.  Either "initial setup", before running the
-test2-build-nbgrader-environment-w-ansible script, or "final-setup", after
-the script runs successfully.
-
-EOF
 }
 
 case "$*" in
