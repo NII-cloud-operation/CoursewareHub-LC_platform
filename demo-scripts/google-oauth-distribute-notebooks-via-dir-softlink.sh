@@ -10,7 +10,7 @@ usage()
 {
     cat <<EOF
 
-One parameter required.  Either "initial setup", before running the
+One parameter required.  Either "initial-setup", before running the
 test2-build-nbgrader-environment-w-ansible script, or "final-setup", after
 the script runs successfully.
 
