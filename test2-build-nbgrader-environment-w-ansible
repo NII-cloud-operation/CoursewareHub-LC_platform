@@ -285,6 +285,21 @@ EOF
 	) ; prev_cmd_failed
 
 	(
+	    $starting_step "Give VMs 8.8.8.8 for dns"
+	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+grep -F "8.8.8.8" /etc/dhcp/dhclient.conf
+EOF
+	    $skip_step_if_already_done
+
+	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF
+# the next line is necessary or docker pulls do not work reliably
+# related: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=625689
+# Note that the dns option on kvm networking stopped the VM from booting.
+echo "append domain-name-servers 8.8.8.8;" | sudo tee -a /etc/dhcp/dhclient.conf
+EOF
+	) ; prev_cmd_failed
+
+	(
 	    $starting_step "Change hostname VM $avmdir"
 	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
 [[ "\$(hostname)" != *ubuntu* ]]
