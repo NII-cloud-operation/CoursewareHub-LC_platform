@@ -97,7 +97,7 @@ EOF
 	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
 # the next line is necessary or docker pulls do not work reliably
 # related: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=625689
-echo "append domain-name-servers 8.8.8.8;" | sudo tee -a /etc/dhcp/dhclient.conf
+echo "prepend domain-name-servers 8.8.8.8;" | sudo tee -a /etc/dhcp/dhclient.conf
 EOF
     ) ; prev_cmd_failed
 
