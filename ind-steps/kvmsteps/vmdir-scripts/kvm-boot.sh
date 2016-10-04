@@ -32,7 +32,6 @@ calculate_ports()
     echo ${SERPORT:=$(( VNCPORT + 40 ))} >"$DATADIR/runinfo/port.serial"
     rewriteme="$EXTRAHOSTFWDREL"  # e.g. ",hostfwd=tcp::80-:8888,...."
     hostfwdrel=""
-    set -x
     while [[ "$rewriteme" == *hostfwd=tcp* ]]; do
 	portatfront="${rewriteme#*hostfwd=tcp:*:}"   # e.g. "80-:8888,...."
 	afterport="${portatfront#*-}"  # e.g. ":8888,...."
