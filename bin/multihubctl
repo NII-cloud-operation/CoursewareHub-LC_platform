@@ -17,7 +17,7 @@ EOF
 
 export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
 
-rootdir="${ORGCODEDIR}"
+rootdir="${ORGCODEDIR%/*}"
 ahdir="$rootdir/active-hubs"
 [ -d "$ahdir" ] || mkdir "$ahdir" || reportfailed
 
@@ -32,6 +32,7 @@ do_new()
 	digits3="$(( hubn + 1000 ))"
 	digits3="${digits3#1}"
 	[ -f "$ahdir/$digits3/hubid" ] || break
+	(( hubn++ ))
     done
 
     [ -d "$ahdir/$digits3" ] || reportfailed 'No more cached jupyterhubs available'
@@ -41,10 +42,17 @@ do_new()
     fi
     
     echo "$hubid" >"$ahdir/$digits3/hubid"
+    hubdir="$ahdir/$digits3"
     
-    reconfigure_one_jupyterhub "$ahdir/$digits3"
+    reconfigure_one_jupyterhub "$hubdir"
+    
+    reconfigure_nginx "$hubdir"
 
-    reconfigure_nginx "$ahdir/$digits3"
+    "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh sudo docker stop root_jupyterhub_1
+    "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_jupyterhub_1
+    
+    "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh sudo docker stop root_nginx_1
+    "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_nginx_1
 }
 
 reconfigure_one_jupyterhub()
@@ -52,26 +60,20 @@ reconfigure_one_jupyterhub()
     hubdir="$1"
     hubid="$(cat "$hubdir/hubid")" || reportfailed "Missing hubid"
 
-    "$rootdir"/jhvmdir-hub/ssh-to-kvm.sh sudo docker exec -i root_jupyterhub_1 bash <<EOF
+    "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh sudo docker exec -i root_jupyterhub_1 bash <<EOF
     cat >>/srv/jupyterhub_config/jupyterhub_config.py <<EOF2
 c.JupyterHub.base_url='/$hubid/'
 EOF2
 EOF
-    "$rootdir"/jhvmdir-hub/ssh-to-kvm.sh sudo docker stop root_jupyterhub_1
-    "$rootdir"/jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_jupyterhub_1
-    
 }
 
 reconfigure_nginx()
 {
-    "$rootdir/jhvmdir-hub/ssh-to-kvm.sh sudo docker exec -i root_nginx_1 bash <<'EOF'
+    "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh sudo docker exec -i root_nginx_1 bash <<'EOF'
 cat >/etc/nginx/nginx.conf <<EOF2
 $(config_toplevel "$ahdir/000")
 EOF2
 EOF
-
-    "$rootdir"/jhvmdir-hub/ssh-to-kvm.sh sudo docker stop root_nginx_1
-    "$rootdir"/jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_nginx_1
 }
 
 config_location_for()
@@ -80,11 +82,12 @@ config_location_for()
     hubid="$(cat "$hubdir/hubid")" || reportfailed "Missing hubid"
 
     hubport="$(
-        source "$rootdir/jhvmdir-hub/datadir.conf"
+        source "$hubdir/jhvmdir-hub/datadir.conf"
         echo $(( VNCPORT + 83 ))
     )" || reportfailed
     
     cat <<EOF1
+
         location /$hubid/ {
             proxy_pass http://10.0.3.2:$hubport;
 
@@ -285,6 +288,10 @@ shift
 
 case "$cmd" in
     new) do_new "$@"
+	 ;;
+    debugjhub) reconfigure_one_jupyterhub "$@"
+	 ;;
+    debugnginx) reconfigure_nginx "$@"
 	 ;;
     *) usage
        ;;
