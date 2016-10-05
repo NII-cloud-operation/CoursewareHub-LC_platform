@@ -46,13 +46,13 @@ do_new()
     
     reconfigure_one_jupyterhub "$hubdir"
     
-    reconfigure_nginx "$hubdir"
+    reconfigure_nginx "$ahdir/000"
 
     "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh sudo docker stop root_jupyterhub_1
     "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_jupyterhub_1
     
-    "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh sudo docker stop root_nginx_1
-    "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_nginx_1
+    "$ahdir/000"/jhvmdir-hub/ssh-to-kvm.sh sudo docker stop root_nginx_1
+    "$ahdir/000"/jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_nginx_1
 }
 
 reconfigure_one_jupyterhub()
@@ -72,9 +72,10 @@ EOF
 
 reconfigure_nginx()
 {
+    hubdir="$1"
     "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh sudo docker exec -i root_nginx_1 bash <<EOF
 cat >/etc/nginx/nginx.conf <<'EOF2'
-$(config_toplevel "$ahdir/000")
+$(config_toplevel "$ahdir/"*)
 EOF2
 EOF
 }
