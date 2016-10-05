@@ -26,6 +26,9 @@ do_new()
     hubid="$1"
     teacherid="$2"
 
+    result="$(grep -Fx "$hubid" "$ahdir"/*/hubid)"
+    [ "$result" = "" ] || reportfailed "Hub with name '$hubid' already exists"
+
     # which hub is next?
     hubn=0
     while true; do
@@ -340,6 +343,10 @@ case "$cmd" in
     buildnewjh) build_jupyterhub "$@"
 	 ;;
     restart) restart_jupyterhub "$@"
+	 ;;
+    list)
+	shopt -s nullglob
+	cat "$ahdir"/*/hubid
 	 ;;
     *) usage
        ;;
