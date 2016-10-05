@@ -317,6 +317,16 @@ build_jupyterhub()
     time ./test2-build-nbgrader-environment-w-ansible
 }
 
+restart_jupyterhub()
+{
+    hubid="$1"
+    result="$(grep -Fx "$hubid" "$ahdir"/*/hubid)"
+    [ "$result" = "" ] && reportfailed "Hub with name '$hubid' not found"
+    "${result%/hubid*}"/jhvmdir-hub/ssh-to-kvm.sh sudo docker stop root_jupyterhub_1
+    "${result%/hubid*}"/jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_jupyterhub_1
+}
+
+
 cmd="$1"
 shift
 
@@ -328,6 +338,8 @@ case "$cmd" in
     debugnginx) reconfigure_nginx "$@"
 	 ;;
     buildnewjh) build_jupyterhub "$@"
+	 ;;
+    restart) restart_jupyterhub "$@"
 	 ;;
     *) usage
        ;;
