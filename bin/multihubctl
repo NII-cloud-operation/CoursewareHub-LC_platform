@@ -83,6 +83,7 @@ EOF
 config_location_for()
 {
     hubdir="$1"
+    [ -f "$hubdir/hubid" ] || return  # skip unassigned jupyterhub environments
     hubid="$(cat "$hubdir/hubid")" || reportfailed "Missing hubid"
 
     hubport="$(
