@@ -283,6 +283,35 @@ EOF
 }
 
 
+build_jupyterhub()
+{
+    # which hub is next?
+    hubn=0
+    while true; do
+	digits3="$(( hubn + 1000 ))"
+	digits3="${digits3#1}"
+	[ -d "$ahdir/$digits3" ] || break
+	(( hubn++ ))
+    done
+
+    hubdir="$ahdir/$digits3"
+
+    cd "$ahdir" || reportfailed cd "$ahdir"
+
+    set -x
+    set -e
+    git clone git@github.com:axsh/jupyter-platform-dev.git || reportfailed git clone
+
+    mv jupyter-platform-dev "$digits3" || reportfailed mv jupyter-platform-dev "$digits3"
+    cd "$digits3"
+
+    ./demo-scripts/google-oauth-distribute-notebooks-via-dir-softlink.sh initial-setup || reportfailed initial-setup
+
+    time ./test2-build-nbgrader-environment-w-ansible
+
+    time ./test2-build-nbgrader-environment-w-ansible
+}
+
 cmd="$1"
 shift
 
@@ -292,6 +321,8 @@ case "$cmd" in
     debugjhub) reconfigure_one_jupyterhub "$@"
 	 ;;
     debugnginx) reconfigure_nginx "$@"
+	 ;;
+    buildnewjh) build_jupyterhub "$@"
 	 ;;
     *) usage
        ;;
