@@ -315,9 +315,13 @@ build_jupyterhub()
 
     ./demo-scripts/google-oauth-distribute-notebooks-via-dir-softlink.sh initial-setup || reportfailed initial-setup
 
-    time ./test2-build-nbgrader-environment-w-ansible
+    echo "Doing first pass of build: $(date)"
+    time ./test2-build-nbgrader-environment-w-ansible >>build.log 2>&1
 
-    time ./test2-build-nbgrader-environment-w-ansible
+    echo "Doing second pass of build: $(date)"
+    time ./test2-build-nbgrader-environment-w-ansible >>build.log 2>&1
+
+    echo "Finished $(date)"
 }
 
 restart_jupyterhub()
