@@ -41,7 +41,7 @@ final_setup()
 }
 
 
-initial-setup()
+initial_setup()
 {
     randomport="$(( 5000 + ( $RANDOM % 5000 ) ))"
 
@@ -126,7 +126,7 @@ a63168df5cad8a39aa723cfcab25c4d6  ubuntu-image-resources/ubuntu-14-instance-buil
 }
 
 case "$*" in
-    initial-setup) initial-setup ;;
-    final-setup) final-setup ;;
+    initial-setup) initial_setup ;;
+    final-setup) final_setup ;;
     *) usage ;;
 esac

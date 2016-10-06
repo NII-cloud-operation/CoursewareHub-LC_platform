@@ -1,0 +1,360 @@
+#!/bin/bash
+
+reportfailed()
+{
+    echo "Script failed...exiting. ($*)" 1>&2
+    exit 255
+}
+
+usage()
+{
+    cat <<EOF
+Usage:
+
+./bin/multihubctl list              ## Lists assigned JupyterHub servers
+./bin/multihubctl new {hubid}       ## Assigns new JupyterHub server
+./bin/multihubctl restart {hubid}   ## Restarts JupyterHub server
+
+EOF
+}
+
+export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
+
+rootdir="${ORGCODEDIR%/*}"
+ahdir="$rootdir/active-hubs"
+[ -d "$ahdir" ] || mkdir "$ahdir" || reportfailed
+
+do_new()
+{
+    hubid="$1"
+    teacherid="$2"
+
+    result="$(grep -Fx "$hubid" "$ahdir"/*/hubid)"
+    [ "$result" = "" ] || reportfailed "Hub with name '$hubid' already exists"
+
+    # which hub is next?
+    hubn=0
+    while true; do
+	digits3="$(( hubn + 1000 ))"
+	digits3="${digits3#1}"
+	[ -f "$ahdir/$digits3/hubid" ] || break
+	(( hubn++ ))
+    done
+
+    [ -d "$ahdir/$digits3" ] || reportfailed 'No more cached jupyterhubs available'
+
+    if [ "$digits3" = 000 ] && [ "$hubid" != "master" ]; then
+	reportfailed "Must create master hub first"
+    fi
+    
+    echo "$hubid" >"$ahdir/$digits3/hubid"
+    hubdir="$ahdir/$digits3"
+    
+    reconfigure_one_jupyterhub "$hubdir"
+    
+    reconfigure_nginx "$ahdir/000"
+
+    "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh sudo docker stop root_jupyterhub_1
+    "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_jupyterhub_1
+    
+    "$ahdir/000"/jhvmdir-hub/ssh-to-kvm.sh sudo docker stop root_nginx_1
+    "$ahdir/000"/jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_nginx_1
+}
+
+reconfigure_one_jupyterhub()
+{
+    hubdir="$1"
+    hubid="$(cat "$hubdir/hubid")" || reportfailed "Missing hubid"
+
+    "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh sudo docker exec -i root_jupyterhub_1 bash <<EOF
+    cat >>/srv/jupyterhub_config/jupyterhub_config.py <<EOF2
+
+c.JupyterHub.base_url='/$hubid/'
+c.GoogleOAuthenticator.oauth_callback_url = 'https://opty.jp/$hubid/hub/oauth2callback'
+EOF2
+
+EOF
+}
+
+reconfigure_nginx()
+{
+    hubdir="$1"
+    "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh sudo docker exec -i root_nginx_1 bash <<EOF
+cat >/etc/nginx/nginx.conf <<'EOF2'
+$(config_toplevel "$ahdir/"*)
+EOF2
+EOF
+}
+
+config_location_for()
+{
+    hubdir="$1"
+    [ -f "$hubdir/hubid" ] || return  # skip unassigned jupyterhub environments
+    hubid="$(cat "$hubdir/hubid")" || reportfailed "Missing hubid"
+
+    hubport="$(
+        source "$hubdir/jhvmdir-hub/datadir.conf"
+        echo $(( VNCPORT + 83 ))
+    )" || reportfailed
+    
+    cat <<EOF1
+
+        location /$hubid/ {
+            proxy_pass http://10.0.3.2:$hubport;
+
+EOF1
+    cat <<'EOF2'
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+            proxy_set_header X-NginX-Proxy true;
+        }
+
+EOF2
+}
+
+config_original_location()
+{
+    cat <<'EOF1'
+        location / {
+            proxy_pass http://192.168.11.88:8000;
+
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+            proxy_set_header X-NginX-Proxy true;
+        }
+EOF1
+}
+
+config_toplevel()
+{
+    cat <<'EOF1'
+# Ansible managed: /home/ubuntu/jupyterhub-deploy/roles/proxy/templates/nginx.conf.j2 modified on 2016-10-04 21:34:55 by ubuntu on main
+
+worker_processes  4;
+
+events {
+  worker_connections 1024;
+}
+
+http {
+
+	include /etc/nginx/mime.types;
+	default_type application/octet-stream;
+
+    server {
+        listen 80;
+        server_name hub;
+        rewrite        ^ https://$host$request_uri? permanent;
+    }
+
+    server {
+        listen 443;
+
+        client_max_body_size 50M;
+
+        server_name hub;
+
+        ssl on;
+        ssl_certificate /tmp/proxycert;
+        ssl_certificate_key /tmp/proxykey;
+
+        ssl_ciphers "AES128+EECDH:AES128+EDH";
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+        ssl_prefer_server_ciphers on;
+        ssl_session_cache shared:SSL:10m;
+        add_header Strict-Transport-Security "max-age=63072000; includeSubDomains";
+        add_header X-Content-Type-Options nosniff;
+        ssl_stapling on; # Requires nginx >= 1.3.7
+        ssl_stapling_verify on; # Requires nginx => 1.3.7
+        resolver_timeout 5s;
+
+        # Expose logs to "docker logs".
+        # See https://github.com/nginxinc/docker-nginx/blob/master/Dockerfile#L12-L14
+        access_log /var/log/nginx/access.log;
+        error_log /var/log/nginx/error.log;
+
+        location ~ /(user-[a-zA-Z0-9]*)/static(.*) {
+            alias /usr/local/lib/python3.4/dist-packages/notebook/static/$2;
+        }
+EOF1
+
+    for ahubdir in "$@"; do
+	config_location_for "$ahubdir"
+    done
+    
+    cat <<'EOF2'
+        location ~* /(user/[^/]*)/(api/kernels/[^/]+/channels|terminals/websocket)/? {
+            proxy_pass http://192.168.11.88:8000;
+
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+            proxy_set_header X-NginX-Proxy true;
+
+            # WebSocket support
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_read_timeout 86400;
+
+        }
+    }
+
+}
+EOF2
+}
+
+config_the_original()  # not used, just here for reference
+{
+    cat <<'EOF'
+# Ansible managed: /home/ubuntu/jupyterhub-deploy/roles/proxy/templates/nginx.conf.j2 modified on 2016-10-04 21:34:55 by ubuntu on main
+
+worker_processes  4;
+
+events {
+  worker_connections 1024;
+}
+
+http {
+
+	include /etc/nginx/mime.types;
+	default_type application/octet-stream;
+
+    server {
+        listen 80;
+        server_name hub;
+        rewrite        ^ https://$host$request_uri? permanent;
+    }
+
+    server {
+        listen 443;
+
+        client_max_body_size 50M;
+
+        server_name hub;
+
+        ssl on;
+        ssl_certificate /tmp/proxycert;
+        ssl_certificate_key /tmp/proxykey;
+
+        ssl_ciphers "AES128+EECDH:AES128+EDH";
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+        ssl_prefer_server_ciphers on;
+        ssl_session_cache shared:SSL:10m;
+        add_header Strict-Transport-Security "max-age=63072000; includeSubDomains";
+        add_header X-Content-Type-Options nosniff;
+        ssl_stapling on; # Requires nginx >= 1.3.7
+        ssl_stapling_verify on; # Requires nginx => 1.3.7
+        resolver_timeout 5s;
+
+        # Expose logs to "docker logs".
+        # See https://github.com/nginxinc/docker-nginx/blob/master/Dockerfile#L12-L14
+        access_log /var/log/nginx/access.log;
+        error_log /var/log/nginx/error.log;
+
+        location ~ /(user-[a-zA-Z0-9]*)/static(.*) {
+            alias /usr/local/lib/python3.4/dist-packages/notebook/static/$2;
+        }
+
+        location / {
+            proxy_pass http://192.168.11.88:8000;
+
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+            proxy_set_header X-NginX-Proxy true;
+        }
+
+        location ~* /(user/[^/]*)/(api/kernels/[^/]+/channels|terminals/websocket)/? {
+            proxy_pass http://192.168.11.88:8000;
+
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+            proxy_set_header X-NginX-Proxy true;
+
+            # WebSocket support
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_read_timeout 86400;
+
+        }
+    }
+
+}
+EOF
+}
+
+
+build_jupyterhub()
+{
+    # which hub is next?
+    hubn=0
+    while true; do
+	digits3="$(( hubn + 1000 ))"
+	digits3="${digits3#1}"
+	[ -d "$ahdir/$digits3" ] || break
+	(( hubn++ ))
+    done
+
+    hubdir="$ahdir/$digits3"
+
+    cd "$ahdir" || reportfailed cd "$ahdir"
+
+    set -x
+    set -e
+    git clone git@github.com:axsh/jupyter-platform-dev.git || reportfailed git clone
+
+    mv jupyter-platform-dev "$digits3" || reportfailed mv jupyter-platform-dev "$digits3"
+    cd "$digits3"
+
+    ./demo-scripts/google-oauth-distribute-notebooks-via-dir-softlink.sh initial-setup || reportfailed initial-setup
+
+    echo "Doing first pass of build: $(date)"
+    time ./test2-build-nbgrader-environment-w-ansible >>build.log 2>&1
+
+    echo "Doing second pass of build: $(date)"
+    time ./test2-build-nbgrader-environment-w-ansible >>build.log 2>&1
+
+    echo "Finished $(date)"
+}
+
+restart_jupyterhub()
+{
+    hubid="$1"
+    result="$(grep -Fx "$hubid" "$ahdir"/*/hubid)"
+    [ "$result" = "" ] && reportfailed "Hub with name '$hubid' not found"
+    "${result%/hubid*}"/jhvmdir-hub/ssh-to-kvm.sh sudo docker stop root_jupyterhub_1
+    "${result%/hubid*}"/jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_jupyterhub_1
+}
+
+
+cmd="$1"
+shift
+
+case "$cmd" in
+    new) do_new "$@"
+	 ;;
+    debugjhub) reconfigure_one_jupyterhub "$@"
+	 ;;
+    debugnginx) reconfigure_nginx "$@"
+	 ;;
+    buildnewjh) build_jupyterhub "$@"
+	 ;;
+    restart) restart_jupyterhub "$@"
+	 ;;
+    list)
+	shopt -s nullglob
+	cat "$ahdir"/*/hubid
+	 ;;
+    *) usage
+       ;;
+esac
