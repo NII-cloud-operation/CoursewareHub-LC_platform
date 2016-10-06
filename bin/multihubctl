@@ -9,8 +9,11 @@ reportfailed()
 usage()
 {
     cat <<EOF
+Usage:
 
-TODO
+./bin/multihubctl list              ## Lists assigned JupyterHub servers
+./bin/multihubctl new {hubid}       ## Assigns new JupyterHub server
+./bin/multihubctl restart {hubid}   ## Restarts JupyterHub server
 
 EOF
 }
