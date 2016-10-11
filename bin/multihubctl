@@ -50,7 +50,7 @@ do_new()
     echo "$hubid" >"$ahdir/$digits3/hubid"
     hubdir="$ahdir/$digits3"
     
-    reconfigure_one_jupyterhub "$hubdir"
+    reconfigure_one_jupyterhub "$hubdir" "$teacherid"
     
     reconfigure_nginx "$ahdir/000"
 
@@ -64,9 +64,14 @@ do_new()
 reconfigure_one_jupyterhub()
 {
     hubdir="$1"
+    teacherid="$2"
     hubid="$(cat "$hubdir/hubid")" || reportfailed "Missing hubid"
 
     "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh sudo docker exec -i root_jupyterhub_1 bash <<EOF
+    cat >>/srv/jupyterhub_users/userlist <<EOF3
+$teacherid admin
+EOF3
+
     cat >>/srv/jupyterhub_config/jupyterhub_config.py <<EOF2
 
 c.JupyterHub.base_url='/$hubid/'
