@@ -822,3 +822,5 @@ setsid sshuttle -l 0.0.0.0 -r centos@192.168.11.90 10.0.2.0/24 1>>sshuttle.log 2
 EOF
     ) ; prev_cmd_failed
 ) ; prev_cmd_failed
+
+touch "$DATADIR/flag-inital-build-completed"

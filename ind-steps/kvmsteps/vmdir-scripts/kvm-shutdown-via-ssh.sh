@@ -50,4 +50,5 @@ maybesudo=""
 	echo "Waiting for $waitfor seconds for KVM process $kvmpid to exit"
 	sleep "$waitfor"
     done <<<"$WAITFORSHUTDOWN"
+    kvm_is_running || rm $DATADIR/runinfo/kvm.pid
 ) ; prev_cmd_failed
