@@ -40,6 +40,17 @@ for i in "${vmlist[@]}"; do
 done
 
 (
+    $starting_step "Expand extra-snapshot-files.tar.gz for VM=$VMDIR"
+    [ -d "$DATADIR/letsencrypt" ]
+    $skip_step_if_already_done;  set -e
+
+    echo -n "Expanding tar file..."
+    cd "$DATADIR"
+    tar xSf "$snapshot_source/extra-snapshot-files.tar.gz"
+    echo "..finished."
+) ; prev_cmd_failed
+
+(
     $starting_step "Assign mcastPORT"
     [[ "$(cat "$DATADIR"/*/datadir.conf | tee /tmp/check)" != *set-this* ]]
     $skip_step_if_already_done; set -e
@@ -82,5 +93,29 @@ sudo rmdir /var/run/restuser.sock # for some reason docker puts a directory here
 sudo daemon -n restuser -o /var/log/restuser.log -- python /srv/restuser/restuser.py --skeldir=/srv/skeldir
 EOF
     ) ; prev_cmd_failed
-    
+
+    (
+	$starting_step "Setup keys, restart nginx"
+	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<'EOF' 1>/dev/null 2>&1
+dout="$(sudo docker ps | grep root_nginx_1)"
+set -x
+exec 2>/tmp/why
+[[ "$dout" == *Up* ]]
+EOF
+	$skip_step_if_already_done; set -e
+
+	# docker mistakenly makes these too, so they must be deleted first
+	# (or we may have old keys there)
+	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo rm -fr /tmp/proxycert /tmp/proxykey
+	
+	cat "$DATADIR"/letsencrypt/archive/opty.jp/fullchain1.pem | \
+	    "$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo tee /tmp/proxycert
+	
+	cat "$DATADIR"/letsencrypt/archive/opty.jp/privkey1.pem | \
+	    "$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo tee /tmp/proxykey
+	
+	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo docker stop root_nginx_1
+	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_nginx_1
+    ) ; prev_cmd_failed
+
 ) ; prev_cmd_failed
