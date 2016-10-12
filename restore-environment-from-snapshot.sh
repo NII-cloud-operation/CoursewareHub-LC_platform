@@ -162,3 +162,23 @@ setsid sshuttle -l 0.0.0.0 -r centos@192.168.11.90 10.0.2.0/24 1>>sshuttle.log 2
 sleep 3  # maybe fixes race between setsid and exiting ssh.   TODO: try nohup and more testing
 EOF
 ) ; prev_cmd_failed
+
+(
+    $starting_step "Output port forwarding hint script"
+    false # just always refresh this
+    $skip_step_if_already_done
+    httpsport="$(source "$DATADIR"/jhvmdir-hub/datadir.conf ; echo $((VNCPORT + 43 )) )"
+    # guess at local IP address
+    device="$(cat /proc/self/net/route | \
+               while read a b c ; do [ "$b" == 00000000 ] && echo "$a" && break ; done)"
+    ipetc="$(ifconfig "$device" | grep -o 'inet [0-9.]*')"
+
+cat /proc/self/net/route | while read a b c ; do [ "$b" == 00000000 ] && echo "$a" && break ; done | ifconfig "$(cat)" | grep -o 'inet [0-9.]*'
+    
+    tee "$DATADIR"/pfhint.sh <<EOF
+# sudo ssh useraccount@127.0.0.1 -L 443:aa.bb.cc.dd:$httpsport -g
+# maybe this:
+sudo ssh useraccount@127.0.0.1 -L 443:${ipetc#* }:$httpsport -g
+echo "Plus do something like echo '127.0.0.1 niidemo.com' >>/etc/hosts"
+EOF
+) ; prev_cmd_failed
