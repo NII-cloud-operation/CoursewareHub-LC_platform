@@ -87,7 +87,7 @@ EOF
 
     for i in 1box-image-resources ubuntu-image-resources letsencrypt; do
 	[ -d "$i" ] && continue
-	[ -d ~/"$i" ] && cp -al ~/"$i" "$i"
+	[ -d ~/"$i" ] && cp -al ~/"$i" "$i" || cp -a ~/"$i" "$i"
     done
 
     resourcelist=(
