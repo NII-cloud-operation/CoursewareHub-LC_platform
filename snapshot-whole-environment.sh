@@ -15,28 +15,34 @@ source "$ORGCODEDIR/simple-defaults-for-bashsteps.source"
 [ -f "$DATADIR/flag-inital-build-completed" ] || reportfailed "build must be completed before running this"
 
 
+# It is important that node1 and node2 be shutdown before hub, because
+# stopping the NFS server on the hub will freeze the node1 and node2 and
+# prevent them from doing a clean shutdown.
 
 vmlist=(
-    jhvmdir
-    jhvmdir-hub
     jhvmdir-node1
     jhvmdir-node2
+    jhvmdir
+    jhvmdir-hub
     vmdir-1box
 )
+
+TARSUFFIX=".tar"
+TARPARAMS="cSf"
 
 do_one_vm()
 {
     VMDIR="$1"
     (
 	$starting_group "Checkpoint VM=$VMDIR"
-	[ -f "$DATADIR/$VMDIR-snapshot.tar.gz" ]
+	[ -f "$DATADIR/$VMDIR-snapshot$TARSUFFIX" ]
 	$skip_group_if_unnecessary
 
 	"$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh"
 
 	(
 	    $starting_step "Create snapshot tar file for VM=$VMDIR"
-	    [ -f "$DATADIR/$VMDIR-snapshot.tar.gz" ]
+	    [ -f "$DATADIR/$VMDIR-snapshot$TARSUFFIX" ]
 	    $skip_step_if_already_done;  set -e
 
 	    cp "$DATADIR/$VMDIR/datadir.conf" "$DATADIR/$VMDIR/datadir.conf.save"
@@ -44,7 +50,7 @@ do_one_vm()
 
 	    echo -n "Creating tar file..."
 	    cd "$DATADIR"
-	    tar cSf "$DATADIR/$VMDIR-snapshot.tar.gz" "$VMDIR"
+	    tar $TARPARAMS "$DATADIR/$VMDIR-snapshot$TARSUFFIX" "$VMDIR"
 	    echo "..finished."
 
 	    cp "$DATADIR/$VMDIR/datadir.conf.save" "$DATADIR/$VMDIR/datadir.conf"
@@ -58,7 +64,7 @@ done
 
 (
     $starting_step "Snapshot extra files used when restoring"
-    [ -f "$DATADIR/extra-snapshot-files.tar.gz" ]
+    [ -f "$DATADIR/extra-snapshot-files$TARSUFFIX" ]
     $skip_step_if_already_done; set -e
     extrafiles=(
 	bin
@@ -67,5 +73,5 @@ done
 	test2-build-nbgrader-environment-w-ansible
     )
     cd "$DATADIR"
-    tar cSf "$DATADIR/extra-snapshot-files.tar.gz" "${extrafiles[@]}"
+    tar $TARPARAMS "$DATADIR/extra-snapshot-files$TARSUFFIX" "${extrafiles[@]}"
 )  ; prev_cmd_failed
