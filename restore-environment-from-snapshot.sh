@@ -41,10 +41,24 @@ done
 
 (
     $starting_step "Assign mcastPORT"
-    [[ "$(cat "$DATADIR"/*/datadir.conf)" != *set-this* ]]
+    [[ "$(cat "$DATADIR"/*/datadir.conf | tee /tmp/check)" != *set-this* ]]
     $skip_step_if_already_done; set -e
-    echo fffffffffffffffff
-    exit 222
-    cd "$DATADIR"
-    tar cSf "$DATADIR/extra-snapshot-files.tar.gz" "${extrafiles[@]}"
+
+    alreadyset="$(cat "$DATADIR"/*/datadir.conf | grep mcastPORT= | grep -v set-this || true)"
+    [ "$alreadyset" = "" ] || reportfailed "Some mcastPORT values (but not all) already set"
+
+    locally_in_use="$(
+       ps auxwww | grep -o "mcast=[0-9. ]*:[0-9]*" | cut -d : -f 2 | sort -u
+       # e.g.:  "mcast=230.0.0.1:5320" -> "5320" -> sort -u
+    )"
+    while true; do
+	randomport="$(( 5000 + ( $RANDOM % 5000 ) ))"
+	if ! grep -Fx "$locally_in_use"  <<<"$randomport" 1>/dev/null ; then
+	    break # if $randomport is not in the list
+	fi
+	sleep 0.567 # save CPU if this loop is buggy
+    done
+    # TODO, reduce the chance of port conflicts even more, somehow
+
+    sed -i "s,mcastPORT=set-this-before-booting,mcastPORT=$randomport,"  "$DATADIR"/*/datadir.conf
 )  ; prev_cmd_failed
