@@ -485,11 +485,6 @@ cp users.vault.yml users.vault.yml.org
 cat >users.vault.yml <<EOF2
 jupyterhub_admins:
 - potter
-- test4jupyter
-jupyterhub_users:
-- student1jupyter
-- student2jupyter
-- student3jupyter
 EOF2
 ansible-vault encrypt --vault-password-file vault-password users.vault.yml
 EOF
