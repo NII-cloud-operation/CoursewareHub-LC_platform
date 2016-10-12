@@ -38,7 +38,7 @@ do_one_vm()
 	[ -f "$DATADIR/$VMDIR-snapshot$TARSUFFIX" ]
 	$skip_group_if_unnecessary
 
-	"$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh"
+	"$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" ; prev_cmd_failed
 
 	(
 	    $starting_step "Create snapshot tar file for VM=$VMDIR"
