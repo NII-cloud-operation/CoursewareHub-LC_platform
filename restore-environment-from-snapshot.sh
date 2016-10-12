@@ -119,3 +119,10 @@ EOF
     ) ; prev_cmd_failed
 
 ) ; prev_cmd_failed
+
+# Boot the rest:
+"$DATADIR"/jhvmdir/kvm-boot.sh ; prev_cmd_failed
+"$DATADIR"/jhvmdir-node1/kvm-boot.sh ; prev_cmd_failed
+"$DATADIR"/jhvmdir-node2/kvm-boot.sh ; prev_cmd_failed
+"$DATADIR"/jhvmdir-node1/kvm-boot.sh ; prev_cmd_failed
+"$DATADIR"/vmdir-1box/kvm-boot.sh ; prev_cmd_failed
