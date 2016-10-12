@@ -62,3 +62,25 @@ done
 
     sed -i "s,mcastPORT=set-this-before-booting,mcastPORT=$randomport,"  "$DATADIR"/*/datadir.conf
 )  ; prev_cmd_failed
+
+(
+    $starting_group "Boot and configure hub VM"
+    # always do every step
+    false
+    $skip_group_if_unnecessary
+
+    "$DATADIR"/jhvmdir-hub/kvm-boot.sh ; prev_cmd_failed
+
+    (
+	$starting_step "Start restuser daemon"
+	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<EOF 1>/dev/null 2>&1
+ps auxwww | grep 'restuse[r].log'
+EOF
+	$skip_step_if_already_done; set -e
+	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<EOF
+sudo rmdir /var/run/restuser.sock # for some reason docker puts a directory here by mistake
+sudo daemon -n restuser -o /var/log/restuser.log -- python /srv/restuser/restuser.py --skeldir=/srv/skeldir
+EOF
+    ) ; prev_cmd_failed
+    
+) ; prev_cmd_failed
