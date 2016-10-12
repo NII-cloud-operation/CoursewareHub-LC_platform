@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 reportfailed()
 {
@@ -87,7 +87,12 @@ EOF
 
     for i in 1box-image-resources ubuntu-image-resources letsencrypt; do
 	[ -d "$i" ] && continue
-	[ -d ~/"$i" ] && cp -al ~/"$i" "$i" || cp -a ~/"$i" "$i"
+	if [ -d ~/"$i" ]; then
+	    if ! cp -al ~/"$i" "$i"; then
+		rm -fr "$i"
+		cp -a ~/"$i" "$i"
+	    fi
+	fi
     done
 
     resourcelist=(
