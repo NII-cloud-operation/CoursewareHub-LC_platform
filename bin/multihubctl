@@ -61,6 +61,7 @@ do_new()
     "$ahdir/000"/jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_nginx_1
 }
 
+: ${urlbase:="niidemo.com"}
 reconfigure_one_jupyterhub()
 {
     hubdir="$1"
@@ -75,7 +76,7 @@ EOF3
     cat >>/srv/jupyterhub_config/jupyterhub_config.py <<EOF2
 
 c.JupyterHub.base_url='/$hubid/'
-c.GoogleOAuthenticator.oauth_callback_url = 'https://opty.jp/$hubid/hub/oauth2callback'
+c.GoogleOAuthenticator.oauth_callback_url = 'https://$urlbase/$hubid/hub/oauth2callback'
 EOF2
 
 EOF
