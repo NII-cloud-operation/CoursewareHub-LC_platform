@@ -30,6 +30,9 @@ restore_one_vm()
 	    echo -n "Expanding tar file..."
 	    cd "$DATADIR"
 	    tar xSf "$snapshot_source/$VMDIR-snapshot.tar.gz"
+	    # snapshot may have been made on another machine, so the
+	    # kvmbin setting needs to be redone:
+	    sed -i 's,KVMBIN,KVMBINxxx,' "$VMDIR/datadir.conf"
 	    echo "..finished."
 	) ; prev_cmd_failed
     ) ; prev_cmd_failed
