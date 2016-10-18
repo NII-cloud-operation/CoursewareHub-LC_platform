@@ -64,7 +64,7 @@ do_new()
 : ${urlbase:="niidemo.com"}
 reconfigure_one_jupyterhub()
 {
-    hubdir="$1"
+    local hubdir="$1"
     teacherid="$2"
     hubid="$(cat "$hubdir/hubid")" || reportfailed "Missing hubid"
 
@@ -92,7 +92,7 @@ EOF
 
 reconfigure_nginx()
 {
-    hubdir="$1"
+    local hubdir="$1"
     "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh sudo docker exec -i root_nginx_1 bash <<EOF
 cat >/etc/nginx/nginx.conf <<'EOF2'
 $(config_toplevel "$ahdir/"*)
@@ -102,7 +102,7 @@ EOF
 
 config_location_for()
 {
-    hubdir="$1"
+    local hubdir="$1"
     [ -f "$hubdir/hubid" ] || return  # skip unassigned jupyterhub environments
     hubid="$(cat "$hubdir/hubid")" || reportfailed "Missing hubid"
 
@@ -334,7 +334,7 @@ build_jupyterhub()
 	(( hubn++ ))
     done
 
-    hubdir="$ahdir/$digits3"
+    local hubdir="$ahdir/$digits3"
 
     cd "$ahdir" || reportfailed cd "$ahdir"
 
