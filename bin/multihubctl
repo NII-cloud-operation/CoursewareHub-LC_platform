@@ -54,6 +54,7 @@ do_new()
     
     reconfigure_nginx "$ahdir/000"
 
+    echo "Restarting new JupyterHub container."
     "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker stop root_jupyterhub_1
 
     # if this JupyterHubs environment is reused, there may be
@@ -69,6 +70,7 @@ do_new()
 
     "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker start root_jupyterhub_1
     
+    echo "Restarting nginx proxy."
     "$ahdir/000"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker stop root_nginx_1
     "$ahdir/000"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker start root_nginx_1
 }
@@ -392,6 +394,17 @@ restart_jupyterhub()
     "${result%/hubid*}"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker start root_jupyterhub_1
 }
 
+dump_database()
+{
+    local hubdir="$1"
+    for table in api_tokens users proxies hubs servers; do
+	echo
+	echo "Table: $table"
+	"$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -q \
+	    	 sudo docker exec -i root_jpydb_1 \
+	    	 /usr/lib/postgresql/9.6/bin/psql -U postgres -d jupyterhub <<<"select * from $table ;"
+    done
+}
 
 cmd="$1"
 shift
@@ -406,6 +419,8 @@ case "$cmd" in
     buildnewjh) build_jupyterhub "$@"
 	 ;;
     restart) restart_jupyterhub "$@"
+	 ;;
+    dumpdb) dump_database "$@"
 	 ;;
     list)
 	shopt -s nullglob
