@@ -55,6 +55,18 @@ do_new()
     reconfigure_nginx "$ahdir/000"
 
     "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker stop root_jupyterhub_1
+
+    # if this JupyterHubs environment is reused, there may be
+    # remaining user containers with the wrong url path
+    for vm in node1 node2; do
+	containerlist="$(
+            "$hubdir"/jhvmdir-$vm/ssh-to-kvm.sh -q sudo docker ps -a -q
+        )"
+	[ "$containerlist" == "" ] && continue
+	echo "Removing existing containers on $vm."
+	"$hubdir"/jhvmdir-$vm/ssh-to-kvm.sh -q sudo docker rm -f $containerlist
+    done
+
     "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker start root_jupyterhub_1
     
     "$ahdir/000"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker stop root_nginx_1
