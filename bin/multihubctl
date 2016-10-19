@@ -446,6 +446,11 @@ push_hub_patch()
 	# the tar on the prev line will start reading from stdin, which is provided by this tar:
 	tar cz $filelist
     ) | "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker exec -i root_jupyterhub_1 bash
+
+    "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -q sudo bash <<EOF
+       mkdir -p /jupyter/admin/{copybook,admin_tools,tools,info}
+       chmod a+wr /jupyter/admin/{copybook,admin_tools,tools,info}
+EOF
 }
 
 cmd="$1"
