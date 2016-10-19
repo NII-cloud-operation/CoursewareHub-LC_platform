@@ -29,7 +29,7 @@ do_new()
     hubid="$1"
     teacherid="$2"
 
-    result="$(grep -Fx "$hubid" "$ahdir"/*/hubid)"
+    result="$(grep -Fx "$hubid" "$ahdir"/*/hubid 2>/dev/null)"
     [ "$result" = "" ] || reportfailed "Hub with name '$hubid' already exists"
 
     # which hub is next?
@@ -388,7 +388,7 @@ build_jupyterhub()
 restart_jupyterhub()
 {
     hubid="$1"
-    result="$(grep -Fx "$hubid" "$ahdir"/*/hubid)"
+    result="$(grep -HFx "$hubid" "$ahdir"/*/hubid)"
     [ "$result" = "" ] && reportfailed "Hub with name '$hubid' not found"
     "${result%/hubid*}"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker stop root_jupyterhub_1
     "${result%/hubid*}"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker start root_jupyterhub_1
