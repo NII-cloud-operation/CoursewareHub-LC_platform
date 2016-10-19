@@ -406,6 +406,48 @@ dump_database()
     done
 }
 
+fetch_hub_patch()
+{
+    # fetch the latest of whatever is already in hub-patch-dir-tree
+    local hubdir="$1"
+    hppath="$rootdir/hub-patch-dir-tree"
+
+    filelist="$(cd "$hppath" && find -type f)"
+    [ "$filelist" = "" ] && reportfailed "No files in hub-patch-dir-tree"
+
+    "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -qt sudo docker exec -i root_jupyterhub_1 bash <<EOF | ( cd "$rootdir/hub-patch-dir-tree" && tar xzv )
+set -e
+cd /
+tar cz $filelist
+EOF
+}
+
+push_hub_patch()
+{
+    local hubdir="$1"
+    hppath="$rootdir/hub-patch-dir-tree"
+
+    filelist="$(cd "$hppath" && ls)"
+
+    ( echo a b c ) | \
+	"$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker exec -i root_jupyterhub_1 bash -c 'rev ; date'
+}
+
+push_hub_patch()
+{
+    local hubdir="$1"
+    hppath="$rootdir/hub-patch-dir-tree"
+
+    filelist="$(cd "$hppath" && ls)"
+
+    (
+	echo 'cd / || exit 0 ; tar xzv'
+	cd "$rootdir/hub-patch-dir-tree" || exit
+	# the tar on the prev line will start reading from stdin, which is provided by this tar:
+	tar cz $filelist
+    ) | "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker exec -i root_jupyterhub_1 bash
+}
+
 cmd="$1"
 shift
 
@@ -421,6 +463,10 @@ case "$cmd" in
     restart) restart_jupyterhub "$@"
 	 ;;
     dumpdb) dump_database "$@"
+	 ;;
+    fetch-hub-patch) fetch_hub_patch "$@"
+	 ;;
+    push-hub-patch) push_hub_patch "$@"
 	 ;;
     list)
 	shopt -s nullglob
