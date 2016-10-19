@@ -418,7 +418,7 @@ fetch_hub_patch()
     "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -qt sudo docker exec -i root_jupyterhub_1 bash <<EOF | ( cd "$rootdir/hub-patch-dir-tree" && tar xzv )
 set -e
 cd /
-tar cz $filelist
+tar cz $(echo $filelist)
 EOF
 }
 
