@@ -430,17 +430,6 @@ push_hub_patch()
 
     filelist="$(cd "$hppath" && ls)"
 
-    ( echo a b c ) | \
-	"$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker exec -i root_jupyterhub_1 bash -c 'rev ; date'
-}
-
-push_hub_patch()
-{
-    local hubdir="$1"
-    hppath="$rootdir/hub-patch-dir-tree"
-
-    filelist="$(cd "$hppath" && ls)"
-
     (
 	echo 'cd / || exit 0 ; tar xzv'
 	cd "$rootdir/hub-patch-dir-tree" || exit
