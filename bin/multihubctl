@@ -51,6 +51,7 @@ do_new()
     hubdir="$ahdir/$digits3"
     
     reconfigure_one_jupyterhub "$hubdir" "$teacherid"
+    push_hub_patch "$hubdir" 1>/dev/null
     
     reconfigure_nginx "$ahdir/000"
 
