@@ -463,6 +463,17 @@ create_directory_structure()
        chown "$teacherid:$teacherid" "/jupyter/admin/$teacherid"
        chmod a+wr "/jupyter/admin/$teacherid"
 EOF
+
+    # update with latest version
+    tar c adapt-notebooks-for-user.sh background-command-processor.sh | \
+	"$hubdir/jhvmdir-hub/ssh-to-kvm.sh" -q sudo tar xv -C /srv
+
+    # TODO: redo this
+    "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -q sudo bash <<EOF
+killall background-command-processor.sh
+cd /srv
+bash -c 'setsid ./background-command-processor.sh 1>>bcp.log 2>&1 </dev/null &'
+EOF
 }
 
 cmd="$1"
