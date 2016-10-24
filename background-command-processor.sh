@@ -130,6 +130,11 @@ students-home-dir-hack()
     # Make sure user directories have the symbolic links
     shopt -s nullglob
     for udir in /mnt/nfs/home/*; do
+	userid="${udir##*/}"
+	# skip known administrators and the teacher
+	[ "$userid" = "potter" ] && continue
+	[ "$userid" = "ubuntu" ] && continue
+	[ -f "/jupyter/admin/$userid" ] && continue
 	for link in copybook tools info; do
 	    if ! [ -h "$udir/$link" ]; then
 		ln -s "/jupyter/admin/$link" "$udir/$link" 2>/dev/null
