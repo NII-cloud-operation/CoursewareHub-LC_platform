@@ -138,8 +138,11 @@ students-home-dir-hack()
 	for link in copybook tools info; do
 	    if ! [ -h "$udir/$link" ]; then
 		ln -s "/jupyter/admin/$link" "$udir/$link" 2>/dev/null
-		userid="${udir##*/}"
 		chown -h "$userid:$userid" "$udir/$link" 2>/dev/null
+		# Hopefully this next one will be very temporary:
+		# Make user dirs world writable so teacher can copy in notebooks with
+		# simple unix commands.
+		chmod -R a+wr "$udir"
 	    fi
 	done
     done
