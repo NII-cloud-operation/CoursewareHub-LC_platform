@@ -122,6 +122,34 @@ scan-for-commands()
     done
 }
 
+students-home-dir-hack()
+{
+    # This is probably temporary and will be moved/rewritten when the design
+    # stabilizes.
+
+    # Make sure user directories have the symbolic links
+    shopt -s nullglob
+    for udir in /mnt/nfs/home/*; do
+	userid="${udir##*/}"
+	# skip known administrators and the teacher
+	[ "$userid" = "potter" ] && continue
+	[ "$userid" = "ubuntu" ] && continue
+	[ -f "/jupyter/admin/$userid" ] && continue
+	for link in copybook tools info; do
+	    if ! [ -h "$udir/$link" ]; then
+		ln -s "/jupyter/admin/$link" "$udir/$link" 2>/dev/null
+		chown -h "$userid:$userid" "$udir/$link" 2>/dev/null
+	    fi
+	done
+	# Hopefully this next one will be very temporary:
+	# Make user dirs world writable so teacher can copy in notebooks with
+	# simple unix commands.  Do this every time so teacher can also
+	# copy out new files that the student might put in.
+	# TODO: avoid this, using groups, perhaps.
+	chmod -R a+wr "$udir"
+    done
+}
+
 if [ "$(whoami)" != root ]; then
     echo "Must be root" 1>&2
     exit 1
@@ -129,5 +157,6 @@ fi
 
 while true; do
     scan-for-commands
+    students-home-dir-hack
     sleep 1
 done
