@@ -525,7 +525,7 @@ case "$cmd" in
 	cat "$ahdir"/*/hubid
 	 ;;
     listall)
-	cmd='head "$ahdir"/*/hubid*'
+	cmd='head -v "$ahdir"/*/hubid*'
 	echo "$cmd"
 	eval "$cmd"
 	 ;;
