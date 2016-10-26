@@ -524,6 +524,11 @@ case "$cmd" in
 	shopt -s nullglob
 	cat "$ahdir"/*/hubid
 	 ;;
+    listall)
+	cmd='head "$ahdir"/*/hubid*'
+	echo "$cmd"
+	eval "$cmd"
+	 ;;
     *) usage
        ;;
 esac
