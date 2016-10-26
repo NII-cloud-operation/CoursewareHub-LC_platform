@@ -529,6 +529,13 @@ case "$cmd" in
 	echo "$cmd"
 	eval "$cmd"
 	 ;;
+    recoverall)
+	(
+	    shopt -s nullglob
+	    set -x
+	    rm "$ahdir"/*/hubid-deleted 2>/dev/null
+	)
+	 ;;
     *) usage
        ;;
 esac
