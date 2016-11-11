@@ -13,6 +13,7 @@ Usage:
 
 ./bin/multihubctl list              ## Lists assigned JupyterHub servers
 ./bin/multihubctl new {hubid}       ## Assigns new JupyterHub server
+./bin/multihubctl delete {hubid}    ## Disconnects JupyterHub server
 ./bin/multihubctl restart {hubid}   ## Restarts JupyterHub server
 
 EOF
@@ -37,8 +38,14 @@ do_new()
     while true; do
 	digits3="$(( hubn + 1000 ))"
 	digits3="${digits3#1}"
-	[ -f "$ahdir/$digits3/hubid" ] || break
-	(( hubn++ ))
+	if [ -f "$ahdir/$digits3/hubid-deleted" ] || \
+	       [ -f "$ahdir/$digits3/hubid" ]; then
+	    # already used, keep looking
+	    (( hubn++ ))
+	else
+	    # found unused one
+	    break
+	fi
     done
 
     [ -d "$ahdir/$digits3" ] || reportfailed 'No more cached jupyterhubs available'
@@ -387,6 +394,21 @@ build_jupyterhub()
     echo "Finished $(date)"
 }
 
+delete_jupyterhub()
+{
+    hubid="$1"
+    result="$(grep -HFx "$hubid" "$ahdir"/*/hubid)"
+    # result is something like: active-hubs/002/hubid:class4
+    [ "$result" = "" ] && reportfailed "Hub with name '$hubid' not found"
+    result="${result%:*}"
+    mv "$result" "$result-deleted"
+
+    reconfigure_nginx "$ahdir/000"
+    echo "Restarting nginx proxy."
+    "$ahdir/000"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker stop root_nginx_1
+    "$ahdir/000"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker start root_nginx_1
+}
+
 restart_jupyterhub()
 {
     hubid="$1"
@@ -482,6 +504,8 @@ shift
 case "$cmd" in
     new) do_new "$@"
 	 ;;
+    delete) delete_jupyterhub "$@"
+	 ;;
     debugjhub) reconfigure_one_jupyterhub "$@"
 	 ;;
     debugnginx) reconfigure_nginx "$@"
@@ -499,6 +523,18 @@ case "$cmd" in
     list)
 	shopt -s nullglob
 	cat "$ahdir"/*/hubid
+	 ;;
+    listall)
+	cmd='head -v "$ahdir"/*/hubid*'
+	echo "$cmd"
+	eval "$cmd"
+	 ;;
+    recoverall)
+	(
+	    shopt -s nullglob
+	    set -x
+	    rm "$ahdir"/*/hubid-deleted 2>/dev/null
+	)
 	 ;;
     *) usage
        ;;
