@@ -55,7 +55,7 @@ done
 
 (
     $starting_step "Assign mcastPORT"
-    [[ "$(cat "$DATADIR"/*/datadir.conf | tee /tmp/check)" != *set-this* ]]
+    [[ "$(cat "$DATADIR"/*/datadir.conf)" != *set-this* ]]
     $skip_step_if_already_done; set -e
 
     alreadyset="$(cat "$DATADIR"/*/datadir.conf | grep mcastPORT= | grep -v set-this || true)"
@@ -74,7 +74,7 @@ done
     done
     # TODO, reduce the chance of port conflicts even more, somehow
 
-    sed -i "s,mcastPORT=set-this-before-booting,mcastPORT=$randomport,"  "$DATADIR"/*/datadir.conf
+    sed -i "s,mcastPORT=set-this-before-booting,mcastPORT=$randomport,"  "$DATADIR"/*vmdir*/datadir.conf
 )  ; prev_cmd_failed
 
 (
