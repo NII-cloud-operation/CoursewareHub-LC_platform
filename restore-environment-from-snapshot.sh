@@ -133,7 +133,7 @@ exec 2>/tmp/why
 EOF
 	$skip_step_if_already_done; set -e
 
-	## N/A ## "$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo docker stop root_jupyterhub_1
+	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo docker stop root_jupyterhub_1
 	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_jupyterhub_1
     ) ; prev_cmd_failed
 
