@@ -121,6 +121,22 @@ EOF
 	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_nginx_1
     ) ; prev_cmd_failed
 
+    (
+	$starting_step "Make sure root_jupyterhub_1 container is running"
+	# This step is a workaround. It should be running by now, but
+	# sometimes it is not, not sure why.
+	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<'EOF' 1>/dev/null 2>&1
+dout="$(sudo docker ps | grep root_jupyterhub_1)"
+set -x
+exec 2>/tmp/why
+[[ "$dout" == *Up* ]]
+EOF
+	$skip_step_if_already_done; set -e
+
+	## N/A ## "$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo docker stop root_jupyterhub_1
+	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_jupyterhub_1
+    ) ; prev_cmd_failed
+
 ) ; prev_cmd_failed
 
 # Boot the rest:
