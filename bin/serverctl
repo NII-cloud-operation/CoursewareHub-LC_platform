@@ -52,17 +52,28 @@ do_list()
     done
 }
 
+find_node_for_container()
+{
+    containers="$(do_list "$1")"
+    local servername="$2"
+    while read sname nodeid; do
+	if [ "$servername" == "$sname" ]; then
+	    echo "${nodeid//[()]/}"
+	    return 0
+	fi
+    done <<<"$containers"
+    reportfailed "container not found or not running"
+}
+
 do_allow_sudo()
 {
-    hubpath="$(classid_to_hubpath "$1")" || exit
-    servername="$2"
-    foundit=false
-    for n in $node_list; do
-	if "$hubpath"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker ps | get_container_names "" | \
-		grep -Fx "$servername" 1>/dev/null
-	then
-	    username="${servername#jupyter-}"
-	    "$hubpath"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker exec -i "$servername" bash <<EOF
+    local classid="$1"
+    local servername="$2"
+    local hubpath="$(classid_to_hubpath "$classid")" || exit
+    local thenode="$(find_node_for_container "$classid" "$servername")" || exit
+
+    username="${servername#jupyter-}"
+    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker exec -i "$servername" bash <<EOF
 set -e
 if grep "$username" /etc/sudoers 1>/dev/null; then
    echo "Sudo already allowed"
@@ -71,28 +82,16 @@ else
    echo "Sudo is now allowed for $username."
 fi
 EOF
-	    foundit=true
-	    break
-	fi
-    done
-    $foundit || reportfailed "container not found or not running"
 }
 
 do_stop()
 {
-    hubpath="$(classid_to_hubpath "$1")" || exit
-    servername="$2"
-    foundit=false
-    for n in $node_list; do
-	if "$hubpath"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker ps | get_container_names "" | \
-		grep -Fx "$servername" 1>/dev/null
-	then
-	    "$hubpath"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker stop "$servername"
-	    foundit=true
-	    break
-	fi
-    done
-    $foundit || reportfailed "container not found or not running"
+    local classid="$1"
+    local servername="$2"
+    local hubpath="$(classid_to_hubpath "$classid")" || exit
+    local thenode="$(find_node_for_container "$classid" "$servername")" || exit
+
+    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker stop "$servername"
 }
 
 cmd="$1"
