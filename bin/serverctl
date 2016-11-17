@@ -58,7 +58,9 @@ do_allow_sudo()
     servername="$2"
     foundit=false
     for n in $node_list; do
-	if "$hubpath"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker ps | get_container_names "" | grep -Fx "$servername" 1>/dev/null; then
+	if "$hubpath"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker ps | get_container_names "" | \
+		grep -Fx "$servername" 1>/dev/null
+	then
 	    username="${servername#jupyter-}"
 	    "$hubpath"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker exec -i "$servername" bash <<EOF
 set -e
@@ -76,12 +78,32 @@ EOF
     $foundit || reportfailed "container not found or not running"
 }
 
+do_stop()
+{
+    hubpath="$(classid_to_hubpath "$1")" || exit
+    servername="$2"
+    foundit=false
+    for n in $node_list; do
+	if "$hubpath"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker ps | get_container_names "" | \
+		grep -Fx "$servername" 1>/dev/null
+	then
+	    "$hubpath"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker stop "$servername"
+	    foundit=true
+	    break
+	fi
+    done
+    $foundit || reportfailed "container not found or not running"
+}
+
 cmd="$1"
 shift
 
 case "$cmd" in
     list)
 	do_list "$@"
+	 ;;
+    stop)
+	do_stop "$@"
 	 ;;
     allow-sudo)
 	do_allow_sudo "$@"
