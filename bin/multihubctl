@@ -25,6 +25,17 @@ rootdir="${ORGCODEDIR%/*}"
 ahdir="$rootdir/active-hubs"
 [ -d "$ahdir" ] || mkdir "$ahdir" || reportfailed
 
+
+classid_to_hubpath()
+{
+    local hubid="$1"
+    result="$(grep -HFx "$hubid" "$ahdir"/*/hubid)"
+    [ "$result" = "" ] && reportfailed "Hub with name '$hubid' not found"
+    # result is something like: active-hubs/002/hubid:class4
+    echo "${result%/hubid*}"
+}
+
+
 do_new()
 {
     hubid="$1"
@@ -400,12 +411,8 @@ build_jupyterhub()
 
 delete_jupyterhub()
 {
-    hubid="$1"
-    result="$(grep -HFx "$hubid" "$ahdir"/*/hubid)"
-    # result is something like: active-hubs/002/hubid:class4
-    [ "$result" = "" ] && reportfailed "Hub with name '$hubid' not found"
-    result="${result%:*}"
-    mv "$result" "$result-deleted"
+    hubpath="$(classid_to_hubpath "$1")" || exit
+    mv "$hubpath/hubid" "$hubpath/hubid-deleted"
 
     reconfigure_nginx "$ahdir/000"
     echo "Restarting nginx proxy."
@@ -415,11 +422,9 @@ delete_jupyterhub()
 
 restart_jupyterhub()
 {
-    hubid="$1"
-    result="$(grep -HFx "$hubid" "$ahdir"/*/hubid)"
-    [ "$result" = "" ] && reportfailed "Hub with name '$hubid' not found"
-    "${result%/hubid*}"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker stop root_jupyterhub_1
-    "${result%/hubid*}"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker start root_jupyterhub_1
+    hubpath="$(classid_to_hubpath "$1")" || exit
+    "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker stop root_jupyterhub_1
+    "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker start root_jupyterhub_1
 }
 
 dump_database()
