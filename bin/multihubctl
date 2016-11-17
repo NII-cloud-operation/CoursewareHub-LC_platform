@@ -105,8 +105,12 @@ $teacherid admin
 EOF3
 
     cat >>/srv/jupyterhub_config/jupyterhub_config.py <<EOF2
+# change to unix authentication:
+c.JupyterHub.authenticator_class = 'docker_oauth.DockerAuthenticator'
 
 c.JupyterHub.base_url='$withslash/'
+
+# next line is not used if docker_oauth.DockerAuthenticator is used
 c.GoogleOAuthenticator.oauth_callback_url = 'https://$urlbase${withslash}/hub/oauth2callback'
 EOF2
 
