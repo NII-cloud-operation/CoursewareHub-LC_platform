@@ -46,7 +46,7 @@ get_container_names()
 
 do_list()
 {
-    hubpath="$(classid_to_hubpath "$1")"
+    hubpath="$(classid_to_hubpath "$1")" || exit
     for n in $node_list; do
 	"$hubpath"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker ps -a | get_container_names " ($n)"
     done
@@ -54,7 +54,7 @@ do_list()
 
 do_allow_sudo()
 {
-    hubpath="$(classid_to_hubpath "$1")"
+    hubpath="$(classid_to_hubpath "$1")" || exit
     servername="$2"
     foundit=false
     for n in $node_list; do
