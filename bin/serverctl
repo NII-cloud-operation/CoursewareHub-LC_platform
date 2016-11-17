@@ -54,7 +54,7 @@ do_allow_sudo()
     [ "$result" = "" ] && reportfailed "Hub with name '$hubid' not found"
     foundit=false
     for n in node1 node2; do
-	if "${result%/hubid*}"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker ps | get_container_names "" | tee /tmp/www | grep -Fx "$servername" 1>/dev/null; then
+	if "${result%/hubid*}"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker ps | get_container_names "" | grep -Fx "$servername" 1>/dev/null; then
 	    username="${servername#jupyter-}"
 	    "${result%/hubid*}"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker exec -i "$servername" bash <<EOF
 if grep "$username" /etc/sudoers 1>/dev/null; then
