@@ -84,14 +84,15 @@ fi
 EOF
 }
 
-do_stop()
+do_simple_docker_cmd() # implements both start and stop
 {
     local classid="$1"
     local servername="$2"
+    local dcmd="$3"
     local hubpath="$(classid_to_hubpath "$classid")" || exit
     local thenode="$(find_node_for_container "$classid" "$servername")" || exit
 
-    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker stop "$servername"
+    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker "$dcmd" "$servername"
 }
 
 cmd="$1"
@@ -101,8 +102,8 @@ case "$cmd" in
     list)
 	do_list "$@"
 	 ;;
-    stop)
-	do_stop "$@"
+    stop | start)
+	do_simple_docker_cmd "$@" "$cmd"
 	 ;;
     allow-sudo)
 	do_allow_sudo "$@"
