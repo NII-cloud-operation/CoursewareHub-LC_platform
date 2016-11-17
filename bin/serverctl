@@ -23,6 +23,16 @@ rootdir="${ORGCODEDIR%/*}"
 ahdir="$rootdir/active-hubs"
 [ -d "$ahdir" ] || mkdir "$ahdir" || reportfailed
 
+node_list="node1 node2"
+
+classid_to_hubpath()
+{
+    local hubid="$1"
+    result="$(grep -HFx "$hubid" "$ahdir"/*/hubid)"
+    [ "$result" = "" ] && reportfailed "Hub with name '$hubid' not found"
+    # result is something like: active-hubs/002/hubid:class4
+    echo "${result%/hubid*}"
+}
 
 get_container_names()
 {
@@ -36,31 +46,27 @@ get_container_names()
 
 do_list()
 {
-    hubid="$1"
-    result="$(grep -HFx "$hubid" "$ahdir"/*/hubid)"
-    # result is something like: active-hubs/002/hubid:class4
-    [ "$result" = "" ] && reportfailed "Hub with name '$hubid' not found"
-    "${result%/hubid*}"/jhvmdir-node1/ssh-to-kvm.sh -q sudo docker ps -a | get_container_names " (node1)"
-    "${result%/hubid*}"/jhvmdir-node2/ssh-to-kvm.sh -q sudo docker ps -a | get_container_names " (node2)"
+    hubpath="$(classid_to_hubpath "$1")"
+    for n in $node_list; do
+	"$hubpath"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker ps -a | get_container_names " ($n)"
+    done
 }
 
 do_allow_sudo()
 {
-    hubid="$1"
+    hubpath="$(classid_to_hubpath "$1")"
     servername="$2"
-    hubid="$1"
-    result="$(grep -HFx "$hubid" "$ahdir"/*/hubid)"
-    # result is something like: active-hubs/002/hubid:class4
-    [ "$result" = "" ] && reportfailed "Hub with name '$hubid' not found"
     foundit=false
-    for n in node1 node2; do
-	if "${result%/hubid*}"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker ps | get_container_names "" | grep -Fx "$servername" 1>/dev/null; then
+    for n in $node_list; do
+	if "$hubpath"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker ps | get_container_names "" | grep -Fx "$servername" 1>/dev/null; then
 	    username="${servername#jupyter-}"
-	    "${result%/hubid*}"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker exec -i "$servername" bash <<EOF
+	    "$hubpath"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker exec -i "$servername" bash <<EOF
+set -e
 if grep "$username" /etc/sudoers 1>/dev/null; then
    echo "Sudo already allowed"
 else
    echo '$username ALL=(ALL) NOPASSWD: ALL' >>/etc/sudoers
+   echo "Sudo is now allowed for $username."
 fi
 EOF
 	    foundit=true
