@@ -1,6 +1,15 @@
 #!/bin/bash
 
+set -x
+
 DST_USER=$1
+
+# constants
+ROOT_DIR=/jupyter
+USER_DIR=$ROOT_DIR/users/$DST_USER
+SRC_COPYBOOK=$ROOT_DIR/admin/copybook
+SRC_INFO=$ROOT_DIR/admin/info
+SRC_TOOLS=$ROOT_DIR/admin/tools
 
 usage()
 {
@@ -15,20 +24,22 @@ EOF
   exit 1
 }
 
-
+# check arguments
 [ "$#" -eq 1 ] || {
   usage
 }
- 
-# check user
-[ $(cat /etc/passwd | grep $DST_USER) ] || {
+
+# get user entry
+user_entry=$(ls -l "$ROOT_DIR/users" | egrep " $DST_USER$")
+# check user entry
+[ -z "$user_entry" ] && {
   echo "user '$DST_USER' does not exist"
   usage
 }
+# get user id
+user_id=$(echo $user_entry | awk '{print $3}')
+# get group id
+group_id=$(echo $user_entry | awk '{print $4}')
 
-
-ROOT_DIR=/jupyter
-SRC_NOTEBOOK=$ROOT_DIR/admin/copybook
-DST_NOTEBOOK=$ROOT_DIR/users/$DST_USER
-
-sudo -u $DST_USER rsync -rvutl --delete --include='*.ipynb' --exclude='*' $SRC_NOTEBOOK/ $DST_NOTEBOOK
+# distribution
+sudo -u \#$user_id -g \#$group_id rsync -rltvuO --delete --include='*.ipynb' --exclude='*' $SRC_COPYBOOK/ $USER_DIR
