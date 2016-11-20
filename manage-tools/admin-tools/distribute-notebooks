@@ -8,8 +8,6 @@ DST_USER=$1
 ROOT_DIR=/jupyter
 USER_DIR=$ROOT_DIR/users/$DST_USER
 SRC_COPYBOOK=$ROOT_DIR/admin/copybook
-SRC_INFO=$ROOT_DIR/admin/info
-SRC_TOOLS=$ROOT_DIR/admin/tools
 
 usage()
 {
