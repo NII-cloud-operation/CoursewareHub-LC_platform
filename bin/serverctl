@@ -181,6 +181,38 @@ do_image_upload()
     cat "$imagename" | "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker import - "$targetimage"
 }
 
+do_image_distribute()
+{
+    local classid="$1"
+    local imagename="${2%.tar}.tar"
+
+    ## Do tests that can be done quickly first, so user can fix simple problems faster:
+    [ "$imagename" == ".tar" ] && reportfailed "The fourth parameter must be a file name to save the image into"
+    [ -f "$imagename" ] || reportfailed "The imagefile ($imagename) not found"
+
+    ## These have some delay
+    local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
+
+    # make a unique name based on the time
+    targetimage="${imagename%.tar}-$(date "+%y%m%d-%H%M%S")"
+    targetimage="${targetimage##*/}"
+
+    for n in $node_list; do
+	echo "Uploading image to node ($n)"
+	do_image_upload  "$classid"  "$targetimage" "$imagename" "$n"
+    done
+
+    "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker exec -i root_jupyterhub_1 bash <<EOF
+    cat >>/srv/jupyterhub_config/jupyterhub_config.py <<EOF2
+c.DockerSpawner.container_image = '$targetimage'
+EOF2
+EOF
+
+    "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker stop root_jupyterhub_1
+    "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker start root_jupyterhub_1
+}
+
+
 cmd="$1"
 shift
 
@@ -196,6 +228,9 @@ case "$cmd" in
 	 ;;
     image-create)
 	do_image_create "$@"
+	 ;;
+    image-distribute)
+	do_image_distribute "$@"
 	 ;;
     image-upload)
 	do_image_upload "$@"
