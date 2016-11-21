@@ -156,6 +156,31 @@ do_image_create()
     mv "$imagename.inprogress" "$imagename" || reportfailed "Final renaming to $imagename"
 }
 
+do_image_upload()
+{
+    local classid="$1"
+    local targetimage="$2"
+    local imagename="${3%.tar}.tar"
+    local thenode="$4"
+
+    ## Do tests that can be done quickly first, so user can fix simple problems faster:
+    [ "$imagename" == ".tar" ] && reportfailed "The fourth parameter must be a file name to save the image into"
+    [ -f "$imagename" ] || reportfailed "The imagefile ($imagename) not found"
+
+    ## These have some delay
+    local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
+
+    found=false
+    for n in $node_list; do
+	if [ "$thenode" = "$n" ]; then
+	    found=true
+	fi
+    done
+    $found || reportfailed "Node ($thenode) not found"
+
+    cat "$imagename" | "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker import - "$targetimage"
+}
+
 cmd="$1"
 shift
 
@@ -171,6 +196,9 @@ case "$cmd" in
 	 ;;
     image-create)
 	do_image_create "$@"
+	 ;;
+    image-upload)
+	do_image_upload "$@"
 	 ;;
     *) usage
        ;;
