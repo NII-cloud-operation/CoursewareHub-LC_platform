@@ -95,6 +95,28 @@ do_simple_docker_cmd() # implements both start and stop
     "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker "$dcmd" "$servername"
 }
 
+do_image_create()
+{
+    local classid="$1"
+    local servername="$2"
+    local imagename="${3%.tar}.tar"
+    local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
+    local thenode ; thenode="$(find_node_for_container "$classid" "$servername")" || exit
+
+    [ "$imagename" == ".tar" ] && reportfailed "The fourth parameter must be a file name to save the image into"
+    [ -f "$imagename" ] && reportfailed "The imagefile ($imagename) already exists"
+
+    touch "$imagename" || reportfailed "Unable to open $imagename for writing"
+    rm -f "$imagename"
+
+    rm -f "$imagename.inprogress"
+    touch "$imagename.inprogress" || reportfailed "Unable to open temporary $imagename for writing"
+    
+    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker export "$servername" >"$imagename.inprogress"
+    [ "$?" = "0" ] || reportfailed "docker export"
+    mv "$imagename.inprogress" "$imagename" || reportfailed "Final renaming to $imagename"
+}
+
 cmd="$1"
 shift
 
@@ -107,6 +129,9 @@ case "$cmd" in
 	 ;;
     allow-sudo)
 	do_allow_sudo "$@"
+	 ;;
+    image-create)
+	do_image_create "$@"
 	 ;;
     *) usage
        ;;
