@@ -95,6 +95,24 @@ do_simple_docker_cmd() # implements both start and stop
     "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker "$dcmd" "$servername"
 }
 
+humanreadable_to_bytes()
+{
+    # adapted code from http://stackoverflow.com/questions/4399475/unformat-disk-size-strings/
+    (( $BASH_VERSINFO >= 4 )) || reportfailed "requires bash >=4"
+    local s="$1"
+    tenpower=0
+    if [[ "$s" == *.* ]]; then
+	local post_decimal="${s#*.}"
+	post_decimal="${post_decimal//[^0-9]}"
+	tenpower="${#post_decimal}"
+    fi
+    s=${s^^};s=${s/B};s=${s/.};s=${s/E/KP};s=${s/P/KT}
+    s=${s/T/KG};s=${s/G/KM};s=${s/M/KK}
+
+    s=${s//K/*1024}" / ( 10 ** $tenpower )"
+    echo $((s))
+}
+
 do_image_create()
 {
     local classid="$1"
@@ -115,7 +133,25 @@ do_image_create()
     local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
     local thenode ; thenode="$(find_node_for_container "$classid" "$servername")" || exit
 
-    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker export "$servername" >"$imagename.inprogress"
+    ## get the virtual size:
+    echo -n "Starting by getting the image size..."
+    output="$("$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker ps -s -f name="$servername")"
+    echo ".done"
+    [ "$(wc -l <<<"$output")" == 2 ] || echo "Warning: problem finding image sizes" 1>&2
+    ## output is something like "..........(virtual 4.598 GB)"
+
+    tmp1="${output#*virtual }"
+    bytes="$(humanreadable_to_bytes "${tmp1%)*}")"
+    
+    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker export "$servername" >"$imagename.inprogress" &
+    pid="$!"
+    
+    while [ -d "/proc/$pid" ]; do
+	read perms links owner group size theres <<<"$(ls -l "$imagename.inprogress")"
+	echo "$size / $bytes  ($((size * 100 / bytes ))%)"
+	sleep 10
+    done
+    wait "$pid"
     [ "$?" = "0" ] || reportfailed "docker export"
     mv "$imagename.inprogress" "$imagename" || reportfailed "Final renaming to $imagename"
 }
