@@ -1,0 +1,56 @@
+#!/bin/bash
+
+JQ='jq .cells[].source'
+
+function compare_file () {
+  local from=$1 to=$2
+
+  diff -w -B -y --suppress-common-lines  <(cat ${from} | $JQ | sed -e 's/^\[//' -e 's/^\]//' -e 's/^ *"//' -e 's/\\n",$//' -e 's/"$//') <(cat ${to} | $JQ | sed -e 's/^\[//' -e 's/^\]//' -e 's/^ *"//' -e 's/\\n",$//' -e 's/"$//')
+}
+
+function compare_dir () {
+  local from=$1 to=$2
+
+  for nb in $( ls "$from" | grep .ipynb$ ); do
+    src="$from/$nb"
+    dst="$to/$nb"
+    if [ ! -e "$dst" ]; then
+      echo "'$nb' was added."
+    else
+      rep=$( (compare_file $src $dst) )
+      if [ ! -z "$rep" ]; then
+        echo "'$nb' was changed."
+      fi
+    fi
+  done
+  for nb in $( ls "$to" | grep .ipynb$ ); do
+    src="$to/$nb"
+    dst="$from/$nb"
+    if [ ! -e "$dst" ]; then
+      echo "'$nb' was deleted."
+    fi
+  done
+}
+
+if [ ! -e "$1" ]; then
+  echo "'$1' dose not exist."
+  exit 1
+fi
+if [ ! -e "$2" ]; then
+  echo "'$2' dose not exist."
+  exit 1
+fi
+
+if [ -d "$1" ] && [ ! -d "$2" ] ; then
+  echo "'$2' dose not directory."
+  exit 1
+elif [ ! -d "$1" ] && [ -d "$2" ] ; then
+  echo "'$2' dose not directory."
+  exit 1
+elif [ -d "$1" ] && [ -d "$2" ] ; then
+  compare_dir $1 $2
+else
+  compare_file $1 $2
+fi
+
+exit 0
