@@ -46,7 +46,7 @@ get_container_names()
 
 do_list()
 {
-    hubpath="$(classid_to_hubpath "$1")" || exit
+    local hubpath ; hubpath="$(classid_to_hubpath "$1")" || exit
     for n in $node_list; do
 	"$hubpath"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker ps -a | get_container_names " ($n)"
     done
@@ -69,8 +69,8 @@ do_allow_sudo()
 {
     local classid="$1"
     local servername="$2"
-    local hubpath="$(classid_to_hubpath "$classid")" || exit
-    local thenode="$(find_node_for_container "$classid" "$servername")" || exit
+    local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
+    local thenode ; thenode="$(find_node_for_container "$classid" "$servername")" || exit
 
     username="${servername#jupyter-}"
     "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker exec -i "$servername" bash <<EOF
@@ -89,8 +89,8 @@ do_simple_docker_cmd() # implements both start and stop
     local classid="$1"
     local servername="$2"
     local dcmd="$3"
-    local hubpath="$(classid_to_hubpath "$classid")" || exit
-    local thenode="$(find_node_for_container "$classid" "$servername")" || exit
+    local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
+    local thenode ; thenode="$(find_node_for_container "$classid" "$servername")" || exit
 
     "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker "$dcmd" "$servername"
 }
