@@ -491,8 +491,9 @@ create_directory_structure()
        fi
 
        mkdir -p "/jupyter/admin/$teacherid"
-       chown "$teacherid:$teacherid" "/jupyter/admin/$teacherid"
-       chmod a+wr "/jupyter/admin/$teacherid"
+       ln -s /jupyter/admin/admin_tools "/jupyter/admin/$teacherid/admin_tools"
+       chown -R "$teacherid:$teacherid" "/jupyter/admin/$teacherid"
+       chmod -R a+wr "/jupyter/admin/$teacherid"
 EOF
 
     # update with latest version
