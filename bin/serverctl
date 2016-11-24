@@ -257,9 +257,12 @@ do_image_list()
     ## These have some delay
     local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
     
+    # TODO: if this ends up being used, improve the output formatting
     for thenode in $node_list; do
 	echo "Images in $thenode:"
 	"$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker images
+	"$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q df -h /
+	echo
     done
 }
 
