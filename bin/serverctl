@@ -194,7 +194,25 @@ do_image_upload()
     $found || reportfailed "Node ($thenode) not found"
 
     echo "Starting docker load for $thenode..."
-    cat "$imagename" | "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker load
+    ## split the pipeline so we can get the pid of cat
+    exec 8< <(exec cat "$imagename")
+    catpid="$!"
+    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker load <&8 &
+    pid="$!"
+
+    read perms links owner group size theres <<<"$(ls -l "$imagename")"
+    while [ -d "/proc/$pid" ]; do
+	if info="$(cat /proc/"$catpid"/fdinfo/3)"; then  # TODO: remove the "fd=3" assumption
+	    read label position <<<"$info"
+	    echo "$position/$size ($((position * 100 / size))%)"
+	else
+	    echo "$size/$size (100% ??)"
+	fi
+	sleep 10
+    done
+    wait "$pid"
+    [ "$?" = "0" ] || reportfailed "docker export"
+    
     echo "...finished docker load for $thenode..."
     echo
 }
