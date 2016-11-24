@@ -23,6 +23,16 @@ rootdir="${ORGCODEDIR%/*}"
 ahdir="$rootdir/active-hubs"
 [ -d "$ahdir" ] || mkdir "$ahdir" || reportfailed
 
+node_list="node1 node2"
+
+classid_to_hubpath()
+{
+    local hubid="$1"
+    result="$(grep -HFx "$hubid" "$ahdir"/*/hubid)"
+    [ "$result" = "" ] && reportfailed "Hub with name '$hubid' not found"
+    # result is something like: active-hubs/002/hubid:class4
+    echo "${result%/hubid*}"
+}
 
 get_container_names()
 {
@@ -36,39 +46,226 @@ get_container_names()
 
 do_list()
 {
-    hubid="$1"
-    result="$(grep -HFx "$hubid" "$ahdir"/*/hubid)"
-    # result is something like: active-hubs/002/hubid:class4
-    [ "$result" = "" ] && reportfailed "Hub with name '$hubid' not found"
-    "${result%/hubid*}"/jhvmdir-node1/ssh-to-kvm.sh -q sudo docker ps -a | get_container_names " (node1)"
-    "${result%/hubid*}"/jhvmdir-node2/ssh-to-kvm.sh -q sudo docker ps -a | get_container_names " (node2)"
+    local hubpath ; hubpath="$(classid_to_hubpath "$1")" || exit
+    for n in $node_list; do
+	"$hubpath"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker ps -a | get_container_names " ($n)"
+    done
+}
+
+find_node_for_container()
+{
+    containers="$(do_list "$1")"
+    local servername="$2"
+    while read sname nodeid; do
+	if [ "$servername" == "$sname" ]; then
+	    echo "${nodeid//[()]/}"
+	    return 0
+	fi
+    done <<<"$containers"
+    reportfailed "container not found or not running"
 }
 
 do_allow_sudo()
 {
-    hubid="$1"
-    servername="$2"
-    hubid="$1"
-    result="$(grep -HFx "$hubid" "$ahdir"/*/hubid)"
-    # result is something like: active-hubs/002/hubid:class4
-    [ "$result" = "" ] && reportfailed "Hub with name '$hubid' not found"
-    foundit=false
-    for n in node1 node2; do
-	if "${result%/hubid*}"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker ps | get_container_names "" | grep -Fx "$servername" 1>/dev/null; then
-	    username="${servername#jupyter-}"
-	    "${result%/hubid*}"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker exec -i "$servername" bash <<EOF
+    local classid="$1"
+    local servername="$2"
+    local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
+    local thenode ; thenode="$(find_node_for_container "$classid" "$servername")" || exit
+
+    username="${servername#jupyter-}"
+    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker exec -i "$servername" bash <<EOF
+set -e
 if grep "$username" /etc/sudoers 1>/dev/null; then
    echo "Sudo already allowed"
 else
    echo '$username ALL=(ALL) NOPASSWD: ALL' >>/etc/sudoers
+   echo "Sudo is now allowed for $username."
 fi
 EOF
-	    foundit=true
-	    break
+}
+
+do_simple_docker_cmd() # implements both start and stop
+{
+    local classid="$1"
+    local servername="$2"
+    local dcmd="$3"
+    local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
+    local thenode ; thenode="$(find_node_for_container "$classid" "$servername")" || exit
+
+    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker "$dcmd" "$servername"
+}
+
+humanreadable_to_bytes()
+{
+    # adapted code from http://stackoverflow.com/questions/4399475/unformat-disk-size-strings/
+    (( $BASH_VERSINFO >= 4 )) || reportfailed "requires bash >=4"
+    local s="$1"
+    tenpower=0
+    if [[ "$s" == *.* ]]; then
+	local post_decimal="${s#*.}"
+	post_decimal="${post_decimal//[^0-9]}"
+	tenpower="${#post_decimal}"
+    fi
+    s=${s^^};s=${s/B};s=${s/.};s=${s/E/KP};s=${s/P/KT}
+    s=${s/T/KG};s=${s/G/KM};s=${s/M/KK}
+
+    s=${s//K/*1024}" / ( 10 ** $tenpower )"
+    echo $((s))
+}
+
+do_image_create()
+{
+    local classid="$1"
+    local servername="$2"
+    local imagename="${3%.tar}.tar"
+
+    ## Do tests that can be done quickly first, so user can fix simple problems faster:
+    [ "$imagename" == ".tar" ] && reportfailed "The fourth parameter must be a file name to save the image into"
+    [ -f "$imagename" ] && reportfailed "The imagefile ($imagename) already exists"
+
+    touch "$imagename" || reportfailed "Unable to open $imagename for writing"
+    rm -f "$imagename"
+
+    rm -f "$imagename.inprogress"
+    touch "$imagename.inprogress" || reportfailed "Unable to open temporary $imagename for writing"
+
+    ## These tests have some delay
+    local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
+    local thenode ; thenode="$(find_node_for_container "$classid" "$servername")" || exit
+
+    ## get the virtual size for giving % progress output:
+    echo -n "Starting by getting the image size..."
+    output="$("$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker ps -s -f name="$servername")"
+    echo ".done"
+    [ "$(wc -l <<<"$output")" == 2 ] || echo "Warning: problem finding image sizes" 1>&2
+    ## output is something like "..........(virtual 4.598 GB)"
+
+    tmp1="${output#*virtual }"
+    bytes="$(humanreadable_to_bytes "${tmp1%)*}")"
+
+    #(Note: An earlier version of this code tried to use "docker
+    # export" of a *container* here.  It failed because export strips
+    # out metadata from the image that is required by jupyterhub.
+    # Therefore, the code here now uses "docker save" of an *image*,
+    # and therefore commit is necessary to create an up-to-date
+    # image. )
+    
+    uniqe_image_name="server-container-$(date "+%y%m%d-%H%M%S")"
+    echo "Making new commit with name $uniqe_image_name..."
+    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q \
+	      sudo docker commit "$servername" "$uniqe_image_name" \
+	      || reportfailed "Commit of $servername"
+    echo "..Finished commit."
+
+    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker save "$uniqe_image_name" >"$imagename.inprogress" &
+    pid="$!"
+    
+    while [ -d "/proc/$pid" ]; do
+	read perms links owner group size theres <<<"$(ls -l "$imagename.inprogress")"
+	echo "$size / $bytes  ($((size * 100 / bytes ))%)"
+	sleep 10
+    done
+    wait "$pid"
+    [ "$?" = "0" ] || reportfailed "docker export"
+    mv "$imagename.inprogress" "$imagename" || reportfailed "Final renaming to $imagename"
+    echo "$uniqe_image_name" >"$imagename.uniqename"
+}
+
+do_image_upload()
+{
+    local classid="$1"
+    local targetimage="$2"
+    local imagename="${3%.tar}.tar"
+    local thenode="$4"
+
+    ## Do tests that can be done quickly first, so user can fix simple problems faster:
+    [ "$imagename" == ".tar" ] && reportfailed "The fourth parameter must be a file name to save the image into"
+    [ -f "$imagename" ] || reportfailed "The imagefile ($imagename) not found"
+
+    ## These have some delay
+    local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
+
+    found=false
+    for n in $node_list; do
+	if [ "$thenode" = "$n" ]; then
+	    found=true
 	fi
     done
-    $foundit || reportfailed "container not found or not running"
+    $found || reportfailed "Node ($thenode) not found"
+
+    echo "Starting docker load for $thenode..."
+    ## split the pipeline so we can get the pid of cat
+    exec 8< <(exec cat "$imagename")
+    catpid="$!"
+    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker load <&8 &
+    pid="$!"
+
+    read perms links owner group size theres <<<"$(ls -l "$imagename")"
+    while [ -d "/proc/$pid" ]; do
+	if info="$(cat /proc/"$catpid"/fdinfo/3)"; then  # TODO: remove the "fd=3" assumption
+	    read label position <<<"$info"
+	    echo "$position/$size ($((position * 100 / size))%)"
+	else
+	    echo "$size/$size (100% ??)"
+	fi
+	sleep 10
+    done
+    wait "$pid"
+    [ "$?" = "0" ] || reportfailed "docker export"
+    
+    echo "...finished docker load for $thenode..."
+    echo
 }
+
+do_image_distribute()
+{
+    local classid="$1"
+    local imagename="${2%.tar}.tar"
+
+    ## Do tests that can be done quickly first, so user can fix simple problems faster:
+    [ "$imagename" == ".tar" ] && reportfailed "The fourth parameter must be a file name to save the image into"
+    [ -f "$imagename" ] || reportfailed "The imagefile ($imagename) not found"
+    [ -f "$imagename.uniqename" ] || reportfailed "The info file ($imagename.uniqename) not found"
+
+    ## These have some delay
+    local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
+
+    # make a unique name based on the time
+    local targetimage; targetimage="$(cat "$imagename.uniqename")" || reportfailed
+
+    for n in $node_list; do
+	echo "Uploading image to node ($n)"
+	do_image_upload  "$classid"  "$targetimage" "$imagename" "$n"
+    done
+
+    "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker exec -i root_jupyterhub_1 bash <<EOF
+    cat >>/srv/jupyterhub_config/jupyterhub_config.py <<EOF2
+c.DockerSpawner.container_image = '$targetimage'
+EOF2
+EOF
+
+    echo "Restarting JupyterHub configured to new image..."
+    "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker stop root_jupyterhub_1
+    "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker start root_jupyterhub_1
+    echo "..done."
+}
+
+do_image_list()
+{
+    local classid="$1"
+    
+    ## These have some delay
+    local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
+    
+    # TODO: if this ends up being used, improve the output formatting
+    for thenode in $node_list; do
+	echo "Images in $thenode:"
+	"$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker images
+	"$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q df -h /
+	echo
+    done
+}
+
 
 cmd="$1"
 shift
@@ -77,8 +274,23 @@ case "$cmd" in
     list)
 	do_list "$@"
 	 ;;
+    stop | start)
+	do_simple_docker_cmd "$@" "$cmd"
+	 ;;
     allow-sudo)
 	do_allow_sudo "$@"
+	 ;;
+    image-create)
+	do_image_create "$@"
+	 ;;
+    image-distribute)
+	do_image_distribute "$@"
+	 ;;
+    image-list)
+	do_image_list "$@"
+	 ;;
+    image-upload)
+	do_image_upload "$@"
 	 ;;
     *) usage
        ;;
