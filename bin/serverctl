@@ -129,11 +129,11 @@ do_image_create()
     rm -f "$imagename.inprogress"
     touch "$imagename.inprogress" || reportfailed "Unable to open temporary $imagename for writing"
 
-    ## These have some delay
+    ## These tests have some delay
     local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
     local thenode ; thenode="$(find_node_for_container "$classid" "$servername")" || exit
 
-    ## get the virtual size:
+    ## get the virtual size for giving % progress output:
     echo -n "Starting by getting the image size..."
     output="$("$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker ps -s -f name="$servername")"
     echo ".done"
@@ -142,8 +142,22 @@ do_image_create()
 
     tmp1="${output#*virtual }"
     bytes="$(humanreadable_to_bytes "${tmp1%)*}")"
+
+    #(Note: An earlier version of this code tried to use "docker
+    # export" of a *container* here.  It failed because export strips
+    # out metadata from the image that is required by jupyterhub.
+    # Therefore, the code here now uses "docker save" of an *image*,
+    # and therefore commit is necessary to create an up-to-date
+    # image. )
     
-    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker export "$servername" >"$imagename.inprogress" &
+    uniqe_image_name="server-container-$(date "+%y%m%d-%H%M%S")"
+    echo "Making new commit with name $uniqe_image_name..."
+    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q \
+	      sudo docker commit "$servername" "$uniqe_image_name" \
+	      || reportfailed "Commit of $servername"
+    echo "..Finished commit."
+
+    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker save "$uniqe_image_name" >"$imagename.inprogress" &
     pid="$!"
     
     while [ -d "/proc/$pid" ]; do
@@ -154,6 +168,7 @@ do_image_create()
     wait "$pid"
     [ "$?" = "0" ] || reportfailed "docker export"
     mv "$imagename.inprogress" "$imagename" || reportfailed "Final renaming to $imagename"
+    echo "$uniqe_image_name" >"$imagename.uniqename"
 }
 
 do_image_upload()
