@@ -250,6 +250,19 @@ EOF
     echo "..done."
 }
 
+do_image_list()
+{
+    local classid="$1"
+    
+    ## These have some delay
+    local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
+    
+    for thenode in $node_list; do
+	echo "Images in $thenode:"
+	"$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker images
+    done
+}
+
 
 cmd="$1"
 shift
@@ -269,6 +282,9 @@ case "$cmd" in
 	 ;;
     image-distribute)
 	do_image_distribute "$@"
+	 ;;
+    image-list)
+	do_image_list "$@"
 	 ;;
     image-upload)
 	do_image_upload "$@"
