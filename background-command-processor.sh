@@ -141,6 +141,12 @@ students-home-dir-hack()
 		chown -h "$userid:$userid" "$udir/$link" 2>/dev/null
 	    fi
 	done
+	for dir in private_info; do
+	    if ! [ -d "$udir/$dir" ]; then
+		mkdir -p "$udir/$dir" 2>/dev/null
+		chown -h "$userid:$userid" "$udir/$dir" 2>/dev/null
+	    fi
+	done
 	# Hopefully this next one will be very temporary:
 	# Make user dirs world writable so teacher can copy in notebooks with
 	# simple unix commands.  Do this every time so teacher can also
