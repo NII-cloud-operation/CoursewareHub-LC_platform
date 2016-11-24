@@ -193,7 +193,10 @@ do_image_upload()
     done
     $found || reportfailed "Node ($thenode) not found"
 
-    cat "$imagename" | "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker import - "$targetimage"
+    echo "Starting docker load for $thenode..."
+    cat "$imagename" | "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker load
+    echo "...finished docker load for $thenode..."
+    echo
 }
 
 do_image_distribute()
@@ -204,13 +207,13 @@ do_image_distribute()
     ## Do tests that can be done quickly first, so user can fix simple problems faster:
     [ "$imagename" == ".tar" ] && reportfailed "The fourth parameter must be a file name to save the image into"
     [ -f "$imagename" ] || reportfailed "The imagefile ($imagename) not found"
+    [ -f "$imagename.uniqename" ] || reportfailed "The info file ($imagename.uniqename) not found"
 
     ## These have some delay
     local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
 
     # make a unique name based on the time
-    targetimage="${imagename%.tar}-$(date "+%y%m%d-%H%M%S")"
-    targetimage="${targetimage##*/}"
+    local targetimage; targetimage="$(cat "$imagename.uniqename")" || reportfailed
 
     for n in $node_list; do
 	echo "Uploading image to node ($n)"
@@ -223,8 +226,10 @@ c.DockerSpawner.container_image = '$targetimage'
 EOF2
 EOF
 
+    echo "Restarting JupyterHub configured to new image..."
     "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker stop root_jupyterhub_1
     "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker start root_jupyterhub_1
+    echo "..done."
 }
 
 
