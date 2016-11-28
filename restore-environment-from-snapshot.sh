@@ -55,7 +55,7 @@ done
 
 (
     $starting_step "Assign mcastPORT"
-    [[ "$(cat "$DATADIR"/*/datadir.conf | tee /tmp/check)" != *set-this* ]]
+    [[ "$(cat "$DATADIR"/*/datadir.conf)" != *set-this* ]]
     $skip_step_if_already_done; set -e
 
     alreadyset="$(cat "$DATADIR"/*/datadir.conf | grep mcastPORT= | grep -v set-this || true)"
@@ -74,7 +74,7 @@ done
     done
     # TODO, reduce the chance of port conflicts even more, somehow
 
-    sed -i "s,mcastPORT=set-this-before-booting,mcastPORT=$randomport,"  "$DATADIR"/*/datadir.conf
+    sed -i "s,mcastPORT=set-this-before-booting,mcastPORT=$randomport,"  "$DATADIR"/*vmdir*/datadir.conf
 )  ; prev_cmd_failed
 
 (
@@ -119,6 +119,22 @@ EOF
 	
 	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo docker stop root_nginx_1
 	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_nginx_1
+    ) ; prev_cmd_failed
+
+    (
+	$starting_step "Make sure root_jupyterhub_1 container is running"
+	# This step is a workaround. It should be running by now, but
+	# sometimes it is not, not sure why.
+	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<'EOF' 1>/dev/null 2>&1
+dout="$(sudo docker ps | grep root_jupyterhub_1)"
+set -x
+exec 2>/tmp/why
+[[ "$dout" == *Up* ]]
+EOF
+	$skip_step_if_already_done; set -e
+
+	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo docker stop root_jupyterhub_1
+	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_jupyterhub_1
     ) ; prev_cmd_failed
 
 ) ; prev_cmd_failed
