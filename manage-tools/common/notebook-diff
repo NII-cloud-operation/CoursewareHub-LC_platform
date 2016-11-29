@@ -3,7 +3,6 @@
 JQ='jq .cells[].source'
 
 function is_text () {
-echo "===is_text==="
   if [[ $(file $1) =~ ^.*text$ ]]; then
     echo 1
   else
