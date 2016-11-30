@@ -48,7 +48,7 @@ initial_setup()
     mkdir-conf-file()
     {
 	[ -f "$4" ] && return
-	cat >"$4" <<EOF
+	cat >>"$4" <<EOF
 # Not all of these are used on every VM
 export EXTRAHOSTFWDREL=""
 
