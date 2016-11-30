@@ -16,11 +16,19 @@ new_dir="$2"
 
 [ -d "$new_dir" ] && reportfailed "$new_dir already exists"
 
+DATADIRCONF="$snapshot_source/datadir-jh.conf"
+source "$DATADIRCONF"
+
+[ "$node_list" != "" ] || reportfailed "node_list not defined"
+
 vmlist=(
     jhvmdir-hub
     jhvmdir
-    jhvmdir-node1
-    jhvmdir-node2
+    $(
+	for i in $node_list; do
+	    echo jhvmdir-$i
+	done
+    )
     vmdir-1box
 )
 
