@@ -67,9 +67,6 @@ EOF
     }
 
     : ${node_list:="node1 node2 node3"}
-    cat >>./datadir-jh.conf <<EOF
-node_list="$node_list"
-EOF
     
     # last 2 digits, MACaddr, filename
     # BTW, forgot what the twodigits column is/was used for.
@@ -92,6 +89,11 @@ $(
 	[ "$fname" == "" ] && continue
 	mkdir-conf-file "$twodigits" "$ipaddress" "$mac" "$fname"
     done <<<"$cinfo"
+
+    # next line must be after mkdir-conf-file
+    cat >>./datadir-jh.conf <<EOF
+node_list="$node_list"
+EOF
 
     # make sure mcast addresses are the same
 
