@@ -32,9 +32,12 @@ source "$DATADIRCONF"
 conffiles=(
     datadir-jh.conf
     datadir-jh-hub.conf
-    datadir-jh-node1.conf
-    datadir-jh-node2.conf
     datadir-1box.conf
+    $(
+	for i in $node_list; do
+	    echo datadir-jh-$i.conf
+	done
+    )
 )
 
 for i in "${conffiles[@]}"; do
@@ -276,8 +279,7 @@ EOF
 		case "$2" in
 		    *main*) echo 99 ;;
 		    *hub*) echo 88 ;;
-		    *1*) echo 1 ;;
-		    *2*) echo 2 ;;
+		    node*) echo "${2//[^0-9]}" ;; #TODO: refactor
 		    *) reportfailed "BUG"
 		esac
 		)
@@ -308,8 +310,10 @@ EOF
 		case "$2" in
 		    *main*) echo main ;;
 		    *hub*) echo hub ;;
-		    *1*) echo node1 ;;
-		    *2*) echo node2 ;;
+		    node*)
+			tmpv="${2%KVM*}"
+			echo "${tmpv// /}"   #TODO: refactor
+			;;
 		    *) reportfailed "BUG"
 		esac
 		)
@@ -340,18 +344,22 @@ EOF
 
     boot-one-vm "$VMDIR" "main KVM" datadir-jh.conf
     boot-one-vm "$VMDIR-hub" "hub KVM" datadir-jh-hub.conf
-    boot-one-vm "$VMDIR-node1" "node 1 KVM" datadir-jh-node1.conf
-    boot-one-vm "$VMDIR-node2" "node 2 KVM" datadir-jh-node2.conf
+    for n in $node_list; do
+	boot-one-vm "$VMDIR-$n" "$n KVM" datadir-jh-$n.conf
+    done
 
 ) ; prev_cmd_failed
 
 (
     $starting_step "Make sure mac addresses were configured"
     # Make sure all three mac addresses are unique
-    [ $(grep -ho 'export.*mcastMAC.*' "$DATADIR"/jhvmdir*/*conf | sort -u | wc -l) -eq 4 ]
+    nodesarray=( $node_list )
+    echo ${#nodesarray[@]} + 2 
+    vmcount=$(( ${#nodesarray[@]} + 2 ))
+    [ $(grep -ho 'export.*mcastMAC.*' "$DATADIR"/jhvmdir*/*conf | sort -u | wc -l) -eq "$vmcount" ]
     $skip_step_if_already_done
     # always fail if this has not been done
-    reportfailed "Add mcastMAC= to: datadir-jh.conf datadir-jh-node2.conf datadir-jh-node1.conf"
+    reportfailed "Add mcastMAC= to: datadir-jh.conf datadir-jh-nodennn.conf"
 ) ; prev_cmd_failed
 
 (
@@ -428,8 +436,9 @@ EOF
 	) ; prev_cmd_failed
     }
     do-one-keypair hub 88
-    do-one-keypair node1 1
-    do-one-keypair node2 2
+    for n in $node_list; do
+	do-one-keypair "$n" "${n//[^0-9]/}"
+    done
 )
 
 

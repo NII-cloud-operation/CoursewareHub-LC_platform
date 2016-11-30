@@ -67,8 +67,8 @@ EOF
     }
 
     : ${node_list:="node1 node2 node3"}
-    cat >>./datadir.conf <<EOF
-node_list:="$node_list"
+    cat >>./datadir-jh.conf <<EOF
+node_list="$node_list"
 EOF
     
     # last 2 digits, MACaddr, filename
