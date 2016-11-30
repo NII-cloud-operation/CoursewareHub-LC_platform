@@ -12,7 +12,7 @@ export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfa
 
 source "$ORGCODEDIR/simple-defaults-for-bashsteps.source"
 
-source "$DATADIR/datadir.conf" || reportfailed
+source "$DATADIR/datadir-jh.conf" || reportfailed
 
 restore_one_vm()
 {

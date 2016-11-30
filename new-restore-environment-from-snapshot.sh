@@ -39,7 +39,9 @@ done
 
 mkdir "$new_dir" || reportfailed mkdir "$new_dir"
 
-cat >"$new_dir/datadir.conf" <<EOF
+cp "$DATADIRCONF" "$new_dir/datadir-jh.conf"
+
+cat >>"$new_dir/datadir-jh.conf" <<EOF
 $(declare -p vmlist )
 
 snapshot_source="$snapshot_source"
