@@ -22,6 +22,12 @@ source "$ORGCODEDIR/simple-defaults-for-bashsteps.source"
 
 DATADIRCONF="$DATADIR/datadir-jh.conf"
 
+# avoids errors on first run, but maybe not good to change state
+# outside of a step
+touch  "$DATADIRCONF"
+
+source "$DATADIRCONF"
+
 # These are expected to exist before running the first time:
 conffiles=(
     datadir-jh.conf
@@ -34,12 +40,6 @@ conffiles=(
 for i in "${conffiles[@]}"; do
     [ -f "$DATADIR/$i" ] || reportfailed "$i is required"
 done
-
-# avoids errors on first run, but maybe not good to change state
-# outside of a step
-touch  "$DATADIRCONF"
-
-source "$DATADIRCONF"
 
 imagesource="$DATADIR/vmimages/centos-7.1.1511-x86_64-base/output/minimal-image.raw.tar.gz"
 
