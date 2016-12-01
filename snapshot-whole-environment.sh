@@ -32,7 +32,6 @@ vmlist=(
     )
     jhvmdir
     jhvmdir-hub
-    vmdir-1box
 )
 
 TARSUFFIX=".tar"
