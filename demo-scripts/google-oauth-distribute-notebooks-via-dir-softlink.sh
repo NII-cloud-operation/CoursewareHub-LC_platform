@@ -74,7 +74,6 @@ EOF
     cinfo="
 10 192.168.11.99 52:54:00:12:00:99 datadir-jh.conf
 20 192.168.11.88 52:54:00:12:00:09 datadir-jh-hub.conf
-30 192.168.11.90 52:54:00:12:00:90 datadir-1box.conf
 $(
    for i in $node_list; do
      n="${i#node}"
@@ -100,7 +99,7 @@ EOF
     [ "$(grep -h -o mcastPORT.* *.conf | sort -u | wc -l)" -eq 1 ] || reportfailed "macPORT values differ in *.conf"
 
 
-    for i in 1box-image-resources ubuntu-image-resources letsencrypt; do
+    for i in ubuntu-image-resources letsencrypt; do
 	[ -d "$i" ] && continue
 	if [ -d ~/"$i" ]; then
 	    if ! cp -al ~/"$i" "$i"; then
@@ -111,20 +110,12 @@ EOF
     done
 
     resourcelist=(
-	1box-image-resources/1box-openvz.netfilter.x86_64.raw.sshkey.pub
-	1box-image-resources/1box-openvz.netfilter.x86_64.raw.sshuser
-	1box-image-resources/1box-openvz.netfilter.x86_64.raw.sshkey
-	1box-image-resources/1box-openvz.netfilter.x86_64.raw.tar.gz
 	ubuntu-image-resources/ubuntu-14-instance-build.img-sshkeys-update-upgrade.sshuser
 	ubuntu-image-resources/ubuntu-14-instance-build.img-sshkeys-update-upgrade.sshkey
 	ubuntu-image-resources/ubuntu-14-instance-build.img-sshkeys-update-upgrade.tar.gz
     )
 
-    expectedresult="320753868943552c89e8d755e2b8a155  1box-image-resources/1box-openvz.netfilter.x86_64.raw.sshkey.pub
-0d12069f957b7ad4c01a0cb91e962ffe  1box-image-resources/1box-openvz.netfilter.x86_64.raw.sshuser
-b660e53d9db670d4918eb61ca7ad8ddd  1box-image-resources/1box-openvz.netfilter.x86_64.raw.sshkey
-69191eca8554f8b92d81908f039c7c9b  1box-image-resources/1box-openvz.netfilter.x86_64.raw.tar.gz
-ceb8d811a6e225e8d1608f403dc8cbe1  ubuntu-image-resources/ubuntu-14-instance-build.img-sshkeys-update-upgrade.sshuser
+    expectedresult="ceb8d811a6e225e8d1608f403dc8cbe1  ubuntu-image-resources/ubuntu-14-instance-build.img-sshkeys-update-upgrade.sshuser
 bafa465f6f01239c2b936a126d79640f  ubuntu-image-resources/ubuntu-14-instance-build.img-sshkeys-update-upgrade.sshkey
 a63168df5cad8a39aa723cfcab25c4d6  ubuntu-image-resources/ubuntu-14-instance-build.img-sshkeys-update-upgrade.tar.gz"
 

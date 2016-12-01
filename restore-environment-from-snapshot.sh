@@ -160,28 +160,6 @@ EOF
 ) ; prev_cmd_failed
 
 (
-    $starting_step "Start background sshuttle on 192.168.11.99 (ansible main) VM"
-    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
-ps auxwww | grep 'sshuttl[e]' 1>/dev/null 2>&1 >/tmp/aa
-EOF
-    $skip_step_if_already_done; set -e
-    # see the step: "Add routing entry for Wakame-vdc's 10.0.2.0/24 network to VM $avmdir"
-    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
-set -x
-cat >wakame-sshkey  <<EOF2
-$(cat "$DATADIR/vmdir-1box/sshkey")
-EOF2
-chmod 600 wakame-sshkey
-eval \$(ssh-agent -s)
-ssh-add wakame-sshkey
-ssh-add -l
-date
-setsid sshuttle -l 0.0.0.0 -r centos@192.168.11.90 10.0.2.0/24 1>>sshuttle.log 2>&1 </dev/null &
-sleep 3  # maybe fixes race between setsid and exiting ssh.   TODO: try nohup and more testing
-EOF
-) ; prev_cmd_failed
-
-(
     $starting_step "Output port forwarding hint script"
     false # just always refresh this
     $skip_step_if_already_done
