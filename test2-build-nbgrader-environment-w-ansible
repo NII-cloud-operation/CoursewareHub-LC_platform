@@ -422,7 +422,7 @@ EOF
     $starting_step "Make sure mac addresses were configured"
     # Make sure all three mac addresses are unique
     nodesarray=( $node_list )
-    vmcount=$(( ${#nodesarray[@]} + 2 ))
+    vmcount=$(( ${#nodesarray[@]} + 2 )) # nodes + hub + ansible/main
     [ $(grep -ho 'export.*mcastMAC.*' "$DATADIR"/jhvmdir*/*conf | sort -u | wc -l) -eq "$vmcount" ]
     $skip_step_if_already_done
     # always fail if this has not been done
@@ -627,6 +627,8 @@ EOF
 
 (
     $starting_step "Run main **Ansible script** (from the jupyterhub-deploy repository)"
+    nodesarray=( $node_list )
+    vmcount=$(( ${#nodesarray[@]} + 1 )) # nodes + just the hub
     "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
 cd jupyterhub-deploy
 # last part of ansible log should show "failed=0" three times. e.g:
@@ -635,7 +637,7 @@ cd jupyterhub-deploy
 #   node1                      : ok=41   changed=32   unreachable=0    failed=0   
 #   node2                      : ok=41   changed=32   unreachable=0    failed=0   
 count="\$(tail deploylog.log | grep -o "failed=0" | wc -l)"
-[ "\$count" -eq 3 ]
+[ "\$count" -eq "$vmcount" ]
 EOF
     $skip_step_if_already_done
     "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
