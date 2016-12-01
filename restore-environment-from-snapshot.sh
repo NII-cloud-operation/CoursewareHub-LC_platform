@@ -12,7 +12,7 @@ export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfa
 
 source "$ORGCODEDIR/simple-defaults-for-bashsteps.source"
 
-source "$DATADIR/datadir.conf" || reportfailed
+source "$DATADIR/datadir-jh.conf" || reportfailed
 
 restore_one_vm()
 {
@@ -140,11 +140,10 @@ EOF
 ) ; prev_cmd_failed
 
 # Boot the rest:
-"$DATADIR"/jhvmdir/kvm-boot.sh ; prev_cmd_failed
-"$DATADIR"/jhvmdir-node1/kvm-boot.sh ; prev_cmd_failed
-"$DATADIR"/jhvmdir-node2/kvm-boot.sh ; prev_cmd_failed
-"$DATADIR"/jhvmdir-node1/kvm-boot.sh ; prev_cmd_failed
-"$DATADIR"/vmdir-1box/kvm-boot.sh ; prev_cmd_failed
+for vm in "${vmlist[@]}"; do
+    # no problem that hub is already booted
+    "$DATADIR"/$vm/kvm-boot.sh ; prev_cmd_failed
+done
 
 VMDIR=jhvmdir  # so code can be copy/pasted from test2-build-nbgrader-environment-w-ansible
 (

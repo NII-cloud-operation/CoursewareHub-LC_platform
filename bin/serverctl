@@ -21,9 +21,13 @@ export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfa
 
 rootdir="${ORGCODEDIR%/*}"
 ahdir="$rootdir/active-hubs"
+
+DDCONFFILE="datadir-jh.conf"
+
+
 [ -d "$ahdir" ] || mkdir "$ahdir" || reportfailed
 
-node_list="node1 node2"
+node_list="node1 node2"  # This should be overwritten by the value in the main datadir.conf
 
 classid_to_hubpath()
 {
@@ -47,6 +51,8 @@ get_container_names()
 do_list()
 {
     local hubpath ; hubpath="$(classid_to_hubpath "$1")" || exit
+    source "$hubpath/$DDCONFFILE" || reportfailed "missing $DDCONFFILE"
+
     for n in $node_list; do
 	"$hubpath"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker ps -a | get_container_names " ($n)"
     done
@@ -70,6 +76,7 @@ do_allow_sudo()
     local classid="$1"
     local servername="$2"
     local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
+    source "$hubpath/$DDCONFFILE" || reportfailed "missing $DDCONFFILE"
     local thenode ; thenode="$(find_node_for_container "$classid" "$servername")" || exit
 
     username="${servername#jupyter-}"
@@ -90,6 +97,7 @@ do_simple_docker_cmd() # implements both start and stop
     local servername="$2"
     local dcmd="$3"
     local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
+    source "$hubpath/$DDCONFFILE" || reportfailed "missing $DDCONFFILE"
     local thenode ; thenode="$(find_node_for_container "$classid" "$servername")" || exit
 
     "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker "$dcmd" "$servername"
@@ -131,6 +139,7 @@ do_image_create()
 
     ## These tests have some delay
     local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
+    source "$hubpath/$DDCONFFILE" || reportfailed "missing $DDCONFFILE"
     local thenode ; thenode="$(find_node_for_container "$classid" "$servername")" || exit
 
     ## get the virtual size for giving % progress output:
@@ -184,6 +193,7 @@ do_image_upload()
 
     ## These have some delay
     local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
+    source "$hubpath/$DDCONFFILE" || reportfailed "missing $DDCONFFILE"
 
     found=false
     for n in $node_list; do
@@ -229,6 +239,7 @@ do_image_distribute()
 
     ## These have some delay
     local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
+    source "$hubpath/$DDCONFFILE" || reportfailed "missing $DDCONFFILE"
 
     # make a unique name based on the time
     local targetimage; targetimage="$(cat "$imagename.uniqename")" || reportfailed
@@ -256,6 +267,7 @@ do_image_list()
     
     ## These have some delay
     local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
+    source "$hubpath/$DDCONFFILE" || reportfailed "missing $DDCONFFILE"
     
     # TODO: if this ends up being used, improve the output formatting
     for thenode in $node_list; do
