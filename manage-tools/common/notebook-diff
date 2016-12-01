@@ -28,31 +28,38 @@ function compare_binary () {
 function compare_dir () {
   local from=$1 to=$2
 
-  for nb in $( ls "$from" ); do
-    src="$from/$nb"
-    dst="$to/$nb"
-    if [ ! -e "$dst" ]; then
-      echo "'$dst' was added."
-    elif [ -f "$src" ]; then
-      if [[ $(is_text $src) && $(is_text $dst) ]]; then
-        rep=$( (compare_file $src $dst) )
+  [ -e "$from" ] && {
+    for nb in $( ls "$from" ); do
+      src="$from/$nb"
+      dst="$to/$nb"
+      if [ ! -e "$dst" ]; then
+        echo "'$src' was added."
+        if [ -d "$src" ]; then
+          compare_dir $src $dst
+        fi
+      elif [[ -f "$src" || -L "$src" ]]; then
+        if [[ $(is_text $src) && $(is_text $dst) ]]; then
+          rep=$( (compare_file $src $dst) )
+        else
+          rep=$( (compare_binary $src $dst) )
+        fi
+        if [ ! -z "$rep" ]; then
+           echo "'$src' was changed."
+        fi
       else
-        rep=$( (compare_binary $src $dst) )
+        compare_dir $src $dst
       fi
-      if [ ! -z "$rep" ]; then
-         echo "'$dst' was changed."
+    done
+  }
+  [ -e "$to" ] && {
+    for nb in $( ls "$to" ); do
+      src="$from/$nb"
+      dst="$to/$nb"
+      if [ ! -e "$src" ]; then
+        echo "'$src' was deleted."
       fi
-    else
-      compare_dir $src $dst
-    fi
-  done
-  for nb in $( ls "$to" ); do
-    src="$to/$nb"
-    dst="$from/$nb"
-    if [ ! -e "$dst" ]; then
-      echo "'$dst' was deleted."
-    fi
-  done
+    done
+  }
 }
 
 if [ ! -e "$1" ]; then
