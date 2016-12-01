@@ -15,13 +15,21 @@ source "$ORGCODEDIR/simple-defaults-for-bashsteps.source"
 [ -f "$DATADIR/flag-inital-build-completed" ] || reportfailed "build must be completed before running this"
 
 
-# It is important that node1 and node2 be shutdown before hub, because
-# stopping the NFS server on the hub will freeze the node1 and node2 and
+DATADIRCONF="$DATADIR/datadir-jh.conf"
+source "$DATADIRCONF"
+
+[ "$node_list" != "" ] || reportfailed "node_list not defined"
+
+# It is important that node1, node2, etc be shutdown before hub, because
+# stopping the NFS server on the hub will freeze the node VMs and
 # prevent them from doing a clean shutdown.
 
 vmlist=(
-    jhvmdir-node1
-    jhvmdir-node2
+    $(
+	for i in $node_list; do
+	    echo jhvmdir-$i
+	done
+    )
     jhvmdir
     jhvmdir-hub
     vmdir-1box

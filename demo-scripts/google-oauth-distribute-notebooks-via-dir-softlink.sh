@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 reportfailed()
 {
@@ -48,7 +48,7 @@ initial_setup()
     mkdir-conf-file()
     {
 	[ -f "$4" ] && return
-	cat >"$4" <<EOF
+	cat >>"$4" <<EOF
 # Not all of these are used on every VM
 export EXTRAHOSTFWDREL=""
 
@@ -66,19 +66,34 @@ EOF
 	
     }
 
+    : ${node_list:="node1 node2 node3"}
+    
     # last 2 digits, MACaddr, filename
+    # BTW, forgot what the twodigits column is/was used for.
+    # TODO: check old commits for clues
     cinfo="
 10 192.168.11.99 52:54:00:12:00:99 datadir-jh.conf
 20 192.168.11.88 52:54:00:12:00:09 datadir-jh-hub.conf
-30 192.168.11.1  52:54:00:12:00:01 datadir-jh-node1.conf
-40 192.168.11.2  52:54:00:12:00:02 datadir-jh-node2.conf
-50 192.168.11.90 52:54:00:12:00:90 datadir-1box.conf
+30 192.168.11.90 52:54:00:12:00:90 datadir-1box.conf
+$(
+   for i in $node_list; do
+     n="${i#node}"
+     nn="$(printf "%02d" "$n")"
+     echo $(( 40 + n )) 192.168.11.$n 52:54:00:12:00:$nn datadir-jh-$i.conf 
+     # e.g.: 41 192.168.11.1  52:54:00:12:00:01 datadir-jh-node1.conf
+   done
+)
 "
 
     while read twodigits ipaddress mac fname ; do
 	[ "$fname" == "" ] && continue
 	mkdir-conf-file "$twodigits" "$ipaddress" "$mac" "$fname"
     done <<<"$cinfo"
+
+    # next line must be after mkdir-conf-file
+    cat >>./datadir-jh.conf <<EOF
+node_list="$node_list"
+EOF
 
     # make sure mcast addresses are the same
 
