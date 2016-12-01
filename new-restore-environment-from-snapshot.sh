@@ -29,7 +29,6 @@ vmlist=(
 	    echo jhvmdir-$i
 	done
     )
-    vmdir-1box
 )
 
 for i in "${vmlist[@]}"; do
