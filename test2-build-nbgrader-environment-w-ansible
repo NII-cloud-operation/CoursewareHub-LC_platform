@@ -32,7 +32,6 @@ source "$DATADIRCONF"
 conffiles=(
     datadir-jh.conf
     datadir-jh-hub.conf
-    datadir-1box.conf
     $(
 	for i in $node_list; do
 	    echo datadir-jh-$i.conf
@@ -392,22 +391,6 @@ echo 127.0.0.1 $hn | sudo tee -a /etc/hosts
 sudo hostname $hn
 EOF
 	) ; prev_cmd_failed
-
-	(
-	    [ "$avmdir" = "$VMDIR" ] && exit 0 # skip for main VM
-	    $starting_step "Add routing entry for Wakame-vdc's 10.0.2.0/24 network to VM $avmdir"
-	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
-[[ "\$(route -n)" == *10.0.2.0* ]]
-EOF
-	    $skip_step_if_already_done
-
-	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF
-# All 10.0.2.0 connections will be routed through the main VM
-# and relayed to 1box via sshuttle.
-sudo route add -net 10.0.2.0 netmask 255.255.255.0 gw 192.168.11.99
-EOF
-	) ; prev_cmd_failed
-
     }
 
     boot-one-vm "$VMDIR" "main KVM" datadir-jh.conf
@@ -679,8 +662,6 @@ EOF3
 EOF
 ) ; prev_cmd_failed
 
-DATADIR="$DATADIR" "$ORGCODEDIR/ind-steps/build-1box/build-1box.sh" || reportfailed
-
 (
      $starting_group "Build TensorFlow container image"
      [ -f "$DATADIR/tensorflow-image.tar" ]
@@ -769,126 +750,6 @@ for n in $node_list; do
 done
 
 (
-    $starting_group "Set up 1box VM"
-    (
-	$starting_group "Set up vmdir-1box"
-	[ -x "$DATADIR/vmdir-1box/kvm-boot.sh" ]
-	$skip_group_if_unnecessary
-	(
-	    $starting_step "Make vmdir-1box"
-	    [ -d "$DATADIR/vmdir-1box" ]
-	    $skip_step_if_already_done ; set -e
-	    mkdir "$DATADIR/vmdir-1box"
-	    # increase default mem to give room for a wakame instance or two
-	    # copy specific port forwarding stuff to avmdir, so vmdir*/kvm-* scripts
-	    # will have all config info
-	    cat "$DATADIR/datadir-1box.conf" >>"$DATADIR/vmdir-1box/datadir.conf"
-
-	    # disable second NIC for the first boot
-            echo 'export mcastnet=" "'  >>"$DATADIR/vmdir-1box/datadir.conf"
-
-	    echo ': ${KVMMEM:=4096}' >>"$DATADIR/vmdir-1box/datadir.conf"
-	) ; prev_cmd_failed
-
-	DATADIR="$DATADIR/vmdir-1box" \
-	       "$ORGCODEDIR/ind-steps/kvmsteps/kvm-setup.sh" \
-	       "$DATADIR/1box-image-resources/1box-openvz.netfilter.x86_64.raw.tar.gz"
-
-	(
-	    $starting_step "Set only the 1box VM to use 10.0.2.0/24"
-	    ! grep -F 'user,net=10.0.3.0' "$DATADIR/vmdir-1box/kvm-boot.sh" 2>/dev/null 1>&2
-	    $skip_step_if_already_done ; set -e
-	    sed -i 's,10.0.3.0,10.0.2.0,' "$DATADIR/vmdir-1box/kvm-boot.sh"
-	) ; prev_cmd_failed
-
-    ) ; prev_cmd_failed
-    
-    # TODO: this guard is awkward.
-    [ -x "$DATADIR/vmdir-1box/kvm-boot.sh" ] && \
-	"$DATADIR/vmdir-1box/kvm-boot.sh"
-
-    "$DATADIR/wakame-customization-steps.sh" "$DATADIR" ; prev_cmd_failed
-
-    (
-	$starting_group "Reboot with second NIC"
-	! grep mcastnet "$DATADIR/vmdir-1box/datadir.conf" 1>/dev/null 2>/dev/null 
-	$skip_group_if_unnecessary
-	
-	(
-	    $starting_step "Turn second mcast NIC back on"
-	    ! grep mcastnet "$DATADIR/vmdir-1box/datadir.conf" 1>/dev/null 2>/dev/null 
-	    $skip_step_if_already_done ; set -e
-	    before="$(cat "$DATADIR/vmdir-1box/datadir.conf")"
-	    echo "$before" | grep -v mcastnet >"$DATADIR/vmdir-1box/datadir.conf"
-	) ; prev_cmd_failed
-
-	(
-	    $starting_step "Append HWADDR to /etc/sysconfig/network-scripts/ifcfg-eth{0,1}(always says 'not done')"
-            false # always run if doing this group
-	    $skip_step_if_already_done ; set -e
-
-	    # from https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/3/html/Reference_Guide/s1-networkscripts-interfaces.html
-
-	    # HWADDR=<MAC-address>, where <MAC-address> is the
-	    # hardware address of the Ethernet device in the form
-	    # AA:BB:CC:DD:EE:FF. This directive is useful for machines
-	    # with multiple NICs to ensure that the interfaces are
-	    # assigned the correct device names regardless of the
-	    # configured load order for each NIC's module. This
-	    # directive should not be used in conjunction with
-	    # MACADDR.
-
-	    # MACADDR=<MAC-address>, where <MAC-address> is the
-	    # hardware address of the Ethernet device in the form
-	    # AA:BB:CC:DD:EE:FF. This directive is used to assign a
-	    # MAC address to an interface, overriding the one assigned
-	    # to the physical NIC. This directive should not be used
-	    # in conjunction with HWADDR.
-
-	    "$DATADIR/vmdir-1box/ssh-to-kvm.sh" <<EOF
-sudo tee -a /etc/sysconfig/network-scripts/ifcfg-eth0 <<<"HWADDR=52:54:00:65:28:dd"
-sudo tee -a /etc/sysconfig/network-scripts/ifcfg-eth1 <<<"HWADDR=52:54:00:12:00:90"
-EOF
-	) ; prev_cmd_failed
-
-	(
-	    $starting_step "Add second address to br1 (always says 'not done')"
-            false # always run if doing this group
-	    $skip_step_if_already_done ; set -e
-
-	    # https://dbiers.me/adding-secondary-ip-addresses-centosrhel/
-
-	    "$DATADIR/vmdir-1box/ssh-to-kvm.sh" <<EOF
-sudo tee /etc/sysconfig/network-scripts/ifcfg-br1:1 <<EOF2
-DEVICE=br1:1
-BOOTPROTO=static
-IPADDR=192.168.11.90
-NETMASK=255.255.255.0
-ONBOOT=yes
-EOF2
-EOF
-	    # TODO: Is this worth fixing?
-	    # [centos@wakame-vdc-1box ~]$ dmesg | tail
-	    # [ 1236.928591] eth1: received packet with own address as source address
-
-	    # ref: https://www.centos.org/forums/viewtopic.php?t=51612
-	    #  ((is it really a kernel bug?))
-	    #  ((1box is running: "CentOS release 6.4 (Final)"))
-
-	) ; prev_cmd_failed
-
-	[ -x "$DATADIR/vmdir-1box/kvm-shutdown-via-ssh.sh" ] && \
-	    "$DATADIR/vmdir-1box/kvm-shutdown-via-ssh.sh"
-
-	[ -x "$DATADIR/vmdir-1box/kvm-boot.sh" ] && \
-	    "$DATADIR/vmdir-1box/kvm-boot.sh"
-
-	true # needed so the group does not throw an error because of the awkwardness in the previous comman	
-    ) ; prev_cmd_failed
-
-) ; prev_cmd_failed
-
-(
     $starting_group "Misc steps"
 
     (
@@ -959,26 +820,6 @@ EOF
 set -x
 cd /srv
 sudo bash -c 'setsid ./background-command-processor.sh 1>>bcp.log 2>&1 </dev/null &'
-EOF
-    ) ; prev_cmd_failed
-
-    (
-	$starting_step "Start background sshuttle on 192.168.11.99 (ansible main) VM"
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
-ps auxwww | grep 'sshuttl[e]' 1>/dev/null 2>&1 >/tmp/aa
-EOF
-	$skip_step_if_already_done; set -e
-	# see the step: "Add routing entry for Wakame-vdc's 10.0.2.0/24 network to VM $avmdir"
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
-set -x
-cat >wakame-sshkey  <<EOF2
-$(cat "$DATADIR/vmdir-1box/sshkey")
-EOF2
-chmod 600 wakame-sshkey
-eval \$(ssh-agent -s)
-ssh-add wakame-sshkey
-ssh-add -l
-setsid sshuttle -l 0.0.0.0 -r centos@192.168.11.90 10.0.2.0/24 1>>sshuttle.log 2>&1 </dev/null &
 EOF
     ) ; prev_cmd_failed
 ) ; prev_cmd_failed
