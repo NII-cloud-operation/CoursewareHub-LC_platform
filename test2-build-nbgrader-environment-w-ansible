@@ -689,7 +689,7 @@ DATADIR="$DATADIR" "$ORGCODEDIR/ind-steps/build-1box/build-1box.sh" || reportfai
      (
 	 $starting_step "Upload a DockerFile for the Tensorflow container"
 	 "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q '[ -f /srv/tensorflow/Dockerfile ]'
-	 $skip_step_if_already_done
+	 $skip_step_if_already_done; set -e
 	 "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q sudo bash <<EOF
 mkdir -p /srv/tensorflow
 cat > /srv/tensorflow/Dockerfile <<EOF2
@@ -725,7 +725,7 @@ RUN apt-get -y install curl netcat ssh imagemagick graphviz
 
 RUN /opt/conda/envs/python2/bin/pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.10.0-cp27-none-linux_x86_64.whl
 
-RUN pip install google-api-python-client
+RUN /opt/conda/envs/python2/bin/pip install google-api-python-client
 
 EOF2
 EOF
@@ -751,6 +751,22 @@ docker save tensorflow
 EOF
      ) ; prev_cmd_failed
 ) ; prev_cmd_failed
+
+do_distribute_one_image()
+{
+    anode="$1"
+    (
+	$starting_step "Upload tensorflow image to $anode"
+	images="$("$DATADIR/$VMDIR-$anode/ssh-to-kvm.sh" -q sudo docker images)"
+	grep '^tensorflow' <<<"$images"  1>/dev/null
+	$skip_step_if_already_done ; set -e
+	"$DATADIR/$VMDIR-$anode/ssh-to-kvm.sh" -q sudo docker load <"$DATADIR/tensorflow-image.tar"
+    ) ; prev_cmd_failed
+}
+
+for n in $node_list; do
+    do_distribute_one_image "$n"
+done
 
 (
     $starting_group "Set up 1box VM"
