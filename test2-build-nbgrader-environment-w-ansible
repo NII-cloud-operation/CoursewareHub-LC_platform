@@ -688,7 +688,7 @@ DATADIR="$DATADIR" "$ORGCODEDIR/ind-steps/build-1box/build-1box.sh" || reportfai
      
      (
 	 $starting_step "Upload a DockerFile for the Tensorflow container"
-	 "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q '[ -f /srv/tensorflow/DockerFile ]'
+	 "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q '[ -f /srv/tensorflow/Dockerfile ]'
 	 $skip_step_if_already_done
 	 "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q sudo bash <<EOF
 mkdir -p /srv/tensorflow
@@ -697,6 +697,17 @@ FROM triggers/systemuser
 
 Run date >>/date-output.txt
 EOF2
+EOF
+     ) ; prev_cmd_failed
+
+     (
+	 $starting_step "Run 'docker build' for the Tensorflow container"
+	 images="$("$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q sudo docker images)"
+	 grep '^tensorflow' <<<"$images"  1>/dev/null
+	 $skip_step_if_already_done
+	 "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q sudo bash <<EOF
+cd  /srv/tensorflow
+docker build -t tensorflow ./
 EOF
      ) ; prev_cmd_failed
 ) ; prev_cmd_failed
