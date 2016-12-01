@@ -211,7 +211,7 @@ EOF
     (
 	$starting_step "Adjust ansible config files for node_list"
 	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
 [ -f nodelist ] && [ "\$(cat nodelist)" = "$node_list" ]
 EOF
 	$skip_step_if_already_done ; set -e
@@ -422,8 +422,7 @@ EOF
     $starting_step "Make sure mac addresses were configured"
     # Make sure all three mac addresses are unique
     nodesarray=( $node_list )
-    echo ${#nodesarray[@]} + 2 
-    vmcount=$(( ${#nodesarray[@]} + 2 ))
+    vmcount=$(( ${#nodesarray[@]} + 2 )) # nodes + hub + ansible/main
     [ $(grep -ho 'export.*mcastMAC.*' "$DATADIR"/jhvmdir*/*conf | sort -u | wc -l) -eq "$vmcount" ]
     $skip_step_if_already_done
     # always fail if this has not been done
@@ -628,6 +627,8 @@ EOF
 
 (
     $starting_step "Run main **Ansible script** (from the jupyterhub-deploy repository)"
+    nodesarray=( $node_list )
+    vmcount=$(( ${#nodesarray[@]} + 1 )) # nodes + just the hub
     "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
 cd jupyterhub-deploy
 # last part of ansible log should show "failed=0" three times. e.g:
@@ -636,7 +637,7 @@ cd jupyterhub-deploy
 #   node1                      : ok=41   changed=32   unreachable=0    failed=0   
 #   node2                      : ok=41   changed=32   unreachable=0    failed=0   
 count="\$(tail deploylog.log | grep -o "failed=0" | wc -l)"
-[ "\$count" -eq 3 ]
+[ "\$count" -eq "$vmcount" ]
 EOF
     $skip_step_if_already_done
     "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
@@ -679,6 +680,93 @@ EOF
 ) ; prev_cmd_failed
 
 DATADIR="$DATADIR" "$ORGCODEDIR/ind-steps/build-1box/build-1box.sh" || reportfailed
+
+(
+     $starting_group "Build TensorFlow container image"
+     [ -f "$DATADIR/tensorflow-image.tar" ]
+     $skip_group_if_unnecessary
+     
+     (
+	 $starting_step "Upload a DockerFile for the Tensorflow container"
+	 "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q '[ -f /srv/tensorflow/Dockerfile ]'
+	 $skip_step_if_already_done; set -e
+	 "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q sudo bash <<EOF
+mkdir -p /srv/tensorflow
+cat > /srv/tensorflow/Dockerfile <<EOF2
+FROM jupyter/systemuser
+
+### START Stuff from jupyter/systemuser ###
+
+RUN apt-get update
+RUN apt-get -y install libpq-dev python-dev
+RUN pip install psycopg2
+RUN /opt/conda/envs/python2/bin/pip install psycopg2
+
+# Install nano
+RUN apt-get -y install nano
+
+# Install terminado
+RUN /opt/conda/envs/python2/bin/pip install terminado
+RUN pip install terminado
+
+# Install scikit-learn
+RUN pip install scikit-learn==0.15
+
+# Install widgets
+RUN pip install ipywidgets
+
+# Install standard bash_kernel
+RUN pip install bash_kernel
+RUN python -m bash_kernel.install
+
+### END Stuff from jupyter/systemuser ###
+
+RUN apt-get -y install curl netcat ssh imagemagick graphviz
+
+RUN /opt/conda/envs/python2/bin/pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.10.0-cp27-none-linux_x86_64.whl
+
+RUN /opt/conda/envs/python2/bin/pip install google-api-python-client
+
+EOF2
+EOF
+     ) ; prev_cmd_failed
+
+     (
+	 $starting_step "Run 'docker build' for the Tensorflow container"
+	 images="$("$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q sudo docker images)"
+	 grep '^tensorflow' <<<"$images"  1>/dev/null
+	 $skip_step_if_already_done
+	 "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q sudo bash <<EOF
+cd  /srv/tensorflow
+docker build -t tensorflow ./
+EOF
+     ) ; prev_cmd_failed
+
+     (
+	 $starting_step "Download snapshot of the Tensorflow container"
+	 [ -f "$DATADIR/tensorflow-image.tar" ]
+	 $skip_step_if_already_done
+	 "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q sudo bash >"$DATADIR/tensorflow-image.tar" <<EOF 
+docker save tensorflow
+EOF
+     ) ; prev_cmd_failed
+) ; prev_cmd_failed
+
+do_distribute_one_image()
+{
+    anode="$1"
+    (
+	$starting_step "Upload tensorflow image to $anode"
+	images="$("$DATADIR/$VMDIR-$anode/ssh-to-kvm.sh" -q sudo docker images)"
+	grep '^tensorflow' <<<"$images"  1>/dev/null
+	$skip_step_if_already_done ; set -e
+	"$DATADIR/$VMDIR-$anode/ssh-to-kvm.sh" -q sudo docker load <"$DATADIR/tensorflow-image.tar"
+    ) ; prev_cmd_failed
+}
+
+for n in $node_list; do
+    do_distribute_one_image "$n"
+done
 
 (
     $starting_group "Set up 1box VM"
