@@ -683,7 +683,7 @@ DATADIR="$DATADIR" "$ORGCODEDIR/ind-steps/build-1box/build-1box.sh" || reportfai
 
 (
      $starting_group "Build TensorFlow container image"
-     [ -f tensorflow-image.tar ]
+     [ -f "$DATADIR/tensorflow-image.tar" ]
      $skip_group_if_unnecessary
      
      (
@@ -708,6 +708,15 @@ EOF
 	 "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q sudo bash <<EOF
 cd  /srv/tensorflow
 docker build -t tensorflow ./
+EOF
+     ) ; prev_cmd_failed
+
+     (
+	 $starting_step "Download snapshot of the Tensorflow container"
+	 [ -f "$DATADIR/tensorflow-image.tar" ]
+	 $skip_step_if_already_done
+	 "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q sudo bash >"$DATADIR/tensorflow-image.tar" <<EOF 
+docker save tensorflow
 EOF
      ) ; prev_cmd_failed
 ) ; prev_cmd_failed
