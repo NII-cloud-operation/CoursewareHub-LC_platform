@@ -211,7 +211,7 @@ EOF
     (
 	$starting_step "Adjust ansible config files for node_list"
 	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
 [ -f nodelist ] && [ "\$(cat nodelist)" = "$node_list" ]
 EOF
 	$skip_step_if_already_done ; set -e
@@ -422,7 +422,6 @@ EOF
     $starting_step "Make sure mac addresses were configured"
     # Make sure all three mac addresses are unique
     nodesarray=( $node_list )
-    echo ${#nodesarray[@]} + 2 
     vmcount=$(( ${#nodesarray[@]} + 2 ))
     [ $(grep -ho 'export.*mcastMAC.*' "$DATADIR"/jhvmdir*/*conf | sort -u | wc -l) -eq "$vmcount" ]
     $skip_step_if_already_done
