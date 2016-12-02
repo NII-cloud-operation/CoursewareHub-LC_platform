@@ -261,6 +261,28 @@ EOF
     echo "..done."
 }
 
+do_image_set()
+{
+    local classid="$1"
+    local dockerimagename="$2"
+
+    ## These have some delay
+    local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
+    source "$hubpath/$DDCONFFILE" || reportfailed "missing $DDCONFFILE"
+
+    "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker exec -i root_jupyterhub_1 bash <<EOF
+    cat >>/srv/jupyterhub_config/jupyterhub_config.py <<EOF2
+c.DockerSpawner.container_image = '$dockerimagename'
+EOF2
+EOF
+
+    echo "Note: no error checking done on ($dockerimagename).  Be careful."
+    echo "Restarting JupyterHub configured to new image..."
+    "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker stop root_jupyterhub_1
+    "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker start root_jupyterhub_1
+    echo "..done."
+}
+
 do_image_list()
 {
     local classid="$1"
@@ -297,6 +319,9 @@ case "$cmd" in
 	 ;;
     image-distribute)
 	do_image_distribute "$@"
+	 ;;
+    image-set)
+	do_image_set "$@"
 	 ;;
     image-list)
 	do_image_list "$@"
