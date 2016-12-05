@@ -673,11 +673,16 @@ EOF
     tar cz manage-tools | \
 	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" tar xzv -C /tmp
     "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" -q <<EOF
+    set -e
     sudo cp /tmp/manage-tools/admin-tools/* /jupyter/admin/admin_tools
     sudo cp /tmp/manage-tools/tools/* /jupyter/admin/tools
 
     sudo cp /tmp/manage-tools/common/* /jupyter/admin/admin_tools
     sudo cp /tmp/manage-tools/common/* /jupyter/admin/tools
+
+    cd /jupyter/admin
+    chmod 444  */*ipynb
+    sudo chmod 555 tools/notebook-diff admin_tools/notebook-diff admin_tools/collect-answer
 EOF
 ) ; prev_cmd_failed
 
