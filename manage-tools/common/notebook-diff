@@ -53,6 +53,9 @@ function compare_dir () {
   }
   [ -e "$to" ] && {
     for nb in $( ls "$to" ); do
+      if [[ "$nb" = "copybook" || "$nb" = "info" || "$nb" = "private_info" || "$nb" = "tools" ]]; then
+        continue
+      fi
       src="$from/$nb"
       dst="$to/$nb"
       if [ ! -e "$src" ]; then
