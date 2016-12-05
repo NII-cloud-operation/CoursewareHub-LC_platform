@@ -663,6 +663,18 @@ EOF
 ) ; prev_cmd_failed
 
 (
+    $starting_step "Copy manage-tools to hub VM"
+    "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+[ -f /jupyterhub/admin/admin-tools/00_GuidanceForTeacher.ipynb ]
+EOF
+    $skip_step_if_already_done; set -e
+    cd "$DATADIR"
+    "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" rm -f /tmp/manage-tools
+    tar cz manage-tools | \
+	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" tar xzv -C /tmp
+) ; prev_cmd_failed
+
+(
      $starting_group "Build TensorFlow container image"
      [ -f "$DATADIR/tensorflow-image.tar" ]
      $skip_group_if_unnecessary
