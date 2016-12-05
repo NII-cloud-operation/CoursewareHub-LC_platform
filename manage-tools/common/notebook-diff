@@ -1,0 +1,92 @@
+#!/bin/bash
+
+JQ='jq .cells[].source'
+
+function is_text () {
+  if [[ $(file $1) =~ ^.*text$ ]]; then
+    echo 1
+  else
+    echo "" 
+  fi
+}
+
+function compare_file () {
+  local from=$1 to=$2
+
+  diff -w -B -y --suppress-common-lines  <(cat ${from} | $JQ | sed -e 's/^\[//' -e 's/^\]//' -e 's/^ *"//' -e 's/\\n",$//' -e 's/"$//') <(cat ${to} | $JQ | sed -e 's/^\[//' -e 's/^\]//' -e 's/^ *"//' -e 's/\\n",$//' -e 's/"$//')
+}
+
+function compare_binary () {
+  file1=$(md5sum $1)
+  file2=$(md5sum $2)
+  if [ "$file1" != "$file2" ]; then
+    echo $file1
+    echo $file2
+  fi
+}
+
+function compare_dir () {
+  local from=$1 to=$2
+
+  [ -e "$from" ] && {
+    for nb in $( ls "$from" ); do
+      src="$from/$nb"
+      dst="$to/$nb"
+      if [ ! -e "$dst" ]; then
+        echo "'$src' was added."
+        if [ -d "$src" ]; then
+          compare_dir $src $dst
+        fi
+      elif [[ -f "$src" || -L "$src" ]]; then
+        if [[ $(is_text $src) && $(is_text $dst) ]]; then
+          rep=$( (compare_file $src $dst) )
+        else
+          rep=$( (compare_binary $src $dst) )
+        fi
+        if [ ! -z "$rep" ]; then
+           echo "'$src' was changed."
+        fi
+      else
+        compare_dir $src $dst
+      fi
+    done
+  }
+  [ -e "$to" ] && {
+    for nb in $( ls "$to" ); do
+      src="$from/$nb"
+      dst="$to/$nb"
+      if [ ! -e "$src" ]; then
+        echo "'$src' was deleted."
+      fi
+    done
+  }
+}
+
+if [ ! -e "$1" ]; then
+  echo "'$1' dose not exist."
+  exit 1
+fi
+if [ ! -e "$2" ]; then
+  echo "'$2' dose not exist."
+  exit 1
+fi
+
+if [ -d "$1" ] && [ ! -d "$2" ] ; then
+  echo "'$2' dose not directory."
+  exit 1
+elif [ ! -d "$1" ] && [ -d "$2" ] ; then
+  echo "'$2' dose not directory."
+  exit 1
+elif [ -d "$1" ] && [ -d "$2" ] ; then
+  # Compare the directories
+  compare_dir $1 $2
+else
+  # Compare the files
+  if [[ $(is_text $src) && $(is_text $dst) ]]; then
+    compare_file $1 $2
+  else
+    compare_binary $1 $2
+  fi
+fi
+
+exit 0
