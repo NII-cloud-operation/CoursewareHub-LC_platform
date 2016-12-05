@@ -730,6 +730,7 @@ EOF
 	 "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q sudo bash >"$DATADIR/tensorflow-image.tar" <<EOF 
 docker save tensorflow
 EOF
+	 echo "tensorflow" >"$DATADIR/tensorflow-image.tar.uniquename" # used by bin/serverctl
      ) ; prev_cmd_failed
 ) ; prev_cmd_failed
 
