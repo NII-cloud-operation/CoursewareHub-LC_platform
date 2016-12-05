@@ -702,7 +702,7 @@ RUN python -m bash_kernel.install
 
 ### END Stuff from jupyter/systemuser ###
 
-RUN apt-get -y install curl netcat ssh imagemagick graphviz
+RUN apt-get -y install curl netcat ssh imagemagick graphviz file rsync jq
 
 RUN /opt/conda/envs/python2/bin/pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.10.0-cp27-none-linux_x86_64.whl
 
@@ -730,6 +730,7 @@ EOF
 	 "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q sudo bash >"$DATADIR/tensorflow-image.tar" <<EOF 
 docker save tensorflow
 EOF
+	 echo "tensorflow" >"$DATADIR/tensorflow-image.tar.uniquename" # used by bin/serverctl
      ) ; prev_cmd_failed
 ) ; prev_cmd_failed
 

@@ -159,14 +159,14 @@ do_image_create()
     # and therefore commit is necessary to create an up-to-date
     # image. )
     
-    uniqe_image_name="server-container-$(date "+%y%m%d-%H%M%S")"
-    echo "Making new commit with name $uniqe_image_name..."
+    unique_image_name="server-container-$(date "+%y%m%d-%H%M%S")"
+    echo "Making new commit with name $unique_image_name..."
     "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q \
-	      sudo docker commit "$servername" "$uniqe_image_name" \
+	      sudo docker commit "$servername" "$unique_image_name" \
 	      || reportfailed "Commit of $servername"
     echo "..Finished commit."
 
-    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker save "$uniqe_image_name" >"$imagename.inprogress" &
+    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker save "$unique_image_name" >"$imagename.inprogress" &
     pid="$!"
     
     while [ -d "/proc/$pid" ]; do
@@ -177,7 +177,7 @@ do_image_create()
     wait "$pid"
     [ "$?" = "0" ] || reportfailed "docker export"
     mv "$imagename.inprogress" "$imagename" || reportfailed "Final renaming to $imagename"
-    echo "$uniqe_image_name" >"$imagename.uniqename"
+    echo "$unique_image_name" >"$imagename.uniquename"
 }
 
 do_image_upload()
@@ -235,14 +235,14 @@ do_image_distribute()
     ## Do tests that can be done quickly first, so user can fix simple problems faster:
     [ "$imagename" == ".tar" ] && reportfailed "The fourth parameter must be a file name to save the image into"
     [ -f "$imagename" ] || reportfailed "The imagefile ($imagename) not found"
-    [ -f "$imagename.uniqename" ] || reportfailed "The info file ($imagename.uniqename) not found"
+    [ -f "$imagename.uniquename" ] || reportfailed "The info file ($imagename.uniquename) not found"
 
     ## These have some delay
     local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
     source "$hubpath/$DDCONFFILE" || reportfailed "missing $DDCONFFILE"
 
     # make a unique name based on the time
-    local targetimage; targetimage="$(cat "$imagename.uniqename")" || reportfailed
+    local targetimage; targetimage="$(cat "$imagename.uniquename")" || reportfailed
 
     for n in $node_list; do
 	echo "Uploading image to node ($n)"
@@ -255,6 +255,28 @@ c.DockerSpawner.container_image = '$targetimage'
 EOF2
 EOF
 
+    echo "Restarting JupyterHub configured to new image..."
+    "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker stop root_jupyterhub_1
+    "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker start root_jupyterhub_1
+    echo "..done."
+}
+
+do_image_set()
+{
+    local classid="$1"
+    local dockerimagename="$2"
+
+    ## These have some delay
+    local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
+    source "$hubpath/$DDCONFFILE" || reportfailed "missing $DDCONFFILE"
+
+    "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker exec -i root_jupyterhub_1 bash <<EOF
+    cat >>/srv/jupyterhub_config/jupyterhub_config.py <<EOF2
+c.DockerSpawner.container_image = '$dockerimagename'
+EOF2
+EOF
+
+    echo "Note: no error checking done on ($dockerimagename).  Be careful."
     echo "Restarting JupyterHub configured to new image..."
     "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker stop root_jupyterhub_1
     "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker start root_jupyterhub_1
@@ -297,6 +319,9 @@ case "$cmd" in
 	 ;;
     image-distribute)
 	do_image_distribute "$@"
+	 ;;
+    image-set)
+	do_image_set "$@"
 	 ;;
     image-list)
 	do_image_list "$@"
