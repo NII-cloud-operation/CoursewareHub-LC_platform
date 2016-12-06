@@ -110,9 +110,14 @@ reconfigure_one_jupyterhub()
 	withslash="/$hubid"
     fi
 
+    # Note: adding the 30 user names below somehow makes initialization of the
+    # database timeout while jupyterhub is restarting.  The current workaround
+    # is to keep restarting jupyterhub until all entries are initialized.  Use
+    # the dumpdb command to make sure progress is being made at each restart.
     "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker exec -i root_jupyterhub_1 bash <<EOF
-    cat >>/srv/jupyterhub_users/userlist <<EOF3
+    cat >/srv/jupyterhub_users/userlist <<EOF3
 $teacherid admin
+$(head -n 30 "$rootdir/usernames")
 EOF3
 
     cat >>/srv/jupyterhub_config/jupyterhub_config.py <<EOF2
@@ -493,7 +498,11 @@ create_directory_structure()
        fi
 
        mkdir -p "/jupyter/admin/$teacherid"
-       ln -s /jupyter/admin/admin_tools "/jupyter/admin/$teacherid/admin_tools"
+       # Note: probably because of NFS, sometimes programs think this
+       # this next symbolic link is a directory when normally it would
+       # be behave as the link itself.
+       [ -L "/jupyter/admin/$teacherid/admin_tools" ] || \
+            ln -s /jupyter/admin/admin_tools "/jupyter/admin/$teacherid/admin_tools"
        chown -R "$teacherid:$teacherid" "/jupyter/admin/$teacherid"
        chmod -R a+wr "/jupyter/admin/$teacherid"
 EOF
