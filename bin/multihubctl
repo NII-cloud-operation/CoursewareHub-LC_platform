@@ -498,7 +498,11 @@ create_directory_structure()
        fi
 
        mkdir -p "/jupyter/admin/$teacherid"
-       ln -s /jupyter/admin/admin_tools "/jupyter/admin/$teacherid/admin_tools"
+       # Note: probably because of NFS, sometimes programs think this
+       # this next symbolic link is a directory when normally it would
+       # be behave as the link itself.
+       [ -L "/jupyter/admin/$teacherid/admin_tools" ] || \
+            ln -s /jupyter/admin/admin_tools "/jupyter/admin/$teacherid/admin_tools"
        chown -R "$teacherid:$teacherid" "/jupyter/admin/$teacherid"
        chmod -R a+wr "/jupyter/admin/$teacherid"
 EOF
