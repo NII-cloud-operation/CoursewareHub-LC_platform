@@ -147,6 +147,14 @@ students-home-dir-hack()
 		chown -h "$userid:$userid" "$udir/$dir" 2>/dev/null
 	    fi
 	done
+
+	ipycfg="$udir/.ipython/profile_default/ipython_config.py"
+	[ -f "$ipycfg" ] || {
+	    mkdir -p "${ipycfg%/*}"
+	    echo "c.InteractiveShellApp.matplotlib = 'inline'" >>"$ipycfg"
+	    chown -R "$userid:$userid" "$udir/.ipython"
+	}
+	
 	# Hopefully this next one will be very temporary:
 	# Make user dirs world writable so teacher can copy in notebooks with
 	# simple unix commands.  Do this every time so teacher can also
@@ -164,5 +172,5 @@ fi
 while true; do
     scan-for-commands
     students-home-dir-hack
-    sleep 1
+    sleep 5
 done
