@@ -674,6 +674,11 @@ EOF
 	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" tar xzv -C /tmp
     "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" -q <<EOF
     set -e
+    # mkdir stuff is also in multihubctl, but needed here
+    # because multihubctl has not been run yet.
+    sudo mkdir -p /jupyter/admin/{admin_tools,tools}
+    sudo chmod a+wr /jupyter/admin/{admin_tools,tools}
+
     sudo cp /tmp/manage-tools/admin-tools/* /jupyter/admin/admin_tools
     sudo cp /tmp/manage-tools/tools/* /jupyter/admin/tools
 
@@ -681,7 +686,7 @@ EOF
     sudo cp /tmp/manage-tools/common/* /jupyter/admin/tools
 
     cd /jupyter/admin
-    chmod 444  */*ipynb
+    sudo chmod 444  */*ipynb
     sudo chmod 555 tools/notebook-diff admin_tools/notebook-diff admin_tools/collect-answer
 EOF
 ) ; prev_cmd_failed
@@ -726,7 +731,7 @@ RUN python -m bash_kernel.install
 
 ### END Stuff from jupyter/systemuser ###
 
-RUN apt-get -y install curl netcat ssh imagemagick graphviz file rsync jq
+RUN apt-get -y install curl netcat ssh imagemagick graphviz file rsync jq libgts-0.7-5
 
 RUN /opt/conda/envs/python2/bin/pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.10.0-cp27-none-linux_x86_64.whl
 
