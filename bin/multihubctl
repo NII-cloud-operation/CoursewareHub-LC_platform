@@ -498,6 +498,11 @@ create_directory_structure()
        fi
 
        mkdir -p "/jupyter/admin/$teacherid"
+
+       ipycfg="/jupyter/admin/$teacherid/.ipython/profile_default/ipython_config.py"
+       mkdir -p "\${ipycfg%/*}"
+       echo "c.InteractiveShellApp.matplotlib = 'inline'" >>"\$ipycfg"
+
        # Note: probably because of NFS, sometimes programs think this
        # this next symbolic link is a directory when normally it would
        # be behave as the link itself.
