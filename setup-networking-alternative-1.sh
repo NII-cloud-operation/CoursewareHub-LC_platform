@@ -65,7 +65,7 @@ runonvm()
 
     (
 	avmdir=jhvmdir-hub
-	$starting_step "Patch hubs kvm-boot.sh"
+	$starting_step "Patch hub's kvm-boot.sh"
 	output="$(runonvm "$DATADIR/$avmdir" <<<'grep -F -e "mcastnet" kvm-boot.sh')"
 	[[ "$output" == *mcastnet*extra-kvm-net.sh* ]]
 	$skip_step_if_already_done
@@ -99,3 +99,75 @@ EOF2
 EOF
     ) ; prev_cmd_failed
 ) ; prev_cmd_failed
+
+
+(
+    $starting_group "Setup nodes for networking using qemu socket"
+    false
+    $skip_group_if_unnecessary
+
+    do1_patchnode_bootscript()
+    (
+	# this is similar to the "Patch hub's..." step above, except that $mcastnet var is removed
+	avmdir="$1"
+	$starting_step "Patch kvm-boot.sh of node $avmdir"
+	output="$(runonvm "$DATADIR/$avmdir" <<<'grep -F -e "extra-kvm" kvm-boot.sh')"
+	[[ "$output" == *extra-kvm-net.sh* ]]
+	$skip_step_if_already_done
+	runonvm "$DATADIR/$avmdir" <<<'sed -i "s,mcastnet$,(source extra-kvm-net.sh)," kvm-boot.sh'
+    ) ; prev_cmd_failed
+
+    # extra-kvm-net.sh could use cat instead of source, because there are no expansions,
+    # but keeping it as source to be the same as the code for the hub VM
+    
+    do1_node_socketnic()
+    (
+	avmdir="$1"
+	nodenumber="${avmdir#jhvmdir-node}"
+	$starting_step "Add kvm nics to hub that listen on sockets"
+	runonvm "$DATADIR/$avmdir" <<<'[ -f extra-kvm-net.sh ]'
+	$skip_step_if_already_done
+
+	HUBVNCPORT="$(
+runonvm "$DATADIR/jhvmdir-hub" <<'EOF'
+source datadir.conf
+echo $VNCPORT
+EOF
+)"
+	
+	HUBIP="$(
+runonvm "$DATADIR/jhvmdir-hub" <<'EOF'
+getipaddress()
+{
+    read -a line1array <<<"$(ip route get 8.8.8.8)"
+    # something like: ( 8.8.8.8 via 157.1.207.254 dev bond0  src 157.1.207.248 )
+    echo "${line1array[@]: -1}" # last token, the space is necessary
+}
+getipaddress
+EOF
+)"
+	echo "HUBIP=$HUBIP  HUBVNCPORT=$HUBVNCPORT"
+	
+	## a triple nested heredoc!  TODO: double check this, maybe rewrite
+	runonvm "$DATADIR/$avmdir" <<EOF
+cat >extra-kvm-net.sh <<'EOF2'
+cat <<EOFsourced
+$(
+    newmac="52:54:00:12:50:$(( 10 + nodenumber + 1 ))"
+    echo
+    echo "-net nic,vlan=1,macaddr=$newmac"
+    echo "-net socket,vlan=1,connect=$HUBIP:\$(( $HUBVNCPORT + 51 + $nodenumber ))"
+)
+EOFsourced
+EOF2
+EOF
+    ) ; prev_cmd_failed
+
+    for i in "${vmlist[@]}"; do
+	[[ "$i" == *node* ]] || continue
+	do1_patchnode_bootscript "$i" ; prev_cmd_failed
+	do1_node_socketnic "$i" ; prev_cmd_failed
+    done
+
+) ; prev_cmd_failed
+
