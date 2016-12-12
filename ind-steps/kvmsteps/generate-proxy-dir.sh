@@ -55,10 +55,17 @@ reportfailed()
 ssh $USER@$iphere 'cd "$vmdir" ; bash'
 EOF
 
-for s in kvm-boot.sh kvm-kill.sh kvm-shutdown-via-ssh.sh ssh-to-kvm.sh ; do
+for s in kvm-boot.sh kvm-kill.sh kvm-shutdown-via-ssh.sh ; do
     cat >"$s" <<EOF
 #!/bin/bash
 ssh $USER@$iphere '"$vmdir/$s"' "\$@"
+EOF
+done
+
+for s in ssh-to-kvm.sh ; do  # turn on tty for interactive use
+    cat >"$s" <<EOF
+#!/bin/bash
+ssh $USER@$iphere -qt '"$vmdir/$s"' "\$@"
 EOF
 done
 
