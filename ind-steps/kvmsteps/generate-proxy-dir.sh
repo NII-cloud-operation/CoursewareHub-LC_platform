@@ -1,0 +1,69 @@
+#!/bin/bash
+
+reportfailed()
+{
+    echo "Script failed...exiting. ($*)" 1>&2
+    exit 255
+}
+
+usage()
+{
+    cat 1>&2 <<EOF
+The first parameter should be a path to a kvm-steps vmdir.
+This script probably must be copied to the same machine that
+holds the vmdir and run from there.
+EOF
+    exit 255
+}
+
+vmdir="$(cd "$1"; pwd -P)"
+
+[ -f "$vmdir/kvm-boot.sh" ] && [ -f "$vmdir/datadir.conf" ] || usage
+
+set -e
+
+cd "$vmdir"
+
+vmname="${vmdir##*/}"
+
+ptar="$vmname-proxy.tar.gz"
+
+[ -f "$ptar" ] && reportfailed "$ptar already exists"
+
+[ -d "$vmname" ] && reportfailed "The directory $vmname already exists"
+
+getipaddress()
+{
+    read -a line1array <<<"$(ip route get 8.8.8.8)"
+    # something like: ( 8.8.8.8 via 157.1.207.254 dev bond0  src 157.1.207.248 )
+    echo "${line1array[@]: -1}" # last token, the space is necessary
+}
+
+mkdir "$vmname"
+cd "$vmname"
+
+iphere="$(getipaddress)"
+
+cat >proxy-shell.sh <<EOF
+#!/bin/bash
+reportfailed()
+{
+    echo "Script failed...exiting. (\$*)" 1>&2
+    exit 255
+}
+[ "\$*" == "" ] || reportfailed "Don't use parameters: pipe script through stdin"
+ssh $USER@$iphere 'cd "$vmdir" ; bash'
+EOF
+
+for s in kvm-boot.sh kvm-kill.sh kvm-shutdown-via-ssh.sh ssh-to-kvm.sh ; do
+    cat >"$s" <<EOF
+#!/bin/bash
+ssh $USER@$iphere '"$vmdir/$s"' "\$@"
+EOF
+done
+
+chmod +x *.sh
+
+cd ..
+
+tar czvf "$ptar" "$vmname"
