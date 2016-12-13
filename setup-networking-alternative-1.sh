@@ -153,7 +153,7 @@ EOF
 cat >extra-kvm-net.sh <<'EOF2'
 cat <<EOFsourced
 $(
-    newmac="52:54:00:12:50:$(( 10 + nodenumber + 1 ))"
+    newmac="52:54:00:12:51:$(( 10 + nodenumber + 1 ))"
     echo
     echo "-net nic,vlan=1,macaddr=$newmac"
     echo "-net socket,vlan=1,connect=$HUBIP:\$(( $HUBVNCPORT + 51 + $nodenumber ))"
