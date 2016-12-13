@@ -86,6 +86,45 @@ done
     "$DATADIR"/jhvmdir-hub/kvm-boot.sh ; prev_cmd_failed
 
     (
+	$starting_step "Create create br0 on hub"
+	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<'EOF' 1>/dev/null 2>&1
+ip link show br0 && [[ "$(ifconfig br0)" == *192.168.11.88* ]]
+EOF
+	$skip_step_if_already_done; set -e
+	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<EOF
+sudo apt-get install bridge-utils
+sudo brctl addbr br0
+sudo ifconfig br0 up 192.168.11.88
+EOF
+    ) ; prev_cmd_failed
+
+    (
+	$starting_step "Add all eth* (except eth0) devices to bridge br0"
+	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<'EOF' 1>/dev/null 2>&1
+ip link | (
+   while IFS=': ' read count device rest ; do
+      [ "$device" = "eth0" ] && continue
+      [[ "$device" != eth* ]] && continue
+      [[ "$rest" == *\ br0\ * ]] || exit 1
+   done
+   exit 0
+)
+EOF
+	$skip_step_if_already_done; set -e
+	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<'EOF'
+set -e
+set -x
+ip link | while IFS=': ' read count device rest ; do
+             [ "$device" = "eth0" ] && continue
+             [[ "$device" != eth* ]] && continue
+             [[ "$rest" == *\ br0\ * ]] && continue
+             sudo brctl addif br0 "$device"
+             sudo ifconfig "$device" up 0.0.0.0
+          done
+EOF
+    ) ; prev_cmd_failed
+
+    (
 	$starting_step "Start restuser daemon"
 	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<EOF 1>/dev/null 2>&1
 ps auxwww | grep 'restuse[r].log'
