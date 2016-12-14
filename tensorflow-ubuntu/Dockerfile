@@ -24,6 +24,10 @@ RUN pip install ipywidgets
 RUN pip install bash_kernel
 RUN python -m bash_kernel.install
 
+# Install custom bash kernel and extensions
+RUN mv /opt/conda/lib/python3.5/site-packages/bash_kernel/kernel.py /opt/conda/lib/python3.5/site-packages/bash_kernel/kernel.py.bak
+ADD kernel.py /opt/conda/lib/python3.5/site-packages/bash_kernel/kernel.py
+
 ### END Stuff from jupyter/systemuser ###
 
 RUN apt-get -y install curl netcat ssh imagemagick graphviz file rsync jq libgts-0.7-5
