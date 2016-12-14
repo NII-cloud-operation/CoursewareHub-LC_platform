@@ -1,0 +1,9 @@
+from https://github.com/axsh/nii-project-2016/blob/master/bin/kernel.py
+commit 76e3cf5030e44c9f63174a95832cb07ef120716c
+
+This is the unrefactored development version of the bash_kernel for incremental output.
+Unlike the one from the merged pull request (https://github.com/takluyver/bash_kernel/pull/46)
+This version works with pexpect version 3.
+
+$ md5sum bin/kernel.py 
+18f07240211d29ca4e6fa109d6fad4a6  bin/kernel.py
