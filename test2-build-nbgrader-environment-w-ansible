@@ -697,57 +697,22 @@ EOF
      $skip_group_if_unnecessary
      
      (
-	 $starting_step "Upload a DockerFile for the Tensorflow container"
-	 "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q '[ -f /srv/tensorflow/Dockerfile ]'
+	 $starting_step "Upload a DockerFile and other files for the Tensorflow Ubuntu container"
+	 "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q '[ -d /srv/tensorflow-ubuntu ]'
 	 $skip_step_if_already_done; set -e
-	 "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q sudo bash <<EOF
-mkdir -p /srv/tensorflow
-cat > /srv/tensorflow/Dockerfile <<EOF2
-FROM jupyter/systemuser
-
-### START Stuff from jupyter/systemuser ###
-
-RUN apt-get update
-RUN apt-get -y install libpq-dev python-dev
-RUN pip install psycopg2
-RUN /opt/conda/envs/python2/bin/pip install psycopg2
-
-# Install nano
-RUN apt-get -y install nano
-
-# Install terminado
-RUN /opt/conda/envs/python2/bin/pip install terminado
-RUN pip install terminado
-
-# Install scikit-learn
-RUN pip install scikit-learn==0.15
-
-# Install widgets
-RUN pip install ipywidgets
-
-# Install standard bash_kernel
-RUN pip install bash_kernel
-RUN python -m bash_kernel.install
-
-### END Stuff from jupyter/systemuser ###
-
-RUN apt-get -y install curl netcat ssh imagemagick graphviz file rsync jq libgts-0.7-5
-
-RUN /opt/conda/envs/python2/bin/pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.10.0-cp27-none-linux_x86_64.whl
-
-RUN /opt/conda/envs/python2/bin/pip install google-api-python-client
-
-EOF2
-EOF
+	 (
+	     cd "$DATADIR"
+	     tar c tensorflow-ubuntu
+	 ) | "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" sudo tar xv -C /srv
      ) ; prev_cmd_failed
-
+     
      (
 	 $starting_step "Run 'docker build' for the Tensorflow container"
 	 images="$("$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q sudo docker images)"
-	 grep '^tensorflow' <<<"$images"  1>/dev/null
+	 grep -w '^tensorflow' <<<"$images"  1>/dev/null
 	 $skip_step_if_already_done
 	 "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q sudo bash <<EOF
-cd  /srv/tensorflow
+cd  /srv/tensorflow-ubuntu
 docker build -t tensorflow ./
 EOF
      ) ; prev_cmd_failed
