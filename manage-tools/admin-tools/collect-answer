@@ -43,7 +43,16 @@ EOF
 for item in ${ANSWER_LIST[@]}
 do
   cp -rp $USER_DIR/$item $WORK_DIR/$USER_NAME/$item
-  [[ "$item" =~ .*ipynb$ ]] && {
-    jupyter nbconvert --template basic $WORK_DIR/$USER_NAME/$item 
-  }
+done
+
+# remove unnecessary materials
+for item in $(find $WORK_DIR/$USER_NAME -name ".ipynb_checkpoints" -print)
+do
+  rm -rf $item
+done
+
+# convert notebooks to HTML file
+for item in $(find $WORK_DIR/$USER_NAME -name "*.ipynb" -print)
+do
+  jupyter nbconvert --template basic $item 
 done
