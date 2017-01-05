@@ -54,5 +54,5 @@ done
 # convert notebooks to HTML file
 for item in $(find $WORK_DIR/$USER_NAME -name "*.ipynb" -print)
 do
-  jupyter nbconvert --template basic $item 
+  jupyter nbconvert --template basic $item --stdout > ${item%.*}.html 
 done
