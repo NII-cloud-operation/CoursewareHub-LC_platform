@@ -5,7 +5,7 @@ source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.s
 # check required DATADIR parameters
 : "${VPCNAME?}"
 
-# This script will make sure vpc{keypair,subnet} are set
+# This script will make sure vpc{keypair,subnet,securitygroup} are set
 
 (
     $starting_step "Create VPC"
@@ -51,7 +51,7 @@ source "$DATADIR/datadir.conf"
     $skip_step_if_already_done ; # (no set -e)
 
     sjson="$(aws ec2 describe-subnets --filters "Name=tag:vpcname,Values=$VPCNAME" --query 'Subnets[].SubnetId')"
-    iferr_exit "describe-vpcs"
+    iferr_exit "describe-subnets"
     # For example, sjson could be:
     # [
     #     "subnet-3aa7cb4c"
@@ -60,11 +60,11 @@ source "$DATADIR/datadir.conf"
     remove='[,\[\]{}"]' # double quotes, commas, braces, and brackets
     ids=( ${sjson//$remove} )
     case "${#ids[@]}" in
-	1) # use the existing VPC
+	1) # use the existing subnet
 	    echo "Using existing subnet: ${ids[0]}"
 	    echo "vpcsubnet=\"${ids[0]}\"" >> "$DATADIR/datadir.conf"
 	;;
-	0) # create a new VPC
+	0) # create a new subnet
 	    awsout="$(aws ec2 create-subnet --vpc-id "$vpcid" --cidr-block 192.168.11.0/24)"
 	    iferr_exit "create-subnet"
 	    awsout="${awsout//$remove}"
@@ -80,3 +80,44 @@ source "$DATADIR/datadir.conf"
 	    ;;
     esac
 ) ; $iferr_exit
+
+source "$DATADIR/datadir.conf"
+
+(
+    $starting_step "Create security group"
+    [ "${vpcsecuritygroup=}" != '' ]  # the = is because of set -u
+    $skip_step_if_already_done ; # (no set -e)
+
+    sjson="$(aws ec2 describe-security-groups --filters Name=group-name,Values=$VPCNAME --query SecurityGroups[].GroupId )"
+    iferr_exit "describe-security-groups"
+    # For example, sjson could be:
+    # [
+    #     "sg-c13aa7a6"
+    # ]
+
+    remove='[,\[\]{}"]' # double quotes, commas, braces, and brackets
+    ids=( ${sjson//$remove} )
+    case "${#ids[@]}" in
+	1) # use the existing security group
+	    echo "Using existing security group: ${ids[0]}"
+	    echo "vpcsecuritygroup=\"${ids[0]}\"" >> "$DATADIR/datadir.conf"
+	;;
+	0) # create a new security group
+	    awsout="$(aws ec2 create-security-group --group-name "$VPCNAME" --description "allow ssh and jupyter access" --vpc-id "$vpcid")"
+	    iferr_exit "create-security-group"
+	    awsout="${awsout//$remove}"
+	    read sgid therest <<<"${awsout#*GroupId:}"  # parse line w/ "     GroupId: sg-1135a876  "
+	    eval_iferr_exit '[[ "'$sgid'" == sg-* ]]'
+	    echo "Created new security group: $sgid"
+	    for p in 22 80 443; do
+		aws ec2 authorize-security-group-ingress --group-id "$sgid" --protocol tcp --port $p --cidr 0.0.0.0/0
+	    done
+	    echo "vpcsecuritygroup=\"$sgid\"" >> "$DATADIR/datadir.conf"
+	    ;;
+	*)
+	    reportfailed "More than one security group named ($VPCNAME)"
+	    ;;
+    esac
+) ; $iferr_exit
+
+source "$DATADIR/datadir.conf"
