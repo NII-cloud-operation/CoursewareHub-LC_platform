@@ -8,7 +8,7 @@ just_exit()
 {
     echo "Error: ($*)" 1>&2
     echo "Exiting." 1>&2
-    exit 255
+    exit 252
 }
 
 reportfailed() { just_exit "$@" ; }
@@ -22,7 +22,7 @@ just_killpg()
 
 iferr_continue()
 {
-    local rc="$?"
+    rc="$?"
     [ "$rc" = "0" ] && return 0
     [ "$rc" = "252" ] || echo "Command Error: rc=$rc ($*)" 1>&2
     return 252 # note, not exiting (yet)
@@ -31,7 +31,7 @@ iferr_continue()
 iferr_exit()
 {
     iferr_continue "$@" && return 0
-    echo "Exiting." 1>&2
+    [ "$rc" = "252" ] || echo "Exiting." 1>&2
     exit 252  # special error code prevents repeating error message
 }
 
@@ -85,7 +85,7 @@ setup_killpg()
    # don't run unless $KILLPGOK is set or this script is the process leader
     [ -n "$KILLPGOK" ] ||  kill -0 -$$ || {
 	    echo "((Read the first part of this script to understand its error handling))" 1>&2
-	    exit 255
+	    exit 252
 	}
     export KILLPGOK=yes
 }

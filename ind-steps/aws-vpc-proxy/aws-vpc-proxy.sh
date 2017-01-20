@@ -121,3 +121,44 @@ source "$DATADIR/datadir.conf"
 ) ; $iferr_exit
 
 source "$DATADIR/datadir.conf"
+
+(
+    $starting_step "Create keypair"
+    [ -f "$DATADIR/pkey" ]
+    $skip_step_if_already_done ; # (no set -e)
+
+    # next command returns error if --keynames does not match anything
+    kjson="$(aws ec2 describe-key-pairs --key-names "$VPCNAME" --query KeyPairs[].KeyName 2>/dev/null || :)"
+    #### iferr_exit "describe-key-pairs"
+    # For example, kjson could be:
+    # [
+    #     "tensorflow"   ((or whatever $VPCNAME is))
+    # ]
+
+    remove='[,\[\]{}"]' # double quotes, commas, braces, and brackets
+    ids=( ${kjson//$remove} )
+    case "${#ids[@]}" in
+	1) # use the existing security group
+	    echo "Key pair named ($VPCNAME) already exists.  You must"
+	    echo "find its private key and copy it to a file named:"
+	    echo "     $DATADIR/pkey"
+	    just_exit
+	;;
+	0) # create a new security group
+	    awsout="$(aws ec2 create-key-pair --key-name "$VPCNAME")"
+	    iferr_exit "create-key-pair"
+	    awsout="${awsout//$remove}"
+
+	    # $awsout contains \n, so the -r option on read is necessary
+	    IFS='' read -r line_with_private_key <<<"${awsout#*KeyMaterial:}"  # parse line w/ "  KeyMaterial: ...lots\n.of\n.text... "
+	    eval_iferr_exit '[[ "'$line_with_private_key'" == *BEGIN*PRIVATE*END*PRIVATE* ]]'
+
+	    # use printf to convert \n
+	    printf "${line_with_private_key# }\n" >"$DATADIR/pkey" ; iferr_exit
+	    echo "Created new private key"
+	    ;;
+	*)
+	    reportfailed "More than one key pair named ($VPCNAME)"
+	    ;;
+    esac
+) ; $iferr_exit
