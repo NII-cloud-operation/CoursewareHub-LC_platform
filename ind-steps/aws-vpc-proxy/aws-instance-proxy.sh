@@ -12,11 +12,15 @@ eval_iferr_exit 'source "$DATADIR/vpc-datadir/datadir.conf"'
     [ "${instanceid=}" != '' ]  # the = is because of set -u
     $skip_step_if_already_done ; # (no set -e)
 
-    aws ec2 run-instances --image-id ami-5dd8b73a --count 1 \
+    awsout="$(aws ec2 run-instances --image-id ami-5dd8b73a --count 1 \
         --instance-type t2.micro --key-name "$VPCNAME" \
 	--security-group-ids "$vpcsecuritygroup" --subnet-id "$vpcsubnet"
-
-    just_exit "more TODO here"
+        )"
+    iferr_exit "run-instances"
+    remove='[,\[\]{}"]' # double quotes, commas, braces, and brackets
+    awsout="${awsout//$remove}"
+    read instanceid therest <<<"${awsout#*InstanceId:}"  # parse line w/ "   InstanceId: i-0618d5b53b486ba8d "
+    echo "instanceid=\"$instanceid\"" >> "$DATADIR/datadir.conf"
 ) ; $iferr_exit
 
 source "$DATADIR/datadir.conf"
