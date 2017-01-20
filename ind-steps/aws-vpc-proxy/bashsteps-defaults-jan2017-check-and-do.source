@@ -56,9 +56,9 @@ setup_datadir()
 	# normal case: the first parameter must be the data directory
 	[ "${1+isset}" == "isset" ] || iferr_exit "First parameter must be the DATADIR"
 	DATADIR="$(absdirectory "$1")" || iferr_exit "Invalid \$DATADIR ($1)"
-	eval_iferr_exit 'source $DATADIR/datadir.conf'
 	params=( setu-workaround "${@:2}") # all the params except the first
     fi
+    eval_iferr_exit 'source $DATADIR/datadir.conf'
 }
 
 check_requirements()
@@ -124,18 +124,11 @@ setup_check_framework()
     {
 	if (($? == 0)); then
 	    echo "** Step: $step_title (done)"
-	    step_title=""
-	    exit 0 # exit the process for the step, but keep going
 	else
 	    echo ; echo "** Step: $step_title (NOT DONE)"
-	    step_title=""
-	    isemptyvar BASHSTEPS_DOING_STEP || {
-		# would like to make this a separate verification check,
-		# but it requires actually running the "do" part of the code
-		echo "WARNING: bashsteps should not be nested" 1>&2
-	    }
-	    export BASHSTEPS_DOING_STEP=true
 	fi
+	step_title=""
+	exit 0 # exit the process for the step, but keep going
     }
     skip_group_for_check()
     {
