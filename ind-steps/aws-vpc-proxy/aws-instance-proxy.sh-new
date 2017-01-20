@@ -1,0 +1,27 @@
+#!/bin/bash
+
+source "$(dirname $(readlink -f "$0"))/bashsteps-bash-utils-jan2017.source" || exit
+
+new_dir="$1"
+vpcdd="$2"
+
+[ -L "$vpcdd/aws-vpc-proxy.sh" ] || iferr_exit "Second parameter must path to a aws-vpc-proxy datadir"
+
+thisfile="${0##*/}"
+mainscript="${thisfile%-new}"
+
+## If this file's name is the main script's filename + "-new", then
+## the following lines of code should be reusable:
+[ "$thisfile" != "$mainscript" ] || iferr_exit 'required filename pattern not followed'
+[ "$new_dir" != "" ] || iferr_exit "First parameter should be the emacs build directory"
+! [ -d "$new_dir" ] || iferr_exit "$new_dir already exists"
+eval_iferr_exit 'mkdir -p "$new_dir"'
+ln -s "$ORGCODEDIR/$mainscript" "$new_dir" || iferr_exit "ln to $mainscript"
+
+ln -s "$(readlink -f $vpcdd)" "$new_dir/vpc-datadir"
+
+cat  >"$new_dir/datadir.conf" <<EOF || reportfailed "datadir.conf init failed"
+# stuff like disksize will be set here
+EOF
+
+echo "Success"
