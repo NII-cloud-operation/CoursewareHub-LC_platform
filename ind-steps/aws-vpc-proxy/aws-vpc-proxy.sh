@@ -154,7 +154,7 @@ source "$DATADIR/datadir.conf"
 	    eval_iferr_exit '[[ "'$line_with_private_key'" == *BEGIN*PRIVATE*END*PRIVATE* ]]'
 
 	    # use printf to convert \n
-	    printf "${line_with_private_key# }\n" >"$DATADIR/pkey" ; iferr_exit
+	    printf -- "${line_with_private_key# }\n" >"$DATADIR/pkey" ; iferr_exit
 	    echo "Created new private key"
 	    ;;
 	*)
