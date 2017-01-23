@@ -12,6 +12,10 @@ eval_iferr_exit 'source "$DATADIR/vpc-datadir/datadir.conf"'
     [ "${instanceid=}" != '' ]  # the = is because of set -u
     $skip_step_if_already_done ; # (no set -e)
 
+    # check that these have been set by vpc-datadir:
+    : ${VPCNAME?} ${vpcsecuritygroup?}  ${vpcsubnet?}
+    # TODO: is it enough just to just let "set -u" *and* iferr_exit catch these?
+    
     awsout="$(aws ec2 run-instances --image-id ami-5dd8b73a --count 1 \
         --instance-type t2.micro --key-name "$VPCNAME" \
 	--security-group-ids "$vpcsecuritygroup" --subnet-id "$vpcsubnet"
