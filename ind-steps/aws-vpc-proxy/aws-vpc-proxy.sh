@@ -211,6 +211,7 @@ source "$DATADIR/datadir.conf"
 
 	    # use printf to convert \n
 	    printf -- "${line_with_private_key# }\n" >"$DATADIR/pkey" ; iferr_exit
+	    eval_iferr_exit 'chmod 400 "'$DATADIR/pkey'"' ; iferr_exit
 	    echo "Created new private key"
 	    ;;
 	*)

@@ -1,0 +1,8 @@
+#!/bin/bash
+
+source "$(dirname "$0")/bashsteps-bash-utils-jan2017.source"
+
+source "$LINKCODEDIR/datadir.conf" || iferr_exit
+
+
+
