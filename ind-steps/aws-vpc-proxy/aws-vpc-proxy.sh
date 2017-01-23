@@ -76,7 +76,50 @@ source "$DATADIR/datadir.conf"
 	    echo "vpcsubnet=\"$subnetid\"" >> "$DATADIR/datadir.conf"
 	    ;;
 	*)
-	    reportfailed "More than one VPC has tag with ($VPCNAME)"
+	    reportfailed "More than one subnet has tag with ($VPCNAME)"
+	    ;;
+    esac
+) ; $iferr_exit
+
+source "$DATADIR/datadir.conf"
+
+(
+    $starting_step "Create Internet Gateway"
+    [ "${vpcigw=}" != '' ]  # the = is because of set -u
+    $skip_step_if_already_done ; # (no set -e)
+
+    # search for any already attached to the vpc
+    sjson="$(aws ec2 describe-internet-gateways --filters "Name=attachment.vpc-id,Values=$vpcid" \
+                        --query 'InternetGateways[].InternetGatewayId')"
+    iferr_exit "describe-igws"
+    # For example, sjson could be:
+    # [
+    #     "igw-3aa7cb4c"
+    # ]
+
+    remove='[,\[\]{}"]' # double quotes, commas, braces, and brackets
+    ids=( ${sjson//$remove} )
+    case "${#ids[@]}" in
+	1) # use the existing igw
+	    echo "Using existing igw: ${ids[0]}"
+	    echo "vpcigw=\"${ids[0]}\"" >> "$DATADIR/datadir.conf"
+	;;
+	0) # create a new igw
+	    awsout="$(aws ec2 create-internet-gateway)"
+	    iferr_exit "create-internet-gateway"
+	    awsout="${awsout//$remove}"
+	    read igwid therest <<<"${awsout#*InternetGatewayId:}"  # parse line w/ "   InternetGatewayId: igw-fd2d0098 "
+	    eval_iferr_exit '[[ "'$igwid'" == igw-* ]]'
+
+	    # next command should have no output
+	    aws ec2 attach-internet-gateway  --internet-gateway-id "$igwid" --vpc-id "$vpcid"
+	    iferr_exit "attach-internet-gateway"
+	    
+	    echo "Created new igw: $igwid"
+	    echo "vpcigw=\"$igwid\"" >> "$DATADIR/datadir.conf"
+	    ;;
+	*)
+	    reportfailed "More than one internet gateway is already attached to VPC ($vpcid)"
 	    ;;
     esac
 ) ; $iferr_exit
