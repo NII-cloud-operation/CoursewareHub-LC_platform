@@ -52,6 +52,7 @@ source "$DATADIR/datadir.conf"
     awsout2="$(aws ec2 associate-address --instance-id "$instanceid" --allocation-id "$allocationid")"
     iferr_exit "associate-address: $awsout2"
 
+    awsout2="${awsout2//$remove}"
     read associationid therest <<<"${awsout2#*AssociationId:}"  # parse line w/ "   AssociationId: eipassoc-2bebb745 "
     echo "associationid=\"$associationid\"" >> "$DATADIR/datadir.conf"
     eval_iferr_exit '[[ "'$associationid'" == eipassoc-* ]]'
