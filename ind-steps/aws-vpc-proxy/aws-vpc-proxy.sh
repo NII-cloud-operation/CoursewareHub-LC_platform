@@ -34,6 +34,14 @@ source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.s
 	    eval_iferr_exit '[[ "'$vpcid'" == vpc-* ]]'
 	    aws ec2 create-tags --resources "$vpcid" --tags "Key=vpcname,Value=$VPCNAME"
 	    iferr_exit "create-tags"
+
+	    rtinfo="$(aws ec2 describe-route-tables --filters "Name=vpc-id,Values=$vpcid" \
+                  --query 'RouteTables[].RouteTableId')"
+	    rtinfo="${rtinfo//$remove}"  # should be just the route id plus whitespace
+	    read -d '' routeid therest <<<"$rtinfo"  # remove the white space
+	    eval_iferr_exit '[[ "'$routeid'" == rtb-* ]]'
+	    echo "routeid=\"$routeid\"" >> "$DATADIR/datadir.conf"
+
 	    echo "Created new VPC: $vpcid"
 	    echo "vpcid=\"$vpcid\"" >> "$DATADIR/datadir.conf"
 	    ;;
@@ -111,9 +119,14 @@ source "$DATADIR/datadir.conf"
 	    read igwid therest <<<"${awsout#*InternetGatewayId:}"  # parse line w/ "   InternetGatewayId: igw-fd2d0098 "
 	    eval_iferr_exit '[[ "'$igwid'" == igw-* ]]'
 
-	    # next command should have no output
+	    # next command should have no output, says the amazon doc
 	    aws ec2 attach-internet-gateway  --internet-gateway-id "$igwid" --vpc-id "$vpcid"
 	    iferr_exit "attach-internet-gateway"
+
+	    ## TODO: Move this out to a separate step
+	    awsout2="$(aws ec2 create-route --route-table-id "$routeid" \
+                      --destination-cidr-block 0.0.0.0/0 --gateway-id "$igwid")"
+	    [[ "$awsout2" == *Return*true* ]] || iferr_exit "create-route"
 	    
 	    echo "Created new igw: $igwid"
 	    echo "vpcigw=\"$igwid\"" >> "$DATADIR/datadir.conf"
