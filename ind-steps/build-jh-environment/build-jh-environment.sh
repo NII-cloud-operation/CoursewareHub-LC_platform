@@ -8,11 +8,12 @@ reportfailed()
 
 export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
 
-if [ "$DATADIR" = "" ]; then
-    # Default to putting output in the code directory, which means
-    # a separate clone of the repository for each build
-    DATADIR="$ORGCODEDIR"
-fi
+DATADIR="$1"
+
+[ -L "$1/build-jh-environment.sh" ] || reportfailed "First parameter must be the datadir"
+
+DATADIR="$(readlink -f "$DATADIR")"
+
 source "$ORGCODEDIR/simple-defaults-for-bashsteps.source"
 
 # Maybe the multiple build scripts in this directory could share the
