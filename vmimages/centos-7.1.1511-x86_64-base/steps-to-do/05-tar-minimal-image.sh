@@ -1,1 +1,0 @@
-../../shared-code/centos-base/05-tar-minimal-image.sh

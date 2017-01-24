@@ -43,8 +43,6 @@ for i in "${conffiles[@]}"; do
     [ -f "$DATADIR/$i" ] || reportfailed "$i is required"
 done
 
-imagesource="$DATADIR/vmimages/centos-7.1.1511-x86_64-base/output/minimal-image.raw.tar.gz"
-
 ## This script assumes link to ubuntu image is already at
 ## "$DATADIR/ubuntu-image-links/ubuntu-image.tar.gz"
 
