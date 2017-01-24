@@ -29,6 +29,8 @@ vmdirlist=(
     $(for i in $(seq 1 $nodecount) ; do echo jhvmdir-node$i ; done)
 )
 
+node_list="$(for i in $(seq 1 $nodecount) ; do echo -n " node$i" ; done)"
+
 randomport="$(( 5000 + ( $RANDOM % 5000 ) ))"
 
 for i in "${vmdirlist[@]}"; do
@@ -69,5 +71,6 @@ done
 
 cat  >"$DATADIR/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for whole environment"
 $(declare -p vmdirlist)
+node_list="${node_list# }"
 EOF
 echo "Success"

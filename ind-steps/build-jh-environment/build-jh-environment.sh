@@ -14,20 +14,10 @@ DATADIR="$1"
 
 DATADIR="$(readlink -f "$DATADIR")"
 
-source "$ORGCODEDIR/simple-defaults-for-bashsteps.source"
+source "$DATADIR/datadir.conf" || reportfailed
 
-# Maybe the multiple build scripts in this directory could share the
-# same .conf, but overall it is probably simpler to keep them
-# separate.  Hopefully there will be time to revisit this decision
-# when thinking more about best practices for bashsteps and $DATADIR.
+source "$ORGCODEDIR/../../simple-defaults-for-bashsteps.source" || reportfailed
 
-DATADIRCONF="$DATADIR/datadir-jh.conf"
-
-# avoids errors on first run, but maybe not good to change state
-# outside of a step
-touch  "$DATADIRCONF"
-
-source "$DATADIRCONF"
 
 # These are expected to exist before running the first time:
 conffiles=(
@@ -40,9 +30,9 @@ conffiles=(
     )
 )
 
-for i in "${conffiles[@]}"; do
-    [ -f "$DATADIR/$i" ] || reportfailed "$i is required"
-done
+#for i in "${conffiles[@]}"; do
+#    [ -f "$DATADIR/$i" ] || reportfailed "$i is required"
+#done
 
 ## This script assumes link to ubuntu image is already at
 ## "$DATADIR/ubuntu-image-links/ubuntu-image.tar.gz"
