@@ -8,25 +8,16 @@ reportfailed()
 
 export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
 
-if [ "$DATADIR" = "" ]; then
-    # Default to putting output in the code directory, which means
-    # a separate clone of the repository for each build
-    DATADIR="$ORGCODEDIR"
-fi
-source "$ORGCODEDIR/simple-defaults-for-bashsteps.source"
+DATADIR="$1"
 
-# Maybe the multiple build scripts in this directory could share the
-# same .conf, but overall it is probably simpler to keep them
-# separate.  Hopefully there will be time to revisit this decision
-# when thinking more about best practices for bashsteps and $DATADIR.
+[ -L "$1/build-jh-environment.sh" ] || reportfailed "First parameter must be the datadir"
 
-DATADIRCONF="$DATADIR/datadir-jh.conf"
+DATADIR="$(readlink -f "$DATADIR")"
 
-# avoids errors on first run, but maybe not good to change state
-# outside of a step
-touch  "$DATADIRCONF"
+source "$DATADIR/datadir.conf" || reportfailed
 
-source "$DATADIRCONF"
+source "$ORGCODEDIR/../../simple-defaults-for-bashsteps.source" || reportfailed
+
 
 # These are expected to exist before running the first time:
 conffiles=(
@@ -39,9 +30,9 @@ conffiles=(
     )
 )
 
-for i in "${conffiles[@]}"; do
-    [ -f "$DATADIR/$i" ] || reportfailed "$i is required"
-done
+#for i in "${conffiles[@]}"; do
+#    [ -f "$DATADIR/$i" ] || reportfailed "$i is required"
+#done
 
 ## This script assumes link to ubuntu image is already at
 ## "$DATADIR/ubuntu-image-links/ubuntu-image.tar.gz"
@@ -67,7 +58,7 @@ VMDIR=jhvmdir
     ) ; prev_cmd_failed
 
     DATADIR="$DATADIR/$VMDIR" \
-	   "$ORGCODEDIR/ind-steps/kvmsteps/kvm-setup.sh" \
+	   "$ORGCODEDIR/../../ind-steps/kvmsteps/kvm-setup.sh" \
 	   "$DATADIR/ubuntu-image-links/ubuntu-image.tar.gz"
     # TODO: this guard is awkward.
     [ -x "$DATADIR/$VMDIR/kvm-boot.sh" ] && \
@@ -317,7 +308,7 @@ EOF
 
 	if ! [ -x "$DATADIR/$avmdir/kvm-boot.sh" ]; then
 	    DATADIR="$DATADIR/$avmdir" \
-		   "$ORGCODEDIR/ind-steps/kvmsteps/kvm-setup.sh" \
+		   "$ORGCODEDIR/../../ind-steps/kvmsteps/kvm-setup.sh" \
 		   "$DATADIR/$VMDIR/ubuntu-before-nbgrader.tar.gz"
 	fi
 	# Note: the (two) steps above will be skipped for the main KVM
@@ -350,6 +341,7 @@ EOF
 		)
 
 	    # http://askubuntu.com/questions/441619/how-to-successfully-restart-a-network-without-reboot-over-ssh
+	    echo aaaaa
 	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF
 sudo tee -a /etc/network/interfaces <<EOF2
 
@@ -666,7 +658,7 @@ EOF
 [ -f /jupyter/admin/admin_tools/00_GuidanceForTeacher.ipynb ]
 EOF
     $skip_step_if_already_done; set -e
-    cd "$DATADIR"
+    cd "$ORGCODEDIR/../.."
     "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" rm -fr /tmp/manage-tools
     tar cz manage-tools | \
 	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" tar xzv -C /tmp
@@ -699,7 +691,7 @@ EOF
 	 "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q '[ -d /srv/tensorflow-ubuntu ]'
 	 $skip_step_if_already_done; set -e
 	 (
-	     cd "$DATADIR"
+	     cd "$ORGCODEDIR/../.."
 	     tar c tensorflow-ubuntu
 	 ) | "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" sudo tar xv -C /srv
      ) ; prev_cmd_failed
@@ -785,8 +777,8 @@ EOF
 [ -f /srv/adapt-notebooks-for-user.sh ] && [ -f /srv/background-command-processor.sh ]
 EOF
 	$skip_step_if_already_done; set -e
-	cd "$DATADIR"
-	tar c adapt-notebooks-for-user.sh background-command-processor.sh | "$VMDIR-hub/ssh-to-kvm.sh" sudo tar xv -C /srv
+	cd "$ORGCODEDIR/../.."
+	tar c adapt-notebooks-for-user.sh background-command-processor.sh | "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" sudo tar xv -C /srv
     ) ; prev_cmd_failed
 
     (
