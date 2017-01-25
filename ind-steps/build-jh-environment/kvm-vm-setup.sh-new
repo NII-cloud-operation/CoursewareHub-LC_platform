@@ -23,7 +23,8 @@ existing_directory_for_datadir()
 existing_directory_for_datadir
 
 eval_iferr_exit 'source "$DATADIR/datadir.conf"'
-eval_iferr_exit 'nodecount="${#node_list[@]}"'
+node_array=( $node_list )
+eval_iferr_exit 'nodecount="${#node_array[@]}"'
 
 [ "$nodecount" -gt 0 ] && [ "$nodecount" -lt 20 ] || iferr_exit "Invalid nodecount in datadir.conf"
 
