@@ -344,7 +344,6 @@ do_distribute_one_image()
 {
     anode="$1"
     (
-	set -x
 	$starting_step "Upload tensorflow image to $anode"
 	images="$("$DATADIR/$VMDIR-$anode/ssh-to-kvm.sh" -q sudo docker images)"
 	grep '^tensorflow' <<<"$images"  1>/dev/null
@@ -401,7 +400,7 @@ EOF
 EOF
 	$skip_step_if_already_done; set -e
 	cd "$ORGCODEDIR/../.."
-	tar c adapt-notebooks-for-user.sh background-command-processor.sh | "$VMDIR-hub/ssh-to-kvm.sh" sudo tar xv -C /srv
+	tar c adapt-notebooks-for-user.sh background-command-processor.sh | "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" sudo tar xv -C /srv
     ) ; prev_cmd_failed
 
     (
