@@ -21,7 +21,7 @@ mainscript="${thisfile%-new}"
 eval_iferr_exit 'mkdir -p "$new_dir"'
 ln -s "$ORGCODEDIR/$mainscript" "$new_dir" || iferr_exit "ln to $mainscript"
 
-DATADIR="$new_dir"
+eval_iferr_exit 'DATADIR="$(readlink -f "$new_dir")"'
 
 vmdirlist=(
     jhvmdir
@@ -34,23 +34,26 @@ node_list="$(for i in $(seq 1 $nodecount) ; do echo -n " node$i" ; done)"
 randomport="$(( 5000 + ( $RANDOM % 5000 ) ))"
 
 for i in "${vmdirlist[@]}"; do
-    "$ORGCODEDIR/../kvmsteps/kvmsteps.sh-new" "$DATADIR/$i" "$path_to_ubuntu_image" || iferr_exit
     case "$i" in
 	jhvmdir)
+	    imagepath="$path_to_ubuntu_image"
 	    IP=192.168.11.99
 	    MAC=52:54:00:12:00:99
 	    ;;
-	jhvmdir-nub)
+	jhvmdir-hub)
+	    imagepath="$DATADIR/jhvmdir/ubuntu-before-nbgrader.tar.gz"
 	    IP=192.168.11.88
 	    MAC=52:54:00:12:00:09
 	    ;;
 	jhvmdir-node*)
+	    imagepath="$DATADIR/jhvmdir/ubuntu-before-nbgrader.tar.gz"
 	    n="${i#*-node}"
 	    nn="$(printf "%02d" "$n")"
 	    IP=192.168.11.$n
 	    MAC=52:54:00:12:00:$nn
 	    ;;
     esac
+    "$ORGCODEDIR/../kvmsteps/kvmsteps.sh-new" "$DATADIR/$i" "$imagepath" || iferr_exit
     cat >>"$DATADIR/$i/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for $i"
 # Not all of these are used on every VM
 export EXTRAHOSTFWDREL=""
