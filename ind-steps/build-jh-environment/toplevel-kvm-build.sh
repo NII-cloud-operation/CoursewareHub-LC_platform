@@ -19,17 +19,13 @@ source "$DATADIR/datadir.conf" || reportfailed
 source "$ORGCODEDIR/../../simple-defaults-for-bashsteps.source" || reportfailed
 
 (
-    $starting_group "The whole build"
+    $starting_group "Setup VMs"
+    
+    "$ORGCODEDIR/kvm-vm-setup.sh" "$DATADIR"
+) ; prev_cmd_failed
 
-    (
-	$starting_group "Setup VMs"
-
-	"$ORGCODEDIR/kvm-vm-setup.sh" "$DATADIR"
-    ) ; iferr_exit
-
-    (
-	$starting_group "Install Jupyterhub Environment"
-
-	"$ORGCODEDIR/build-jh-environment.sh" "$DATADIR"
-    ) ; iferr_exit
-) ; iferr_exit
+(
+    $starting_group "Install Jupyterhub Environment"
+    
+    "$ORGCODEDIR/build-jh-environment.sh" "$DATADIR"
+) ; prev_cmd_failed
