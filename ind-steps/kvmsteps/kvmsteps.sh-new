@@ -25,8 +25,16 @@ standard_datadir_setup()
 }
 standard_datadir_setup
 
-cat  >"$DATADIR/datadir.conf" <<EOF || reportfailed "datadir.conf init failed"
+(
+    cat  >>"$DATADIR/datadir.conf" <<EOF || reportfailed "datadir.conf init failed"
 : ${KVMMEM:=4096}
 imagesource="$path_to_ubuntu_image"
 EOF
-echo "Success"
+    ln -s "$ORGCODEDIR/"simple-defaults-for-bashsteps.source "$DATADIR" || iferr_exit "link to bashsteps defaults"
+    ln -s "$ORGCODEDIR/vmdir-scripts"/* "$DATADIR" || iferr_exit "links to KVM control scripts"
+    echo "Success"
+) || {
+    # clean up if error
+    rm -fr "$new_dir"
+}
+
