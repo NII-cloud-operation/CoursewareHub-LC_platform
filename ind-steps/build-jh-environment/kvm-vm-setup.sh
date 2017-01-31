@@ -185,43 +185,45 @@ EOF
     (
 	$starting_step "Adjust ansible config files for node_list"
 	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+	# TODO: fix this, it always shows not done
+set -x
 [ -f nodelist ] && [ "\$(cat nodelist)" = "$node_list" ]
 EOF
 	$skip_step_if_already_done ; set -e
 
+	invfile="$(
+  echo "[jupyterhub_host]"
+  hubip="$(source "$DATADIR/$VMDIR-hub/datadir.conf" ; echo "$VMIP")"
+  printf "hub ansible_ssh_user=root ansible_ssh_host=%s servicenet_ip=%s\n" "$hubip" "$hubip"
+  echo
+  echo "[jupyterhub_nodes]"
+  for n in $node_list; do
+     nodeip="$(source "$DATADIR/$VMDIR-$n/datadir.conf" ; echo "$VMIP")"
+     printf "%s ansible_ssh_user=root ansible_ssh_host=%s fqdn=%s servicenet_ip=%s\n" "$n" "$nodeip" "$n" "$nodeip"
+  done
+  echo
+  echo "[jupyterhub_nfs]"
+  echo "hub"
+  echo ""
+  echo "[proxy]"
+  echo "hub"
+  echo ""
+  echo "[nfs_clients]"
+  for n in $node_list; do
+     echo "$n"
+  done
+)"
+	
 	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
 node_list="$node_list"
 
 [ -f jupyterhub-deploy/inventory.bak ] || cp jupyterhub-deploy/inventory jupyterhub-deploy/inventory.bak 
 
-while IFS='' read -r ln ; do
-   case "\$ln" in
-     *jupyterhub_nodes*)
-         echo "\$ln"
-         for n in \$node_list; do
-            echo \$n ansible_ssh_user=root ansible_ssh_host=192.168.11."\${n#node}" fqdn=\$n servicenet_ip=192.168.11."\${n#node}"
-         done
-         while IFS='' read -r ln ; do
-             [[ "\$ln" == [* ]] && break
-         done
-         echo
-         echo "\$ln"
-         ;;
-     *nfs_clients*)
-         echo "\$ln"
-         for n in \$node_list; do
-            echo \$n
-         done
-         while IFS='' read -r ln ; do
-             [[ "\$ln" == [* ]] && break
-         done
-         echo "\$ln"
-         ;;
-     *) echo "\$ln"
-        ;;
-   esac
-done <jupyterhub-deploy/inventory.bak  >jupyterhub-deploy/inventory
+# write out a complete inventory file constructed on deploy VM
+cat >jupyterhub-deploy/inventory <<EOFinv
+$invfile
+EOFinv
 
 [ -f jupyterhub-deploy/script/assemble_certs.bak ] || cp jupyterhub-deploy/script/assemble_certs jupyterhub-deploy/script/assemble_certs.bak
 
