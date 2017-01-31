@@ -291,15 +291,7 @@ EOF
 grep eth1 /etc/network/interfaces
 EOF
 	    $skip_step_if_already_done
-	    addr=$(
-		case "$2" in
-		    *main*) echo 99 ;;
-		    *hub*) echo 88 ;;
-		    node*) echo "${2//[^0-9]}" ;; #TODO: refactor
-		    *) reportfailed "BUG"
-		esac
-		)
-
+	    addr="$(source "$DATADIR/$avmdir/datadir.conf" ; echo "$VMIP")"
 	    # http://askubuntu.com/questions/441619/how-to-successfully-restart-a-network-without-reboot-over-ssh
 
 	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF
@@ -307,7 +299,7 @@ sudo tee -a /etc/network/interfaces <<EOF2
 
 auto eth1
 iface eth1 inet static
-    address 192.168.11.$addr
+    address $addr
     netmask 255.255.255.0
 EOF2
 
