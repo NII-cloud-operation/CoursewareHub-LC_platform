@@ -286,18 +286,6 @@ EOF
 	# Note: the (two) steps above will be skipped for the main KVM
 
 	(
-	    $starting_step "Expand fresh image from snapshot for $2"
-	    [ -f "$DATADIR/$avmdir/ubuntu-14-instance-build.img" ]
-	    $skip_step_if_already_done ; set -e
-	    cd "$DATADIR/$avmdir/"
-	    tar xzSvf ../$VMDIR/ubuntu-before-nbgrader.tar.gz
-	) ; prev_cmd_failed
-
-	# TODO: this guard is awkward.
-	[ -x "$DATADIR/$avmdir/kvm-boot.sh" ] && \
-	    "$DATADIR/$avmdir/kvm-boot.sh"
-	
-	(
 	    $starting_step "Setup private network for VM $avmdir"
 	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
 grep eth1 /etc/network/interfaces
