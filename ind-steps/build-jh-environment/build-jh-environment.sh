@@ -101,7 +101,7 @@ EOF
     for n in $node_list; do
 	do-one-keypair "$n" "${n//[^0-9]/}"
     done
-)
+) ; prev_cmd_failed
 
 
 (
