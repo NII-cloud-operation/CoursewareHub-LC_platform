@@ -46,23 +46,9 @@ VMDIR=jhvmdir
     [ -f "$DATADIR/$VMDIR/ubuntu-before-nbgrader.tar.gz" ]
     $skip_group_if_unnecessary
 
-    (
-	$starting_step "Make $VMDIR"
-	[ -d "$DATADIR/$VMDIR" ]
-	$skip_step_if_already_done ; set -e
-	mkdir "$DATADIR/$VMDIR"
-	# increase default mem to give room for a wakame instance or two
-	echo ': ${KVMMEM:=4096}' >>"$DATADIR/$VMDIR/datadir.conf"
-	[ -f "$DATADIR/datadir-jh.conf" ] || reportfailed "datadir-jh.conf is required"
-	cat "$DATADIR/datadir-jh.conf" >>"$DATADIR/$VMDIR/datadir.conf"
-    ) ; prev_cmd_failed
+    "$DATADIR/$VMDIR/kvm-expand-fresh-image.sh" ; prev_cmd_failed
 
-    DATADIR="$DATADIR/$VMDIR" \
-	   "$ORGCODEDIR/../../ind-steps/kvmsteps/kvm-setup.sh" \
-	   "$DATADIR/ubuntu-image-links/ubuntu-image.tar.gz"
-    # TODO: this guard is awkward.
-    [ -x "$DATADIR/$VMDIR/kvm-boot.sh" ] && \
-	"$DATADIR/$VMDIR/kvm-boot.sh"
+    "$DATADIR/$VMDIR/kvm-boot.sh" ; prev_cmd_failed
 
     (
 	$starting_step "Allow sudo for ubuntu user account, remove mtod"
@@ -292,41 +278,13 @@ EOF
     boot-one-vm()
     {
 	avmdir="$1"
-	(
-	    $starting_step "Make $avmdir"
-	    [ -d "$DATADIR/$avmdir" ]
-	    $skip_step_if_already_done ; set -e
-	    mkdir "$DATADIR/$avmdir"
-	    # increase default mem to give room for a wakame instance or two
-	    echo ': ${KVMMEM:=4096}' >>"$DATADIR/$avmdir/datadir.conf"
-	    [ -f "$DATADIR/$3" ] || reportfailed "$3 is required"
-	    # copy specific port forwarding stuff to avmdir, so vmdir*/kvm-* scripts
-	    # will have all config info
-	    cat "$DATADIR/$3" >>"$DATADIR/$avmdir/datadir.conf"
-	    # copy ssh info from main VM to note VMs:
-	    cp "$DATADIR/$VMDIR/sshuser" "$DATADIR/$avmdir/sshuser"
-	    cp "$DATADIR/$VMDIR/sshkey" "$DATADIR/$avmdir/sshkey"
-	) ; prev_cmd_failed
 
-	if ! [ -x "$DATADIR/$avmdir/kvm-boot.sh" ]; then
-	    DATADIR="$DATADIR/$avmdir" \
-		   "$ORGCODEDIR/../../ind-steps/kvmsteps/kvm-setup.sh" \
-		   "$DATADIR/$VMDIR/ubuntu-before-nbgrader.tar.gz"
-	fi
+	"$DATADIR/$avmdir/kvm-expand-fresh-image.sh" ; prev_cmd_failed
+
+	"$DATADIR/$avmdir/kvm-boot.sh" ; prev_cmd_failed
+
 	# Note: the (two) steps above will be skipped for the main KVM
 
-	(
-	    $starting_step "Expand fresh image from snapshot for $2"
-	    [ -f "$DATADIR/$avmdir/ubuntu-14-instance-build.img" ]
-	    $skip_step_if_already_done ; set -e
-	    cd "$DATADIR/$avmdir/"
-	    tar xzSvf ../$VMDIR/ubuntu-before-nbgrader.tar.gz
-	) ; prev_cmd_failed
-
-	# TODO: this guard is awkward.
-	[ -x "$DATADIR/$avmdir/kvm-boot.sh" ] && \
-	    "$DATADIR/$avmdir/kvm-boot.sh"
-	
 	(
 	    $starting_step "Setup private network for VM $avmdir"
 	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
