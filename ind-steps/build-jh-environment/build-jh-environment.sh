@@ -93,13 +93,15 @@ EOF
 set -e
 set -x
 cd jupyterhub-deploy/certificates
-${KEYMASTER} signed-keypair -n $1 -h $1.website.com -p both -s IP:192.168.11.$2
+${KEYMASTER} signed-keypair -n $1 -h $1.website.com -p both -s IP:$2
 EOF
 	) ; prev_cmd_failed
     }
-    do-one-keypair hub 88
+    hubip="$(source "$DATADIR/$VMDIR-hub/datadir.conf" ; echo "$VMIP")"
+    do-one-keypair hub "$hubip"
     for n in $node_list; do
-	do-one-keypair "$n" "${n//[^0-9]/}"
+        nodeip="$(source "$DATADIR/$VMDIR-$n/datadir.conf" ; echo "$VMIP")"
+	do-one-keypair "$n" "$nodeip"
     done
 ) ; prev_cmd_failed
 
