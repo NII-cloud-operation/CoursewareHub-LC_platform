@@ -4,9 +4,14 @@ source "$(dirname $(readlink -f "$0"))/bashsteps-bash-utils-jan2017.source" || e
 
 new_dir="$1"
 path_to_ubuntu_image="$2"
+OK_not_there="$3"
 
-[[ -f "$path_to_ubuntu_image" ]] && [[ "$path_to_ubuntu_image" == *tar.gz ]]
+[[ "$path_to_ubuntu_image" == *tar.gz ]]
 iferr_exit 'Expecting second parameter to be *.tar.gz image file'
+
+[ "$OK_not_there" = "OK" ] || [ -f "$path_to_ubuntu_image" ]
+iferr_exit 'Expecting image file to exist'
+
 eval_iferr_exit 'path_to_ubuntu_image="$(readlink -f "$path_to_ubuntu_image")"'
 
 thisfile="${0##*/}"
@@ -30,7 +35,6 @@ standard_datadir_setup
 : ${KVMMEM:=4096}
 imagesource="$path_to_ubuntu_image"
 EOF
-    ln -s "$ORGCODEDIR/"simple-defaults-for-bashsteps.source "$DATADIR" || iferr_exit "link to bashsteps defaults"
     ln -s "$ORGCODEDIR/vmdir-scripts"/* "$DATADIR" || iferr_exit "links to KVM control scripts"
     echo "Success"
 ) || {

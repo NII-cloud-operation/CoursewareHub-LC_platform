@@ -58,7 +58,7 @@ for i in "${vmdirlist[@]}"; do
 	    MAC=52:54:00:12:00:$nn
 	    ;;
     esac
-    "$ORGCODEDIR/../kvmsteps/kvmsteps.sh-new" "$DATADIR/$i" "$imagepath" || iferr_exit
+    "$ORGCODEDIR/../kvmsteps/kvmsteps.sh-new" "$DATADIR/$i" "$imagepath" OK || iferr_exit
     cat >>"$DATADIR/$i/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for $i"
 # Not all of these are used on every VM
 export EXTRAHOSTFWDREL=""
