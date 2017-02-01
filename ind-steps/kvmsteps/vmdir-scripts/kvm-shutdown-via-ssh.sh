@@ -1,19 +1,6 @@
 #!/bin/bash
 
-reportfailed()
-{
-    echo "Script failed...exiting. ($*)" 1>&2
-    exit 255
-}
-
-export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
-export SYMLINKDIR="$(cd "$(dirname "$0")" && pwd -P)" || reportfailed
-
-if [ "$DATADIR" = "" ]; then
-    # Choose directory of symbolic link by default
-    DATADIR="$SYMLINKDIR"
-fi
-source "$ORGCODEDIR/simple-defaults-for-bashsteps.source"
+source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.source" || exit
 
 kvm_is_running()
 {
@@ -31,7 +18,7 @@ maybesudo=""
     false
     $skip_step_if_already_done ; set -e
     "$DATADIR/ssh-to-kvm.sh" $maybesudo shutdown -h now || :  # why does this return rc=255??
-) ; prev_cmd_failed
+) ; $iferr_exit
 
 : ${WAITFORSHUTDOWN:=5 5 2 2 2 5 5 10 10 30 60} # set WAITFORSHUTDOWN to "0" to not wait
 (
@@ -51,4 +38,4 @@ maybesudo=""
 	sleep "$waitfor"
     done <<<"$WAITFORSHUTDOWN"
     kvm_is_running || rm $DATADIR/runinfo/kvm.pid
-) ; prev_cmd_failed
+) ; $iferr_exit
