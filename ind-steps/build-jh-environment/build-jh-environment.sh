@@ -1,24 +1,8 @@
 #!/bin/bash
 
-reportfailed()
-{
-    echo "Script failed...exiting. ($*)" 1>&2
-    exit 255
-}
+source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.source" || exit
 
-export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
-
-DATADIR="$1"
-
-[ -L "$1/build-jh-environment.sh" ] || reportfailed "First parameter must be the datadir"
-
-DATADIR="$(readlink -f "$DATADIR")"
-
-source "$DATADIR/datadir.conf" || reportfailed
-
-source "$ORGCODEDIR/../../simple-defaults-for-bashsteps.source" || reportfailed
-
-
+## TODO: remove this comment in another commit
 ## This script assumes link to ubuntu image is already at
 ## "$DATADIR/ubuntu-image-links/ubuntu-image.tar.gz"
 
@@ -37,7 +21,7 @@ EOF
 git clone https://github.com/triggers/jupyterhub-deploy.git
 #git clone https://github.com/compmodels/jupyterhub-deploy.git
 EOF
-) ; prev_cmd_failed
+) ; $iferr_exit
 
 (
     $starting_step "Adjust ansible config files for node_list"
@@ -108,7 +92,7 @@ diff jupyterhub-deploy/inventory.bak jupyterhub-deploy/inventory || :
 echo ------ jupyterhub-deploy/script/assemble_certs ---------
 diff  jupyterhub-deploy/script/assemble_certs.bak jupyterhub-deploy/script/assemble_certs || :
 EOF
-) ; prev_cmd_failed
+) ; $iferr_exit
 
 (
     $starting_group "Make TLS/SSL certificates with docker"
@@ -121,19 +105,16 @@ EOF
 	"$DATADIR/$VMDIR/ssh-to-kvm.sh" "curl -fsSL https://get.docker.com/ | sudo sh"
 	"$DATADIR/$VMDIR/ssh-to-kvm.sh" "sudo usermod -aG docker ubuntu"
 	touch "$DATADIR/extrareboot" # necessary to make the usermod take effect in Jupyter environment
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 
+    : ${extrareboot:=} # set -u workaround
     if [ "$extrareboot" != "" ] || \
 	   [ -f "$DATADIR/extrareboot" ] ; then  # this flag can also be set before calling ./build-nii.sh
 	rm -f "$DATADIR/extrareboot"
-	[ -x "$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" ] && \
-	    "$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh"
+	## TODO: this step is dynamically added/removed, which is awkward for bashsteps.  Alternatives?
+	"$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" wrapped ; $iferr_exit
     fi
-
-    if [ -x "$DATADIR/$VMDIR/kvm-boot.sh" ]; then
-	"$DATADIR/$VMDIR/kvm-boot.sh"
-    fi
-
+    "$DATADIR/$VMDIR/kvm-boot.sh" wrapped ; $iferr_exit
 
     # following guide at: https://github.com/compmodels/jupyterhub-deploy/blob/master/INSTALL.md
 
@@ -161,7 +142,7 @@ EOF2
 ${KEYMASTER} ca
 
 EOF
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 
     do-one-keypair()
     {
@@ -181,7 +162,7 @@ set -x
 cd jupyterhub-deploy/certificates
 ${KEYMASTER} signed-keypair -n $1 -h $1.website.com -p both -s IP:$2
 EOF
-	) ; prev_cmd_failed
+	) ; $iferr_exit
     }
     hubip="$(source "$DATADIR/$VMDIR-hub/datadir.conf" ; echo "$VMIP")"
     do-one-keypair hub "$hubip"
@@ -189,7 +170,7 @@ EOF
         nodeip="$(source "$DATADIR/$VMDIR-$n/datadir.conf" ; echo "$VMIP")"
 	do-one-keypair "$n" "$nodeip"
     done
-) ; prev_cmd_failed
+) ; $iferr_exit
 
 
 (
@@ -224,7 +205,7 @@ cp secrets.vault.yml secrets.vault.yml.tmp-for-debugging
 
 ansible-vault encrypt --vault-password-file vault-password secrets.vault.yml
 EOF
-) ; prev_cmd_failed
+) ; $iferr_exit
 
 (
     $starting_step "Set users.vault"
@@ -247,7 +228,7 @@ jupyterhub_admins:
 EOF2
 ansible-vault encrypt --vault-password-file vault-password users.vault.yml
 EOF
-) ; prev_cmd_failed
+) ; $iferr_exit
 
 (
     $starting_step "Copy private ssh key to main KVM, plus minimal ssh config"
@@ -273,7 +254,7 @@ EOF2
 chmod 644 .ssh/config
 
 EOF
-) ; prev_cmd_failed
+) ; $iferr_exit
 
 (
     $starting_step "Run ./script/assemble_certs (from the jupyterhub-deploy repository)"
@@ -290,7 +271,7 @@ cd jupyterhub-deploy
 ./script/assemble_certs 
 
 EOF
-) ; prev_cmd_failed
+) ; $iferr_exit
 
 (
     $starting_step "Copy user ubuntu's .ssh dir to shared NFS area"
@@ -306,7 +287,7 @@ sudo mkdir -p /mnt/nfs
 sudo tar c /home/ubuntu/.ssh | ( cd /mnt/nfs && sudo tar xv )
 
 EOF
-) ; prev_cmd_failed
+) ; $iferr_exit
 
 (
     $starting_step "Run main **Ansible script** (from the jupyterhub-deploy repository)"
@@ -331,7 +312,7 @@ cd jupyterhub-deploy
 time ./script/deploy | tee -a deploylog.log
 
 EOF
-) ; prev_cmd_failed
+) ; $iferr_exit
 
 (
     $starting_step "Copy proxy's certificate and key to hub VM"
@@ -360,7 +341,7 @@ $("$DATADIR/$VMDIR/ssh-to-kvm.sh" cat jupyterhub-deploy/certificates/hub-key.pem
 EOF3
 
 EOF
-) ; prev_cmd_failed
+) ; $iferr_exit
 
 (
     $starting_step "Copy manage-tools to hub VM"
@@ -389,7 +370,7 @@ EOF
     sudo chmod 444  */*ipynb
     sudo chmod 555 tools/notebook-diff admin_tools/notebook-diff admin_tools/collect-answer
 EOF
-) ; prev_cmd_failed
+) ; $iferr_exit
 
 (
      $starting_group "Build TensorFlow container image"
@@ -404,7 +385,7 @@ EOF
 	     cd "$ORGCODEDIR/../.."
 	     tar c tensorflow-ubuntu
 	 ) | "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" sudo tar xv -C /srv
-     ) ; prev_cmd_failed
+     ) ; $iferr_exit
      
      (
 	 $starting_step "Run 'docker build' for the Tensorflow container"
@@ -415,7 +396,7 @@ EOF
 cd  /srv/tensorflow-ubuntu
 docker build -t tensorflow ./
 EOF
-     ) ; prev_cmd_failed
+     ) ; $iferr_exit
 
      (
 	 $starting_step "Download snapshot of the Tensorflow container"
@@ -425,8 +406,8 @@ EOF
 docker save tensorflow
 EOF
 	 echo "tensorflow" >"$DATADIR/tensorflow-image.tar.uniquename" # used by bin/serverctl
-     ) ; prev_cmd_failed
-) ; prev_cmd_failed
+     ) ; $iferr_exit
+) ; $iferr_exit
 
 do_distribute_one_image()
 {
@@ -437,7 +418,7 @@ do_distribute_one_image()
 	grep '^tensorflow' <<<"$images"  1>/dev/null
 	$skip_step_if_already_done ; set -e
 	"$DATADIR/$VMDIR-$anode/ssh-to-kvm.sh" -q sudo docker load <"$DATADIR/tensorflow-image.tar"
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 }
 
 for n in $node_list; do
@@ -461,7 +442,7 @@ cd /srv
 sudo git clone https://github.com/axsh/nii-project-2016.git
 
 EOF
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 
     (
 	$starting_step "Download Oracle Java rpm"
@@ -479,7 +460,7 @@ EOF
 	     http://download.oracle.com/otn-pub/java/jdk/8u73-b02/$targetfile \
 	     -O "/srv/nii-project-2016/notebooks/.downloads/$targetfile"
 EOF
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 
     (
 	$starting_step "Copy in adapt-notebooks-for-user.sh and background-command-processor.sh"
@@ -489,7 +470,7 @@ EOF
 	$skip_step_if_already_done; set -e
 	cd "$ORGCODEDIR/../.."
 	tar c adapt-notebooks-for-user.sh background-command-processor.sh | "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" sudo tar xv -C /srv
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 
     (
 	$starting_step "Clone sshuttle to 192.168.11.99 VM"
@@ -503,7 +484,7 @@ echo "hint: sshuttle -l 0.0.0.0 -vr centos@192.168.11.90 10.0.2.0/24" >sshuttle-
 cd sshuttle
 sudo ./setup.py install
 EOF
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 
     (
 	$starting_step "Start background-command-processor.sh in background on 192.168.11.88 (hub) VM"
@@ -516,7 +497,7 @@ set -x
 cd /srv
 sudo bash -c 'setsid ./background-command-processor.sh 1>>bcp.log 2>&1 </dev/null &'
 EOF
-    ) ; prev_cmd_failed
-) ; prev_cmd_failed
+    ) ; $iferr_exit
+) ; $iferr_exit
 
 touch "$DATADIR/flag-inital-build-completed"
