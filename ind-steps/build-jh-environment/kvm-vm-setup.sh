@@ -167,91 +167,6 @@ EOF
 
     ) ; prev_cmd_failed
 
-    (
-	$starting_step "Clone https://github.com/(compmodels)/jupyterhub-deploy.git"
-	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
-[ -d jupyterhub-deploy ]
-EOF
-	$skip_step_if_already_done ; set -e
-
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
-# clone from our exploration/debugging copy
-git clone https://github.com/triggers/jupyterhub-deploy.git
-#git clone https://github.com/compmodels/jupyterhub-deploy.git
-EOF
-    ) ; prev_cmd_failed
-
-    (
-	$starting_step "Adjust ansible config files for node_list"
-	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
-	# TODO: fix this, it always shows not done
-set -x
-[ -f nodelist ] && [ "\$(cat nodelist)" = "$node_list" ]
-EOF
-	$skip_step_if_already_done ; set -e
-
-	invfile="$(
-  echo "[jupyterhub_host]"
-  hubip="$(source "$DATADIR/$VMDIR-hub/datadir.conf" ; echo "$VMIP")"
-  printf "hub ansible_ssh_user=root ansible_ssh_host=%s servicenet_ip=%s\n" "$hubip" "$hubip"
-  echo
-  echo "[jupyterhub_nodes]"
-  for n in $node_list; do
-     nodeip="$(source "$DATADIR/$VMDIR-$n/datadir.conf" ; echo "$VMIP")"
-     printf "%s ansible_ssh_user=root ansible_ssh_host=%s fqdn=%s servicenet_ip=%s\n" "$n" "$nodeip" "$n" "$nodeip"
-  done
-  echo
-  echo "[jupyterhub_nfs]"
-  echo "hub"
-  echo ""
-  echo "[proxy]"
-  echo "hub"
-  echo ""
-  echo "[nfs_clients]"
-  for n in $node_list; do
-     echo "$n"
-  done
-)"
-	
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
-node_list="$node_list"
-
-[ -f jupyterhub-deploy/inventory.bak ] || cp jupyterhub-deploy/inventory jupyterhub-deploy/inventory.bak 
-
-# write out a complete inventory file constructed on deploy VM
-cat >jupyterhub-deploy/inventory <<EOFinv
-$invfile
-EOFinv
-
-[ -f jupyterhub-deploy/script/assemble_certs.bak ] || cp jupyterhub-deploy/script/assemble_certs jupyterhub-deploy/script/assemble_certs.bak
-
-while IFS='' read -r ln ; do
-   case "\$ln" in
-     name_map\ =*)
-         echo "\$ln"
-         echo -n '    "hub": "hub"'
-         for n in \$node_list; do
-            echo ','
-            printf '    "%s": "%s"' "\$n" "\$n"
-         done
-         while IFS='' read -r ln ; do
-             [[ "\$ln" == }* ]] && break
-         done
-         echo
-         echo "\$ln"
-         ;;
-     *) echo "\$ln"
-        ;;
-   esac
-done <jupyterhub-deploy/script/assemble_certs.bak  >jupyterhub-deploy/script/assemble_certs
-echo ------ jupyterhub-deploy/inventory ------------
-diff jupyterhub-deploy/inventory.bak jupyterhub-deploy/inventory || :
-echo ------ jupyterhub-deploy/script/assemble_certs ---------
-diff  jupyterhub-deploy/script/assemble_certs.bak jupyterhub-deploy/script/assemble_certs || :
-EOF
-    ) ; prev_cmd_failed
 ) ; prev_cmd_failed
 
 (
@@ -270,6 +185,7 @@ EOF
 	tar czSvf  ubuntu-before-nbgrader.tar.gz ubuntu-14-instance-build.img
 	cp -a sshuser ubuntu-before-nbgrader.sshuser
 	cp -a sshkey ubuntu-before-nbgrader.sshkey
+	# TODO: should $imagesource be updated in datadir.conf?
     ) ; prev_cmd_failed
 
 ) ; prev_cmd_failed
