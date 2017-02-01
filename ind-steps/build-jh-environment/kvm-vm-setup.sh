@@ -1,23 +1,6 @@
 #!/bin/bash
 
-reportfailed()
-{
-    echo "Script failed...exiting. ($*)" 1>&2
-    exit 255
-}
-
-export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
-
-DATADIR="$1"
-
-[ -L "$1/build-jh-environment.sh" ] || reportfailed "First parameter must be the datadir"
-
-DATADIR="$(readlink -f "$DATADIR")"
-
-source "$DATADIR/datadir.conf" || reportfailed
-
-source "$ORGCODEDIR/../../simple-defaults-for-bashsteps.source" || reportfailed
-
+source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.source" || exit
 
 # These are expected to exist before running the first time:
 conffiles=(
@@ -46,9 +29,9 @@ VMDIR=jhvmdir
     [ -f "$DATADIR/$VMDIR/ubuntu-before-nbgrader.tar.gz" ]
     $skip_group_if_unnecessary
 
-    "$DATADIR/$VMDIR/kvm-expand-fresh-image.sh" ; prev_cmd_failed
+    "$DATADIR/$VMDIR/kvm-expand-fresh-image.sh" wrapped ; $iferr_exit
 
-    "$DATADIR/$VMDIR/kvm-boot.sh" ; prev_cmd_failed
+    "$DATADIR/$VMDIR/kvm-boot.sh" wrapped ; $iferr_exit
 
     (
 	$starting_step "Allow sudo for ubuntu user account, remove mtod"
@@ -62,7 +45,7 @@ EOF
 echo 'ubuntu ALL=(ALL) NOPASSWD: ALL' >>/etc/sudoers
 rm /etc/update-motd.d/*
 EOF
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 
     (
 	$starting_step "Added step to give VMs 8.8.8.8 for dns"
@@ -76,7 +59,7 @@ EOF
 # related: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=625689
 echo "prepend domain-name-servers 8.8.8.8;" | sudo tee -a /etc/dhcp/dhclient.conf
 EOF
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 
     (
 	$starting_step "Install git"
@@ -90,7 +73,7 @@ EOF
 sudo apt-get update
 sudo apt-get -y install git
 EOF
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 
     (
 	$starting_group "Install ansible from source"
@@ -121,7 +104,7 @@ EOF
 sudo apt-get update
 sudo apt-get -y install python2.7 python-yaml python-paramiko python-jinja2 python-httplib2 make python-pip
 EOF
-	) ; prev_cmd_failed
+	) ; $iferr_exit
 
 	(
 	    $starting_step "Clone ansible repository"
@@ -148,7 +131,7 @@ git reset --hard a2d0bbed8c3f9de5d9c993e9b6f27f8af3eea438
 git submodule update --init --recursive
 
 EOF
-	) ; prev_cmd_failed
+	) ; $iferr_exit
 
 	(
 	    $starting_step "Make/install ansible"
@@ -163,19 +146,18 @@ set -e
 cd ansible
 sudo make install
 EOF
-	) ; prev_cmd_failed
+	) ; $iferr_exit
 
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 
-) ; prev_cmd_failed
+) ; $iferr_exit
 
 (
     $starting_group "Snapshot base KVM image"
     [ -f "$DATADIR/$VMDIR/ubuntu-before-nbgrader.tar.gz" ]
     $skip_group_if_unnecessary
 
-    [ -x "$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" ] && \
-	"$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh"
+    "$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" wrapped ; $iferr_exit
 
     (
 	$starting_step "Make snapshot of base image"
@@ -186,9 +168,9 @@ EOF
 	cp -a sshuser ubuntu-before-nbgrader.sshuser
 	cp -a sshkey ubuntu-before-nbgrader.sshkey
 	# TODO: should $imagesource be updated in datadir.conf?
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 
-) ; prev_cmd_failed
+) ; $iferr_exit
 
 (
     $starting_group "Boot three VMs"
@@ -197,9 +179,9 @@ EOF
     {
 	avmdir="$1"
 
-	"$DATADIR/$avmdir/kvm-expand-fresh-image.sh" ; prev_cmd_failed
+	"$DATADIR/$avmdir/kvm-expand-fresh-image.sh" wrapped ; $iferr_exit
 
-	"$DATADIR/$avmdir/kvm-boot.sh" ; prev_cmd_failed
+	"$DATADIR/$avmdir/kvm-boot.sh" wrapped ; $iferr_exit
 
 	# Note: the (two) steps above will be skipped for the main KVM
 
@@ -225,7 +207,7 @@ EOF2
 sudo ifup eth1
 
 EOF
-	) ; prev_cmd_failed
+	) ; $iferr_exit
 
 	(
 	    $starting_step "Change hostname VM $avmdir"
@@ -250,7 +232,7 @@ echo $hn | sudo tee /etc/hostname
 echo 127.0.0.1 $hn | sudo tee -a /etc/hosts
 sudo hostname $hn
 EOF
-	) ; prev_cmd_failed
+	) ; $iferr_exit
     }
 
     boot-one-vm "$VMDIR" "main KVM" datadir-jh.conf
@@ -260,7 +242,7 @@ EOF
 	boot-one-vm "$VMDIR-$n" "$n KVM" datadir-jh-$n.conf
     done
 
-) ; prev_cmd_failed
+) ; $iferr_exit
 exit
 (
     $starting_step "Make sure mac addresses were configured"
@@ -271,4 +253,4 @@ exit
     $skip_step_if_already_done
     # always fail if this has not been done
     reportfailed "Add mcastMAC= to: datadir-jh.conf datadir-jh-nodennn.conf"
-) ; prev_cmd_failed
+) ; $iferr_exit
