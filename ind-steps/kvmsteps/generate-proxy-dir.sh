@@ -62,7 +62,7 @@ ssh $USER@$iphere '"$vmdir/$s"' "\$@"
 EOF
 done
 
-for s in ssh-to-kvm.sh ; do  # turn on tty for interactive use
+for s in ssh-shortcut.sh ; do  # turn on tty for interactive use
     cat >"$s" <<EOF
 #!/bin/bash
 ssh $USER@$iphere -qt '"$vmdir/$s"' "\$@"

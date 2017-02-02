@@ -17,7 +17,7 @@ maybesudo=""
     $starting_step "Send \"${maybesudo}shutdown -h now\" via ssh"
     ! kvm_is_running
     $skip_step_if_already_done ; set -e
-    "$DATADIR/ssh-to-kvm.sh" $maybesudo shutdown -h now || :  # why does this return rc=255??
+    "$DATADIR/ssh-shortcut.sh" $maybesudo shutdown -h now || :  # why does this return rc=255??
 ) ; $iferr_exit
 
 : ${WAITFORSHUTDOWN:=5 5 2 2 2 5 5 10 10 30 60} # set WAITFORSHUTDOWN to "0" to not wait
