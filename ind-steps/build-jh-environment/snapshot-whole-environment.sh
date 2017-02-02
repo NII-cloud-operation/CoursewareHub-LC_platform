@@ -1,22 +1,8 @@
 #!/bin/bash
 
-reportfailed()
-{
-    echo "Script failed...exiting. ($*)" 1>&2
-    exit 255
-}
-
-DATADIR="$(readlink -f "$1")"  # required
-
-export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
-
-source "$ORGCODEDIR/simple-defaults-for-bashsteps.source"
+source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.source" || exit
 
 [ -f "$DATADIR/flag-inital-build-completed" ] || reportfailed "build must be completed before running this"
-
-
-DATADIRCONF="$DATADIR/datadir-jh.conf"
-source "$DATADIRCONF"
 
 [ "$node_list" != "" ] || reportfailed "node_list not defined"
 
@@ -45,7 +31,7 @@ do_one_vm()
 	[ -f "$DATADIR/$VMDIR-snapshot$TARSUFFIX" ]
 	$skip_group_if_unnecessary
 
-	"$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" ; prev_cmd_failed
+	"$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" wrapped ; $iferr_exit
 
 	(
 	    $starting_step "Create snapshot tar file for VM=$VMDIR"
@@ -61,24 +47,10 @@ do_one_vm()
 	    echo "..finished."
 
 	    cp "$DATADIR/$VMDIR/datadir.conf.save" "$DATADIR/$VMDIR/datadir.conf"
-	) ; prev_cmd_failed
-    ) ; prev_cmd_failed
+	) ; $iferr_exit
+    ) ; $iferr_exit
 }
 
 for i in "${vmlist[@]}"; do
     do_one_vm "$i"
 done
-
-(
-    $starting_step "Snapshot extra files used when restoring"
-    [ -f "$DATADIR/extra-snapshot-files$TARSUFFIX" ]
-    $skip_step_if_already_done; set -e
-    extrafiles=(
-	bin
-	demo-scripts
-	letsencrypt
-	test2-build-nbgrader-environment-w-ansible
-    )
-    cd "$DATADIR"
-    tar $TARPARAMS "$DATADIR/extra-snapshot-files$TARSUFFIX" "${extrafiles[@]}"
-)  ; prev_cmd_failed

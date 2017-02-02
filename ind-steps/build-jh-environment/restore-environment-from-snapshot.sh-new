@@ -1,12 +1,6 @@
 #!/bin/bash
 
-reportfailed()
-{
-    echo "Script failed...exiting. ($*)" 1>&2
-    exit 255
-}
-
-export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
+source "$(dirname $(readlink -f "$0"))/bashsteps-bash-utils-jan2017.source" || exit
 
 snapshot_source="$(readlink -f "$1")" || reportfailed
 
@@ -16,7 +10,7 @@ new_dir="$2"
 
 [ -d "$new_dir" ] && reportfailed "$new_dir already exists"
 
-DATADIRCONF="$snapshot_source/datadir-jh.conf"
+DATADIRCONF="$snapshot_source/datadir.conf"
 source "$DATADIRCONF"
 
 [ "$node_list" != "" ] || reportfailed "node_list not defined"
@@ -38,9 +32,9 @@ done
 
 mkdir "$new_dir" || reportfailed mkdir "$new_dir"
 
-cp "$DATADIRCONF" "$new_dir/datadir-jh.conf"
+cp "$DATADIRCONF" "$new_dir/datadir.conf"
 
-cat >>"$new_dir/datadir-jh.conf" <<EOF
+cat >>"$new_dir/datadir.conf" <<EOF
 $(declare -p vmlist )
 
 snapshot_source="$snapshot_source"
