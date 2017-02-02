@@ -78,11 +78,11 @@ done
 	$starting_step "Create create br0 on hub"
 	## TODO: generalize the 33.88 part
 	addr="$(source "$DATADIR/jhvmdir-hub/datadir.conf" ; echo "$VMIP")"
-	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<EOF 1>/dev/null 2>&1
+	"$DATADIR"/jhvmdir-hub/ssh-shortcut.sh <<EOF 1>/dev/null 2>&1
 ip link show br0 && [[ "\$(ifconfig br0)" == *${addr}* ]]
 EOF
 	$skip_step_if_already_done; set -e
-	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<EOF
+	"$DATADIR"/jhvmdir-hub/ssh-shortcut.sh <<EOF
 sudo apt-get install bridge-utils
 sudo brctl addbr br0
 sudo ifconfig br0 up ${addr}
@@ -91,7 +91,7 @@ EOF
 
     (
 	$starting_step "Add all eth* (except eth0) devices to bridge br0"
-	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<'EOF' 1>/dev/null 2>&1
+	"$DATADIR"/jhvmdir-hub/ssh-shortcut.sh <<'EOF' 1>/dev/null 2>&1
 ip link | (
    while IFS=': ' read count device rest ; do
       [ "$device" = "eth0" ] && continue
@@ -102,7 +102,7 @@ ip link | (
 )
 EOF
 	$skip_step_if_already_done; set -e
-	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<'EOF'
+	"$DATADIR"/jhvmdir-hub/ssh-shortcut.sh <<'EOF'
 set -e
 set -x
 ip link | while IFS=': ' read count device rest ; do
@@ -117,11 +117,11 @@ EOF
 
     (
 	$starting_step "Start restuser daemon"
-	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<EOF 1>/dev/null 2>&1
+	"$DATADIR"/jhvmdir-hub/ssh-shortcut.sh <<EOF 1>/dev/null 2>&1
 ps auxwww | grep 'restuse[r].log'
 EOF
 	$skip_step_if_already_done; set -e
-	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<EOF
+	"$DATADIR"/jhvmdir-hub/ssh-shortcut.sh <<EOF
 sudo rmdir /var/run/restuser.sock # for some reason docker puts a directory here by mistake
 sudo daemon -n restuser -o /var/log/restuser.log -- python /srv/restuser/restuser.py --skeldir=/srv/skeldir
 EOF
@@ -129,7 +129,7 @@ EOF
 
     (
 	$starting_step "Setup keys, restart nginx"
-	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<'EOF' 1>/dev/null 2>&1
+	"$DATADIR"/jhvmdir-hub/ssh-shortcut.sh <<'EOF' 1>/dev/null 2>&1
 dout="$(sudo docker ps | grep root_nginx_1)"
 set -x
 exec 2>/tmp/why
@@ -139,23 +139,23 @@ EOF
 
 	# docker mistakenly makes these too, so they must be deleted first
 	# (or we may have old keys there)
-	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo rm -fr /tmp/proxycert /tmp/proxykey
+	"$DATADIR"/jhvmdir-hub/ssh-shortcut.sh sudo rm -fr /tmp/proxycert /tmp/proxykey
 	
 	cat ~/letsencrypt/archive/opty.jp/fullchain1.pem | \
-	    "$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo tee /tmp/proxycert
+	    "$DATADIR"/jhvmdir-hub/ssh-shortcut.sh sudo tee /tmp/proxycert
 	
 	cat ~/letsencrypt/archive/opty.jp/privkey1.pem | \
-	    "$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo tee /tmp/proxykey
+	    "$DATADIR"/jhvmdir-hub/ssh-shortcut.sh sudo tee /tmp/proxykey
 	
-	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo docker stop root_nginx_1
-	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_nginx_1
+	"$DATADIR"/jhvmdir-hub/ssh-shortcut.sh sudo docker stop root_nginx_1
+	"$DATADIR"/jhvmdir-hub/ssh-shortcut.sh sudo docker start root_nginx_1
     ) ; $iferr_exit
 
     (
 	$starting_step "Make sure root_jupyterhub_1 container is running"
 	# This step is a workaround. It should be running by now, but
 	# sometimes it is not, not sure why.
-	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<'EOF' 1>/dev/null 2>&1
+	"$DATADIR"/jhvmdir-hub/ssh-shortcut.sh <<'EOF' 1>/dev/null 2>&1
 dout="$(sudo docker ps | grep root_jupyterhub_1)"
 set -x
 exec 2>/tmp/why
@@ -163,8 +163,8 @@ exec 2>/tmp/why
 EOF
 	$skip_step_if_already_done; set -e
 
-	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo docker stop root_jupyterhub_1
-	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_jupyterhub_1
+	"$DATADIR"/jhvmdir-hub/ssh-shortcut.sh sudo docker stop root_jupyterhub_1
+	"$DATADIR"/jhvmdir-hub/ssh-shortcut.sh sudo docker start root_jupyterhub_1
     ) ; $iferr_exit
 
 ) ; $iferr_exit
@@ -180,11 +180,11 @@ done
 VMDIR=jhvmdir  # so code can be copy/pasted from test2-build-nbgrader-environment-w-ansible
 (
     $starting_step "Start background-command-processor.sh in background on hub VM"
-    "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
 ps auxwww | grep 'background-command-processo[r]' 1>/dev/null 2>&1
 EOF
     $skip_step_if_already_done; set -e
-    "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF
+    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF
 set -x
 cd /srv
 sudo bash -c 'setsid ./background-command-processor.sh 1>>bcp.log 2>&1 </dev/null &'
