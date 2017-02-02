@@ -35,7 +35,16 @@ standard_datadir_setup
 : ${KVMMEM:=4096}
 imagesource="$path_to_ubuntu_image"
 EOF
-    ln -s "$ORGCODEDIR/vmdir-scripts"/* "$DATADIR" || iferr_exit "links to KVM control scripts"
+    # Because vmdirs are sometimes migrated around independently, actually make full copies
+    # of the scripts inside the directory.  Still use symbolic links, because links are
+    # used with a bashsteps experiment for automatically selecting a datadir.
+    (
+	set -e
+	mkdir "$DATADIR/vmdir-scripts"
+	cp "$ORGCODEDIR/vmdir-scripts"/* "$DATADIR/vmdir-scripts"
+	cd "$DATADIR"
+	ln -s "vmdir-scripts"/* "$DATADIR"
+    ) || iferr_exit "links to KVM control scripts"
     echo "Success"
 ) || {
     # clean up if error
