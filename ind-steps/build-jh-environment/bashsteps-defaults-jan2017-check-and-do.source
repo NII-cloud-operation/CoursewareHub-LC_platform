@@ -64,7 +64,9 @@ setup_datadir()
 check_requirements()
 {
     # check that DATADIR was initialized for the calling script
-    [ -L "$DATADIR/$SCRIPTNAME" ] || iferr_exit "\$DATADIR ($DATADIR) not initialized for script ($SCRIPTNAME)"
+    [ "$guestscript" = "true" ] || \
+	[ -L "$DATADIR/$SCRIPTNAME" ] || \
+	iferr_exit "\$DATADIR ($DATADIR) not initialized for script ($SCRIPTNAME).  Append guest to command if OK."
 }
 
 setup_do_framework()
@@ -207,16 +209,20 @@ setcmd()
 parse_parameters()
 {
     thecmd=""
+    guestscript=""
     for	p in "$@"; do
 	case "$p" in
 	    [d]o | dosteps | check | checksteps)
 		setcmd "$p" ;;
-	    verify_code1) 
+	    verifycode1) 
 		setcmd "$p" ;;
 	    wrapped) 
 		setcmd "$p" ;;
 	    nosetu)
 		set +u # for wrapper scripts that get confused by set -u
+		;;
+	    guest) # see check_requirements()
+		guestscript="true"
 		;;
 	    *)  just_exit "Unexpected parameter ($p)" ;;
 	esac
