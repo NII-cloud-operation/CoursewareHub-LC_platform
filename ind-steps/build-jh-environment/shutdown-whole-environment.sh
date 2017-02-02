@@ -2,9 +2,6 @@
 
 source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.source" || exit
 
-# comment out this next line to make shutdown work on environments restored from snapshots.
-[ -f "$DATADIR/flag-inital-build-completed" ] || reportfailed "build must be completed before running this"
-
 [ "$node_list" != "" ] || reportfailed "node_list not defined"
 
 # It is important that node1, node2, etc be shutdown before hub, because
@@ -24,7 +21,7 @@ vmlist=(
 TARSUFFIX=".tar"
 TARPARAMS="cSf"
 
-# This was created just by gutting snapshot-whole-environment.sh.
+# This shutdown script was created just by gutting snapshot-whole-environment.sh.
 
 do_one_vm()
 {
