@@ -15,7 +15,7 @@ maybesudo=""
 
 (
     $starting_step "Send \"${maybesudo}shutdown -h now\" via ssh"
-    false
+    ! kvm_is_running
     $skip_step_if_already_done ; set -e
     "$DATADIR/ssh-to-kvm.sh" $maybesudo shutdown -h now || :  # why does this return rc=255??
 ) ; $iferr_exit
