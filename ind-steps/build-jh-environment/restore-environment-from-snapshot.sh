@@ -1,18 +1,15 @@
 #!/bin/bash
 
-reportfailed()
-{
-    echo "Script failed...exiting. ($*)" 1>&2
-    exit 255
-}
+source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.source" || exit
 
-DATADIR="$(readlink -f "$1")"  # required
+# It seems that when the source above sources datadir.conf, this line
+# is not done correctly:
+#    "declare -a 'vmlist=([0]="jhvmdir-hub" [1]="jhvmdir" [2]="jhvmdir-node1" [3]="jhvmdir-node2")'"
+# such that set -u makes "${vmlist[@]}" flag an error.  So
+# loading it again directly from this file:
+source "$DATADIR/datadir.conf"
 
-export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
-
-source "$ORGCODEDIR/simple-defaults-for-bashsteps.source"
-
-source "$DATADIR/datadir-jh.conf" || reportfailed
+# TODO: figure out the above bash bug/oddity
 
 restore_one_vm()
 {
@@ -24,7 +21,7 @@ restore_one_vm()
 
 	(
 	    $starting_step "Expand snapshot tar file for VM=$VMDIR"
-	    [ -f "$DATADIR/$VMDIR-snapshot.tar.gz" ]
+	    [ -d "$DATADIR/$VMDIR" ]
 	    $skip_step_if_already_done;  set -e
 
 	    echo -n "Expanding tar file..."
@@ -34,24 +31,13 @@ restore_one_vm()
 	    # kvmbin setting needs to be redone:
 	    sed -i 's,KVMBIN,KVMBINxxx,' "$VMDIR/datadir.conf"
 	    echo "..finished."
-	) ; prev_cmd_failed
-    ) ; prev_cmd_failed
+	) ; $iferr_exit
+    ) ; $iferr_exit
 }
 
 for i in "${vmlist[@]}"; do
     restore_one_vm "$i"
 done
-
-(
-    $starting_step "Expand extra-snapshot-files.tar.gz for VM=$VMDIR"
-    [ -d "$DATADIR/letsencrypt" ]
-    $skip_step_if_already_done;  set -e
-
-    echo -n "Expanding tar file..."
-    cd "$DATADIR"
-    tar xSf "$snapshot_source/extra-snapshot-files.tar"
-    echo "..finished."
-) ; prev_cmd_failed
 
 (
     $starting_step "Assign mcastPORT"
@@ -75,7 +61,7 @@ done
     # TODO, reduce the chance of port conflicts even more, somehow
 
     sed -i "s,mcastPORT=set-this-before-booting,mcastPORT=$randomport,"  "$DATADIR"/*vmdir*/datadir.conf
-)  ; prev_cmd_failed
+)  ; $iferr_exit
 
 (
     $starting_group "Boot and configure hub VM"
@@ -83,20 +69,24 @@ done
     false
     $skip_group_if_unnecessary
 
-    "$DATADIR"/jhvmdir-hub/kvm-boot.sh ; prev_cmd_failed
+    # TODO: the need for this guard is awkward:
+    if [ -f "$DATADIR"/jhvmdir-hub/kvm-boot.sh ]; then
+	"$DATADIR"/jhvmdir-hub/kvm-boot.sh wrapped ; $iferr_exit
+    fi
 
     (
 	$starting_step "Create create br0 on hub"
+	## TODO: generalize the 33.88 part
 	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<'EOF' 1>/dev/null 2>&1
-ip link show br0 && [[ "$(ifconfig br0)" == *192.168.11.88* ]]
+ip link show br0 && [[ "$(ifconfig br0)" == *192.168.33.88* ]]
 EOF
 	$skip_step_if_already_done; set -e
 	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<EOF
 sudo apt-get install bridge-utils
 sudo brctl addbr br0
-sudo ifconfig br0 up 192.168.11.88
+sudo ifconfig br0 up 192.168.33.88
 EOF
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 
     (
 	$starting_step "Add all eth* (except eth0) devices to bridge br0"
@@ -122,7 +112,7 @@ ip link | while IFS=': ' read count device rest ; do
              sudo ifconfig "$device" up 0.0.0.0
           done
 EOF
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 
     (
 	$starting_step "Start restuser daemon"
@@ -134,7 +124,7 @@ EOF
 sudo rmdir /var/run/restuser.sock # for some reason docker puts a directory here by mistake
 sudo daemon -n restuser -o /var/log/restuser.log -- python /srv/restuser/restuser.py --skeldir=/srv/skeldir
 EOF
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 
     (
 	$starting_step "Setup keys, restart nginx"
@@ -150,15 +140,15 @@ EOF
 	# (or we may have old keys there)
 	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo rm -fr /tmp/proxycert /tmp/proxykey
 	
-	cat "$DATADIR"/letsencrypt/archive/opty.jp/fullchain1.pem | \
+	cat ~/letsencrypt/archive/opty.jp/fullchain1.pem | \
 	    "$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo tee /tmp/proxycert
 	
-	cat "$DATADIR"/letsencrypt/archive/opty.jp/privkey1.pem | \
+	cat ~/letsencrypt/archive/opty.jp/privkey1.pem | \
 	    "$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo tee /tmp/proxykey
 	
 	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo docker stop root_nginx_1
 	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_nginx_1
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 
     (
 	$starting_step "Make sure root_jupyterhub_1 container is running"
@@ -174,19 +164,21 @@ EOF
 
 	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo docker stop root_jupyterhub_1
 	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh sudo docker start root_jupyterhub_1
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 
-) ; prev_cmd_failed
+) ; $iferr_exit
 
 # Boot the rest:
 for vm in "${vmlist[@]}"; do
     # no problem that hub is already booted
-    "$DATADIR"/$vm/kvm-boot.sh ; prev_cmd_failed
+    if [ -f "$DATADIR"/$vm/kvm-boot.sh ]; then
+	"$DATADIR"/$vm/kvm-boot.sh wrapped ; $iferr_exit
+    fi
 done
 
 VMDIR=jhvmdir  # so code can be copy/pasted from test2-build-nbgrader-environment-w-ansible
 (
-    $starting_step "Start background-command-processor.sh in background on 192.168.11.88 (hub) VM"
+    $starting_step "Start background-command-processor.sh in background on hub VM"
     "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
 ps auxwww | grep 'background-command-processo[r]' 1>/dev/null 2>&1
 EOF
@@ -196,7 +188,7 @@ set -x
 cd /srv
 sudo bash -c 'setsid ./background-command-processor.sh 1>>bcp.log 2>&1 </dev/null &'
 EOF
-) ; prev_cmd_failed
+) ; $iferr_exit
 
 (
     $starting_step "Output port forwarding hint script"
@@ -216,4 +208,4 @@ cat /proc/self/net/route | while read a b c ; do [ "$b" == 00000000 ] && echo "$
 sudo ssh useraccount@127.0.0.1 -L 443:${ipetc#* }:$httpsport -g
 echo "Plus do something like echo '127.0.0.1 niidemo.com' >>/etc/hosts"
 EOF
-) ; prev_cmd_failed
+) ; $iferr_exit
