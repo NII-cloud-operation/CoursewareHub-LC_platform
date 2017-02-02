@@ -1,23 +1,9 @@
 #!/bin/bash
 
-reportfailed()
-{
-    echo "Script failed...exiting. ($*)" 1>&2
-    exit 255
-}
+source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.source" || exit
 
-DATADIR="$(readlink -f "$1")"  # required
-
-export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
-
-source "$ORGCODEDIR/simple-defaults-for-bashsteps.source"
-
-# comment out this next line so shutdown will work on environments restored from snapshots.
-# [ -f "$DATADIR/flag-inital-build-completed" ] || reportfailed "build must be completed before running this"
-
-
-DATADIRCONF="$DATADIR/datadir-jh.conf"
-source "$DATADIRCONF"
+# comment out this next line to make shutdown work on environments restored from snapshots.
+[ -f "$DATADIR/flag-inital-build-completed" ] || reportfailed "build must be completed before running this"
 
 [ "$node_list" != "" ] || reportfailed "node_list not defined"
 
@@ -40,8 +26,6 @@ TARPARAMS="cSf"
 
 # This was created just by gutting snapshot-whole-environment.sh.
 
-
-
 do_one_vm()
 {
     VMDIR="$1"
@@ -49,9 +33,9 @@ do_one_vm()
 	$starting_group "Shutdown VM=$VMDIR"
 	false
 	$skip_group_if_unnecessary
-	"$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" ; prev_cmd_failed
+	"$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" wrapped ; $iferr_exit
 
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 }
 
 for i in "${vmlist[@]}"; do
