@@ -77,14 +77,15 @@ done
     (
 	$starting_step "Create create br0 on hub"
 	## TODO: generalize the 33.88 part
-	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<'EOF' 1>/dev/null 2>&1
-ip link show br0 && [[ "$(ifconfig br0)" == *192.168.33.88* ]]
+	addr="$(source "$DATADIR/jhvmdir-hub/datadir.conf" ; echo "$VMIP")"
+	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<EOF 1>/dev/null 2>&1
+ip link show br0 && [[ "\$(ifconfig br0)" == *${addr}* ]]
 EOF
 	$skip_step_if_already_done; set -e
 	"$DATADIR"/jhvmdir-hub/ssh-to-kvm.sh <<EOF
 sudo apt-get install bridge-utils
 sudo brctl addbr br0
-sudo ifconfig br0 up 192.168.33.88
+sudo ifconfig br0 up ${addr}
 EOF
     ) ; $iferr_exit
 
