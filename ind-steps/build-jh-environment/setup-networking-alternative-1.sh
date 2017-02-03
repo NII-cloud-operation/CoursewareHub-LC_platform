@@ -1,18 +1,15 @@
 #!/bin/bash
 
-reportfailed()
-{
-    echo "Script failed...exiting. ($*)" 1>&2
-    exit 255
-}
+source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.source" || exit
 
-DATADIR="$(readlink -f "$1")"  # required
+# It seems that when the source above sources datadir.conf, this line
+# is not done correctly:
+#    "declare -a 'vmlist=([0]="jhvmdir-hub" [1]="jhvmdir" [2]="jhvmdir-node1" [3]="jhvmdir-node2")'"
+# such that set -u makes "${vmlist[@]}" flag an error.  So
+# loading it again directly from this file:
+source "$DATADIR/datadir.conf"
 
-export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
-
-source "$ORGCODEDIR/simple-defaults-for-bashsteps.source"
-
-source "$DATADIR/datadir-jh.conf" || reportfailed
+# TODO: figure out the above bash bug/oddity
 
 # one fuction to handle both local and remove kvms
 runonvm()
@@ -26,39 +23,6 @@ runonvm()
 }
 
 (
-    $starting_group "Extra memory and cpus"
-    false
-    $skip_group_if_unnecessary
-
-    do1_moremem()
-    (
-	avmdir="$1"
-	$starting_step "More memory for $avmdir"
-	output="$(runonvm "$DATADIR/$avmdir" <<<'grep KVMMEM datadir.conf')"
-	[[ "$output" == *KVMMEM=16384* ]]
-	$skip_step_if_already_done;  set -e
-	runonvm "$DATADIR/$avmdir" <<<'[ -f datadir.conf ]' #sanity check
-	runonvm "$DATADIR/$avmdir" <<<'echo "KVMMEM=16384" >>datadir.conf'
-    ) ; prev_cmd_failed
-
-    do1_morecpu()
-    (
-	avmdir="$1"
-	$starting_step "More cpus for $avmdir"
-	output="$(runonvm "$DATADIR/$avmdir" <<<'grep -F -e "-smp" kvm-boot.sh')"
-	[[ "$output" == *-smp\ 8* ]]
-	$skip_step_if_already_done;  set -e
-	runonvm "$DATADIR/$avmdir" <<<'[ -f datadir.conf ]' #sanity check
-	runonvm "$DATADIR/$avmdir" <<<'sed -i "s,-smp [0-9]*,-smp 8," kvm-boot.sh'
-    ) ; prev_cmd_failed
-
-    for i in "${vmlist[@]}"; do
-	do1_morecpu "$i" ; prev_cmd_failed
-	do1_moremem "$i" ; prev_cmd_failed
-    done
-) ; prev_cmd_failed
-
-(
     $starting_group "Setup hub for networking using qemu socket"
     false
     $skip_group_if_unnecessary
@@ -69,9 +33,9 @@ runonvm()
 	output="$(runonvm "$DATADIR/$avmdir" <<<'grep -F -e "mcastnet" kvm-boot.sh')"
 	[[ "$output" == *mcastnet*extra-kvm-net.sh* ]]
 	$skip_step_if_already_done
-	runonvm "$DATADIR/$avmdir" <<<'sed -i "s/,addr=.*$//" kvm-boot.sh'  # because extra nics confict with preassigned pci slots
-	runonvm "$DATADIR/$avmdir" <<<'sed -i "s,mcastnet$,mcastnet \$(source extra-kvm-net.sh)," kvm-boot.sh'
-    ) ; prev_cmd_failed
+	runonvm "$DATADIR/$avmdir" <<<'sed -i --follow-symlinks "s/,addr=.*$//" kvm-boot.sh'  # because extra nics confict with preassigned pci slots
+	runonvm "$DATADIR/$avmdir" <<<'sed -i --follow-symlinks "s,mcastnet$,mcastnet \$(source extra-kvm-net.sh)," kvm-boot.sh'
+    ) ; $iferr_exit
 
     (
 	avmdir=jhvmdir-hub
@@ -97,8 +61,8 @@ $(
 EOFsourced
 EOF2
 EOF
-    ) ; prev_cmd_failed
-) ; prev_cmd_failed
+    ) ; $iferr_exit
+) ; $iferr_exit
 
 
 (
@@ -114,8 +78,8 @@ EOF
 	output="$(runonvm "$DATADIR/$avmdir" <<<'grep -F -e "extra-kvm" kvm-boot.sh')"
 	[[ "$output" == *extra-kvm-net.sh* ]]
 	$skip_step_if_already_done
-	runonvm "$DATADIR/$avmdir" <<<'sed -i "s,mcastnet$,(source extra-kvm-net.sh)," kvm-boot.sh'
-    ) ; prev_cmd_failed
+	runonvm "$DATADIR/$avmdir" <<<'sed -i --follow-symlinks "s,mcastnet$,(source extra-kvm-net.sh)," kvm-boot.sh'
+    ) ; $iferr_exit
 
     # extra-kvm-net.sh could use cat instead of source, because there are no expansions,
     # but keeping it as source to be the same as the code for the hub VM
@@ -161,13 +125,13 @@ $(
 EOFsourced
 EOF2
 EOF
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 
     for i in "${vmlist[@]}"; do
 	[[ "$i" == *node* ]] || continue
-	do1_patchnode_bootscript "$i" ; prev_cmd_failed
-	do1_node_socketnic "$i" ; prev_cmd_failed
+	do1_patchnode_bootscript "$i" ; $iferr_exit
+	do1_node_socketnic "$i" ; $iferr_exit
     done
 
-) ; prev_cmd_failed
+) ; $iferr_exit
 
