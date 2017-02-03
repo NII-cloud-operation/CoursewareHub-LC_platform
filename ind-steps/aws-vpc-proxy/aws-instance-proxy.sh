@@ -21,6 +21,7 @@ eval_iferr_exit 'source "$DATADIR/vpc-datadir/datadir.conf"'
 	--security-group-ids "$vpcsecuritygroup" --subnet-id "$vpcsubnet"
         )"
     iferr_exit "run-instances"
+    echo "$awsout" >> "$DATADIR/awsoutput"
     remove='[,\[\]{}"]' # double quotes, commas, braces, and brackets
     awsout="${awsout//$remove}"
     read instanceid therest <<<"${awsout#*InstanceId:}"  # parse line w/ "   InstanceId: i-0618d5b53b486ba8d "
@@ -37,6 +38,7 @@ source "$DATADIR/datadir.conf"
     # step1: allocate
     awsout="$(aws ec2 allocate-address --domain vpc)"
     iferr_exit "run-instances"
+    echo "$awsout" >> "$DATADIR/awsoutput"
     remove='[,\[\]{}"]' # double quotes, commas, braces, and brackets
     awsout="${awsout//$remove}"
 
@@ -52,6 +54,7 @@ source "$DATADIR/datadir.conf"
     # step2: associate
     awsout2="$(aws ec2 associate-address --instance-id "$instanceid" --allocation-id "$allocationid")"
     iferr_exit "associate-address: $awsout2"
+    echo "$awsout2" >> "$DATADIR/awsoutput"
 
     awsout2="${awsout2//$remove}"
     read associationid therest <<<"${awsout2#*AssociationId:}"  # parse line w/ "   AssociationId: eipassoc-2bebb745 "
