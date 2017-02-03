@@ -296,14 +296,15 @@ EOF
     $starting_step "Run main **Ansible script** (from the jupyterhub-deploy repository)"
     nodesarray=( $node_list )
     vmcount=$(( ${#nodesarray[@]} + 1 )) # nodes + just the hub
-    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
+    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+set -x
 cd jupyterhub-deploy
 # last part of ansible log should show "failed=0" three times. e.g:
 #   PLAY RECAP *********************************************************************
 #   hub                        : ok=97   changed=84   unreachable=0    failed=0   
 #   node1                      : ok=41   changed=32   unreachable=0    failed=0   
 #   node2                      : ok=41   changed=32   unreachable=0    failed=0   
-count="\$(tail deploylog.log | grep -o "failed=0" | wc -l)"
+count="\$(tail deploylog.log | grep -o "unreachable=0.*failed=0" | wc -l)"
 [ "\$count" -eq "$vmcount" ]
 EOF
     $skip_step_if_already_done
