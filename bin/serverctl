@@ -54,7 +54,7 @@ do_list()
     source "$hubpath/$DDCONFFILE" || reportfailed "missing $DDCONFFILE"
 
     for n in $node_list; do
-	"$hubpath"/jhvmdir-${n}/ssh-to-kvm.sh -q sudo docker ps -a | get_container_names " ($n)"
+	"$hubpath"/jhvmdir-${n}/ssh-shortcut.sh -q sudo docker ps -a | get_container_names " ($n)"
     done
 }
 
@@ -80,7 +80,7 @@ do_allow_sudo()
     local thenode ; thenode="$(find_node_for_container "$classid" "$servername")" || exit
 
     username="${servername#jupyter-}"
-    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker exec -i "$servername" bash <<EOF
+    "$hubpath"/jhvmdir-${thenode}/ssh-shortcut.sh -q sudo docker exec -i "$servername" bash <<EOF
 set -e
 if grep "$username" /etc/sudoers 1>/dev/null; then
    echo "Sudo already allowed"
@@ -100,7 +100,7 @@ do_simple_docker_cmd() # implements both start and stop
     source "$hubpath/$DDCONFFILE" || reportfailed "missing $DDCONFFILE"
     local thenode ; thenode="$(find_node_for_container "$classid" "$servername")" || exit
 
-    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker "$dcmd" "$servername"
+    "$hubpath"/jhvmdir-${thenode}/ssh-shortcut.sh -q sudo docker "$dcmd" "$servername"
 }
 
 humanreadable_to_bytes()
@@ -144,7 +144,7 @@ do_image_create()
 
     ## get the virtual size for giving % progress output:
     echo -n "Starting by getting the image size..."
-    output="$("$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker ps -s -f name="$servername")"
+    output="$("$hubpath"/jhvmdir-${thenode}/ssh-shortcut.sh -q sudo docker ps -s -f name="$servername")"
     echo ".done"
     [ "$(wc -l <<<"$output")" == 2 ] || echo "Warning: problem finding image sizes" 1>&2
     ## output is something like "..........(virtual 4.598 GB)"
@@ -161,12 +161,12 @@ do_image_create()
     
     unique_image_name="server-container-$(date "+%y%m%d-%H%M%S")"
     echo "Making new commit with name $unique_image_name..."
-    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q \
+    "$hubpath"/jhvmdir-${thenode}/ssh-shortcut.sh -q \
 	      sudo docker commit "$servername" "$unique_image_name" \
 	      || reportfailed "Commit of $servername"
     echo "..Finished commit."
 
-    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker save "$unique_image_name" >"$imagename.inprogress" &
+    "$hubpath"/jhvmdir-${thenode}/ssh-shortcut.sh -q sudo docker save "$unique_image_name" >"$imagename.inprogress" &
     pid="$!"
     
     while [ -d "/proc/$pid" ]; do
@@ -207,7 +207,7 @@ do_image_upload()
     ## split the pipeline so we can get the pid of cat
     exec 8< <(exec cat "$imagename")
     catpid="$!"
-    "$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker load <&8 &
+    "$hubpath"/jhvmdir-${thenode}/ssh-shortcut.sh -q sudo docker load <&8 &
     pid="$!"
 
     read perms links owner group size theres <<<"$(ls -l "$imagename")"
@@ -249,15 +249,15 @@ do_image_distribute()
 	do_image_upload  "$classid"  "$targetimage" "$imagename" "$n"
     done
 
-    "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker exec -i root_jupyterhub_1 bash <<EOF
+    "$hubpath"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_jupyterhub_1 bash <<EOF
     cat >>/srv/jupyterhub_config/jupyterhub_config.py <<EOF2
 c.DockerSpawner.container_image = '$targetimage'
 EOF2
 EOF
 
     echo "Restarting JupyterHub configured to new image..."
-    "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker stop root_jupyterhub_1
-    "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker start root_jupyterhub_1
+    "$hubpath"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_jupyterhub_1
+    "$hubpath"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_jupyterhub_1
     echo "..done."
 }
 
@@ -270,7 +270,7 @@ do_image_set()
     local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
     source "$hubpath/$DDCONFFILE" || reportfailed "missing $DDCONFFILE"
 
-    "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker exec -i root_jupyterhub_1 bash <<EOF
+    "$hubpath"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_jupyterhub_1 bash <<EOF
     cat >>/srv/jupyterhub_config/jupyterhub_config.py <<EOF2
 c.DockerSpawner.container_image = '$dockerimagename'
 EOF2
@@ -278,8 +278,8 @@ EOF
 
     echo "Note: no error checking done on ($dockerimagename).  Be careful."
     echo "Restarting JupyterHub configured to new image..."
-    "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker stop root_jupyterhub_1
-    "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker start root_jupyterhub_1
+    "$hubpath"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_jupyterhub_1
+    "$hubpath"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_jupyterhub_1
     echo "..done."
 }
 
@@ -294,8 +294,8 @@ do_image_list()
     # TODO: if this ends up being used, improve the output formatting
     for thenode in $node_list; do
 	echo "Images in $thenode:"
-	"$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q sudo docker images
-	"$hubpath"/jhvmdir-${thenode}/ssh-to-kvm.sh -q df -h /
+	"$hubpath"/jhvmdir-${thenode}/ssh-shortcut.sh -q sudo docker images
+	"$hubpath"/jhvmdir-${thenode}/ssh-shortcut.sh -q df -h /
 	echo
     done
 }

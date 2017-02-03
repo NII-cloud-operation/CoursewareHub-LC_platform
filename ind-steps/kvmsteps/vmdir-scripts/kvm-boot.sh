@@ -1,21 +1,8 @@
 #!/bin/bash
 
-reportfailed()
-{
-    echo "Script failed...exiting. ($*)" 1>&2
-    exit 255
-}
+source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.source" || exit
 
-export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
-export CODEDIR="$(cd "$(dirname "$0")" && pwd -P)" || reportfailed
-
-if [ "$DATADIR" = "" ]; then
-    # Choose directory of symbolic link by default
-    DATADIR="$CODEDIR"
-fi
-source "$ORGCODEDIR/simple-defaults-for-bashsteps.source"
-source "$DATADIR/datadir.conf"
-[ -d "$DATADIR/runinfo" ] || mkdir "$DATADIR/runinfo"
+[ -d "$DATADIR/runinfo" ] || mkdir "$DATADIR/runinfo"  # TODO: move inside a step
 : ${KVMMEM:=1024}
 : ${VNCPORT:=$(( 11100 - 5900 ))}
 # Note: EXTRAHOSTFWD can be set to something like ",hostfwd=tcp::18080-:8888"
@@ -30,7 +17,7 @@ calculate_ports()
     echo ${SSHPORT:=$(( VNCPORT + 22 ))} >"$DATADIR/runinfo/port.ssh"
     echo ${MONPORT:=$(( VNCPORT + 30 ))} >"$DATADIR/runinfo/port.monitor"
     echo ${SERPORT:=$(( VNCPORT + 40 ))} >"$DATADIR/runinfo/port.serial"
-    rewriteme="$EXTRAHOSTFWDREL"  # e.g. ",hostfwd=tcp::80-:8888,...."
+    rewriteme="${EXTRAHOSTFWDREL:=}"  # e.g. ",hostfwd=tcp::80-:8888,...."
     hostfwdrel=""
     while [[ "$rewriteme" == *hostfwd=tcp* ]]; do
 	portatfront="${rewriteme#*hostfwd=tcp:*:}"   # e.g. "80-:8888,...."
@@ -52,6 +39,7 @@ calculate_ports
     $starting_group "Boot KVM"
     (
 	$starting_step "Find qemu binary"
+	: ${KVMBIN:=} # set -u workaround
 	[ "$KVMBIN" != "" ] && [ -f "$KVMBIN" ]
 	$skip_step_if_already_done
 	binlist=(
@@ -65,17 +53,17 @@ calculate_ports
 	    fi
 	done
 	exit 1
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
     source "$DATADIR/datadir.conf"
 
     # TODO: decide if it is worth generalizing kvmsteps to deal with cases like this:
-    [ "$mcastPORT" = "" ] && mcastPORT="1234"
-    [ "$mcastMAC" = "" ] && mcastMAC="52:54:00:12:00:00"
-    [ "$mcastnet" = "" ] && mcastnet="-net nic,vlan=1,macaddr=$mcastMAC  -net socket,vlan=1,mcast=230.0.0.1:$mcastPORT"
+    : ${mcastPORT:="1234"}  ${mcastMAC:="52:54:00:12:00:00"}
+    : ${mcastnet="-net nic,vlan=1,macaddr=$mcastMAC  -net socket,vlan=1,mcast=230.0.0.1:$mcastPORT"}
 
     build-cmd-line() # a function, not a step
     {
         ## Putting all non-wakame nodes on 10.0.3.0/24 so Wakame instances can be accessed at 10.0.2.0/24
+	: ${EXTRAHOSTFWD:=} # set -u workaround
 	cat <<EOF
 	    $KVMBIN
 
@@ -154,7 +142,7 @@ EOF
 	    done
 	    sleep 0.5
 	done
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
     source "$DATADIR/datadir.conf"
     SSHPORT=""  MONPORT=""  SERPORT="" # TODO: make this not needed
     calculate_ports
@@ -182,5 +170,5 @@ EOF
 	    echo "Waiting for $waitfor seconds for ssh port ($SSHPORT) to become active"
 	    sleep "$waitfor"
 	done <<<"$WAITFORSSH"
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 )
