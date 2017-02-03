@@ -104,17 +104,20 @@ EOF
 	$skip_step_if_already_done; set -e
 	"$DATADIR/$VMDIR/ssh-shortcut.sh" "curl -fsSL https://get.docker.com/ | sudo sh"
 	"$DATADIR/$VMDIR/ssh-shortcut.sh" "sudo usermod -aG docker ubuntu"
-	touch "$DATADIR/extrareboot" # necessary to make the usermod take effect in Jupyter environment
+# #	touch "$DATADIR/extrareboot" # necessary to make the usermod take effect in Jupyter environment
     ) ; $iferr_exit
 
-    : ${extrareboot:=} # set -u workaround
-    if [ "$extrareboot" != "" ] || \
-	   [ -f "$DATADIR/extrareboot" ] ; then  # this flag can also be set before calling ./build-nii.sh
-	rm -f "$DATADIR/extrareboot"
-	## TODO: this step is dynamically added/removed, which is awkward for bashsteps.  Alternatives?
-	"$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" wrapped ; $iferr_exit
-    fi
-    "$DATADIR/$VMDIR/kvm-boot.sh" wrapped ; $iferr_exit
+# # Maybe the reboot was never necessary?  Simply doing ssh again is enough?
+# #    : ${extrareboot:=} # set -u workaround
+# #    if [ "$extrareboot" != "" ] || \
+# #	   [ -f "$DATADIR/extrareboot" ] ; then  # this flag can also be set before calling ./build-nii.sh
+# #	rm -f "$DATADIR/extrareboot"
+# #	## TODO: this step is dynamically added/removed, which is awkward for bashsteps.  Alternatives?
+# #	"$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" wrapped ; $iferr_exit
+# #    fi
+# #    if [ -f "$DATADIR/$VMDIR/kvm-boot.sh" ]; then  # TODO: find better way
+# #	"$DATADIR/$VMDIR/kvm-boot.sh" wrapped ; $iferr_exit
+# #    fi
 
     # following guide at: https://github.com/compmodels/jupyterhub-deploy/blob/master/INSTALL.md
 
