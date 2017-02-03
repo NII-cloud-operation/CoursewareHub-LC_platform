@@ -10,13 +10,13 @@ VMDIR=jhvmdir
 
 (
     $starting_step "Clone https://github.com/(compmodels)/jupyterhub-deploy.git"
-    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 [ -d jupyterhub-deploy ]
 EOF
     $skip_step_if_already_done ; set -e
 
-    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 # clone from our exploration/debugging copy
 git clone https://github.com/triggers/jupyterhub-deploy.git
 #git clone https://github.com/compmodels/jupyterhub-deploy.git
@@ -25,8 +25,8 @@ EOF
 
 (
     $starting_step "Adjust ansible config files for node_list"
-    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 	# TODO: fix this, it always shows not done
 set -x
 [ -f nodelist ] && [ "\$(cat nodelist)" = "$node_list" ]
@@ -56,7 +56,7 @@ EOF
   done
 )"
     
-    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 node_list="$node_list"
 
 [ -f jupyterhub-deploy/inventory.bak ] || cp jupyterhub-deploy/inventory jupyterhub-deploy/inventory.bak 
@@ -98,12 +98,12 @@ EOF
     $starting_group "Make TLS/SSL certificates with docker"
     (
 	$starting_step "Install Docker in main KVM"
-	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] && {
-	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<<"which docker" 2>/dev/null 1>&2
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] && {
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<<"which docker" 2>/dev/null 1>&2
 	}
 	$skip_step_if_already_done; set -e
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" "curl -fsSL https://get.docker.com/ | sudo sh"
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" "sudo usermod -aG docker ubuntu"
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" "curl -fsSL https://get.docker.com/ | sudo sh"
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" "sudo usermod -aG docker ubuntu"
 	touch "$DATADIR/extrareboot" # necessary to make the usermod take effect in Jupyter environment
     ) ; $iferr_exit
 
@@ -122,15 +122,15 @@ EOF
 
     (
 	$starting_step "Gather random data from host, set vault-password"
-	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 [ -f jupyterhub-deploy/certificates/password ]
 EOF
 	$skip_step_if_already_done ; set -e
 
 	# The access to /dev/random must be done on the host because
 	# it hangs in KVM
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 mkdir -p jupyterhub-deploy/certificates
 
 echo ubuntu >/home/ubuntu/jupyterhub-deploy/vault-password
@@ -148,15 +148,15 @@ EOF
     {
 	(
 	    $starting_step "Generate a keypair for a server $1"
-	    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
-		"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 [ -f /home/ubuntu/jupyterhub-deploy/certificates/$1-key.pem ]
 EOF
 	    $skip_step_if_already_done ; set -e
 	    
 	    # The access to /dev/random must be done on the host because
 	    # it hangs in KVM
-	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 set -x
 cd jupyterhub-deploy/certificates
@@ -176,15 +176,15 @@ EOF
 (
     exit 0  # The contents here are now part of triggers/jupyterhub-deploy.git
     $starting_step "Set secrets.vault"
-    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 [ -f /home/ubuntu/jupyterhub-deploy/secrets.vault.yml.org ]
 EOF
     $skip_step_if_already_done ; set -e
     
     # The access to /dev/random must be done on the host because
     # it hangs in KVM
-    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 set -x
 cd jupyterhub-deploy/
@@ -209,15 +209,15 @@ EOF
 
 (
     $starting_step "Set users.vault"
-    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 [ -f /home/ubuntu/jupyterhub-deploy/users.vault.yml.org ]
 EOF
     $skip_step_if_already_done ; set -e
     
     # The access to /dev/random must be done on the host because
     # it hangs in KVM
-    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 set -x
 cd jupyterhub-deploy/
@@ -232,11 +232,11 @@ EOF
 
 (
     $starting_step "Copy private ssh key to main KVM, plus minimal ssh config"
-    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
 [ -f .ssh/id_rsa ]
 EOF
     $skip_step_if_already_done
-    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -x
 
 cat >.ssh/id_rsa <<EOF2
@@ -258,12 +258,12 @@ EOF
 
 (
     $starting_step "Run ./script/assemble_certs (from the jupyterhub-deploy repository)"
-    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
 cd jupyterhub-deploy
 [ -f ./host_vars/node2 ]
 EOF
     $skip_step_if_already_done
-    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -x
 set -e
 
@@ -275,11 +275,11 @@ EOF
 
 (
     $starting_step "Copy user ubuntu's .ssh dir to shared NFS area"
-    "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>&2
+    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null 1>&2
 [ -d /mnt/nfs/home/ubuntu/.ssh ]
 EOF
     $skip_step_if_already_done
-    "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF
+    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF
 set -x
 set -e
 
@@ -293,7 +293,7 @@ EOF
     $starting_step "Run main **Ansible script** (from the jupyterhub-deploy repository)"
     nodesarray=( $node_list )
     vmcount=$(( ${#nodesarray[@]} + 1 )) # nodes + just the hub
-    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null
+    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
 cd jupyterhub-deploy
 # last part of ansible log should show "failed=0" three times. e.g:
 #   PLAY RECAP *********************************************************************
@@ -304,7 +304,7 @@ count="\$(tail deploylog.log | grep -o "failed=0" | wc -l)"
 [ "\$count" -eq "$vmcount" ]
 EOF
     $skip_step_if_already_done
-    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -x
 set -e
 
@@ -321,23 +321,23 @@ EOF
     # were stripped out.
     # Note: the root_nginx_1 container probably needs restarting,
     #       which seems to happen automatically eventually.
-    "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
 lines=\$(cat /tmp/proxykey /tmp/proxycert | wc -l)
 [ "\$lines" -gt 10 ]
 EOF
     $skip_step_if_already_done
-    "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF
+    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF
 set -x
 set -e
 
 # For now, just reusing the self-signed cert used for the hub.
 
 sudo tee /tmp/proxycert <<EOF2
-$("$DATADIR/$VMDIR/ssh-to-kvm.sh" cat jupyterhub-deploy/certificates/hub-cert.pem)
+$("$DATADIR/$VMDIR/ssh-shortcut.sh" cat jupyterhub-deploy/certificates/hub-cert.pem)
 EOF2
 
 sudo tee /tmp/proxykey <<EOF3
-$("$DATADIR/$VMDIR/ssh-to-kvm.sh" cat jupyterhub-deploy/certificates/hub-key.pem)
+$("$DATADIR/$VMDIR/ssh-shortcut.sh" cat jupyterhub-deploy/certificates/hub-key.pem)
 EOF3
 
 EOF
@@ -345,15 +345,15 @@ EOF
 
 (
     $starting_step "Copy manage-tools to hub VM"
-    "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" -q <<EOF 2>/dev/null >/dev/null
+    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" -q <<EOF 2>/dev/null >/dev/null
 [ -f /jupyter/admin/admin_tools/00_GuidanceForTeacher.ipynb ]
 EOF
     $skip_step_if_already_done; set -e
     cd "$ORGCODEDIR/../.."
-    "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" rm -fr /tmp/manage-tools
+    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" rm -fr /tmp/manage-tools
     tar cz manage-tools | \
-	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" tar xzv -C /tmp
-    "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" -q <<EOF
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" tar xzv -C /tmp
+    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" -q <<EOF
     set -e
     # mkdir stuff is also in multihubctl, but needed here
     # because multihubctl has not been run yet.
@@ -379,20 +379,20 @@ EOF
      
      (
 	 $starting_step "Upload a DockerFile and other files for the Tensorflow Ubuntu container"
-	 "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q '[ -d /srv/tensorflow-ubuntu ]'
+	 "$DATADIR/$VMDIR-node1/ssh-shortcut.sh" -q '[ -d /srv/tensorflow-ubuntu ]'
 	 $skip_step_if_already_done; set -e
 	 (
 	     cd "$ORGCODEDIR/../.."
 	     tar c tensorflow-ubuntu
-	 ) | "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" sudo tar xv -C /srv
+	 ) | "$DATADIR/$VMDIR-node1/ssh-shortcut.sh" sudo tar xv -C /srv
      ) ; $iferr_exit
      
      (
 	 $starting_step "Run 'docker build' for the Tensorflow container"
-	 images="$("$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q sudo docker images)"
+	 images="$("$DATADIR/$VMDIR-node1/ssh-shortcut.sh" -q sudo docker images)"
 	 grep -w '^tensorflow' <<<"$images"  1>/dev/null
 	 $skip_step_if_already_done
-	 "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q sudo bash <<EOF
+	 "$DATADIR/$VMDIR-node1/ssh-shortcut.sh" -q sudo bash <<EOF
 cd  /srv/tensorflow-ubuntu
 docker build -t tensorflow ./
 EOF
@@ -402,7 +402,7 @@ EOF
 	 $starting_step "Download snapshot of the Tensorflow container"
 	 [ -f "$DATADIR/tensorflow-image.tar" ]
 	 $skip_step_if_already_done
-	 "$DATADIR/$VMDIR-node1/ssh-to-kvm.sh" -q sudo bash >"$DATADIR/tensorflow-image.tar" <<EOF 
+	 "$DATADIR/$VMDIR-node1/ssh-shortcut.sh" -q sudo bash >"$DATADIR/tensorflow-image.tar" <<EOF 
 docker save tensorflow
 EOF
 	 echo "tensorflow" >"$DATADIR/tensorflow-image.tar.uniquename" # used by bin/serverctl
@@ -414,10 +414,10 @@ do_distribute_one_image()
     anode="$1"
     (
 	$starting_step "Upload tensorflow image to $anode"
-	images="$("$DATADIR/$VMDIR-$anode/ssh-to-kvm.sh" -q sudo docker images)"
+	images="$("$DATADIR/$VMDIR-$anode/ssh-shortcut.sh" -q sudo docker images)"
 	grep '^tensorflow' <<<"$images"  1>/dev/null
 	$skip_step_if_already_done ; set -e
-	"$DATADIR/$VMDIR-$anode/ssh-to-kvm.sh" -q sudo docker load <"$DATADIR/tensorflow-image.tar"
+	"$DATADIR/$VMDIR-$anode/ssh-shortcut.sh" -q sudo docker load <"$DATADIR/tensorflow-image.tar"
     ) ; $iferr_exit
 }
 
@@ -430,11 +430,11 @@ done
 
     (
 	$starting_step "Clone old repository that has notebooks"
-	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
 [ -d /srv/nii-project-2016 ]
 EOF
 	$skip_step_if_already_done
-	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF
 set -x
 set -e
 
@@ -447,11 +447,11 @@ EOF
     (
 	$starting_step "Download Oracle Java rpm"
 	targetfile=jdk-8u73-linux-x64.rpm
-	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
 [ -f /srv/nii-project-2016/notebooks/.downloads/$targetfile ]
 EOF
 	$skip_step_if_already_done; set -e
-	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF
         set -x
         set -e
 	sudo mkdir -p "/srv/nii-project-2016/notebooks/.downloads"
@@ -464,21 +464,21 @@ EOF
 
     (
 	$starting_step "Copy in adapt-notebooks-for-user.sh and background-command-processor.sh"
-	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
 [ -f /srv/adapt-notebooks-for-user.sh ] && [ -f /srv/background-command-processor.sh ]
 EOF
 	$skip_step_if_already_done; set -e
 	cd "$ORGCODEDIR/../.."
-	tar c adapt-notebooks-for-user.sh background-command-processor.sh | "$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" sudo tar xv -C /srv
+	tar c adapt-notebooks-for-user.sh background-command-processor.sh | "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" sudo tar xv -C /srv
     ) ; $iferr_exit
 
     (
 	$starting_step "Clone sshuttle to 192.168.11.99 VM"
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
 which sshuttle
 EOF
 	$skip_step_if_already_done; set -e
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 git clone https://github.com/apenwarr/sshuttle.git
 echo "hint: sshuttle -l 0.0.0.0 -vr centos@192.168.11.90 10.0.2.0/24" >sshuttle-hint
 cd sshuttle
@@ -488,11 +488,11 @@ EOF
 
     (
 	$starting_step "Start background-command-processor.sh in background on 192.168.11.88 (hub) VM"
-	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
 ps auxwww | grep 'background-command-processo[r]' 1>/dev/null 2>&1
 EOF
 	$skip_step_if_already_done; set -e
-	"$DATADIR/$VMDIR-hub/ssh-to-kvm.sh" <<EOF
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF
 set -x
 cd /srv
 sudo bash -c 'setsid ./background-command-processor.sh 1>>bcp.log 2>&1 </dev/null &'

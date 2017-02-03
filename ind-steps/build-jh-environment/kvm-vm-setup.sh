@@ -35,13 +35,13 @@ VMDIR=jhvmdir
 
     (
 	$starting_step "Allow sudo for ubuntu user account, remove mtod"
-	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
-	    SSHUSER=root "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    SSHUSER=root "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 grep 'ubuntu.*ALL' /etc/sudoers >/dev/null
 EOF
 	$skip_step_if_already_done ; set -e
 
-	SSHUSER=root "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+	SSHUSER=root "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 echo 'ubuntu ALL=(ALL) NOPASSWD: ALL' >>/etc/sudoers
 rm /etc/update-motd.d/*
 EOF
@@ -49,12 +49,12 @@ EOF
 
     (
 	$starting_step "Added step to give VMs 8.8.8.8 for dns"
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
 grep -F "8.8.8.8" /etc/dhcp/dhclient.conf
 EOF
 	$skip_step_if_already_done
 
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 # the next line is necessary or docker pulls do not work reliably
 # related: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=625689
 echo "prepend domain-name-servers 8.8.8.8;" | sudo tee -a /etc/dhcp/dhclient.conf
@@ -63,13 +63,13 @@ EOF
 
     (
 	$starting_step "Install git"
-	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 which git
 EOF
 	$skip_step_if_already_done ; set -e
 
-	"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 sudo apt-get update
 sudo apt-get -y install git
 EOF
@@ -86,21 +86,21 @@ EOF
 	#  https://michaelheap.com/installing-ansible-from-source-on-ubuntu/
 	#  http://docs.ansible.com/ansible/intro_installation.html
 
-	[ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 which ansible
 EOF
 	$skip_group_if_unnecessary
 
 	(
 	    $starting_step "Install ansible build dependencies"
-	    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
-		"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 false # always do this, let group block it
 EOF
 	    $skip_step_if_already_done ; set -e
 
-	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 sudo apt-get update
 sudo apt-get -y install python2.7 python-yaml python-paramiko python-jinja2 python-httplib2 make python-pip
 EOF
@@ -108,13 +108,13 @@ EOF
 
 	(
 	    $starting_step "Clone ansible repository"
-	    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
-		"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 [ -d ansible ]
 EOF
 	    $skip_step_if_already_done ; set -e
 
-	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 
 ### git clone https://github.com/ansible/ansible.git --recursive
@@ -135,13 +135,13 @@ EOF
 
 	(
 	    $starting_step "Make/install ansible"
-	    [ -x "$DATADIR/$VMDIR/ssh-to-kvm.sh" ] &&
-		"$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF 2>/dev/null 1>/dev/null
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 [ -x /usr/local/bin/ansible ]
 EOF
 	    $skip_step_if_already_done ; set -e
 
-	    "$DATADIR/$VMDIR/ssh-to-kvm.sh" <<EOF
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 cd ansible
 sudo make install
@@ -187,14 +187,14 @@ EOF
 
 	(
 	    $starting_step "Setup private network for VM $avmdir"
-	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+	    "$DATADIR/$avmdir/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
 grep eth1 /etc/network/interfaces
 EOF
 	    $skip_step_if_already_done
 	    addr="$(source "$DATADIR/$avmdir/datadir.conf" ; echo "$VMIP")"
 	    # http://askubuntu.com/questions/441619/how-to-successfully-restart-a-network-without-reboot-over-ssh
 
-	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF
+	    "$DATADIR/$avmdir/ssh-shortcut.sh" <<EOF
 sudo tee -a /etc/network/interfaces <<EOF2
 
 auto eth1
@@ -211,7 +211,7 @@ EOF
 
 	(
 	    $starting_step "Change hostname VM $avmdir"
-	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF 2>/dev/null >/dev/null
+	    "$DATADIR/$avmdir/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
 [[ "\$(hostname)" != *ubuntu* ]]
 EOF
 	    $skip_step_if_already_done
@@ -227,7 +227,7 @@ EOF
 		esac
 	      )
 	    
-	    "$DATADIR/$avmdir/ssh-to-kvm.sh" <<EOF
+	    "$DATADIR/$avmdir/ssh-shortcut.sh" <<EOF
 echo $hn | sudo tee /etc/hostname
 echo 127.0.0.1 $hn | sudo tee -a /etc/hosts
 sudo hostname $hn

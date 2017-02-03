@@ -75,24 +75,24 @@ do_new()
     reconfigure_nginx "$ahdir/000"
 
     echo "Restarting new JupyterHub container."
-    "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker stop root_jupyterhub_1
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_jupyterhub_1
 
     # if this JupyterHubs environment is reused, there may be
     # remaining user containers with the wrong url path
     for vm in node1 node2; do
 	containerlist="$(
-            "$hubdir"/jhvmdir-$vm/ssh-to-kvm.sh -q sudo docker ps -a -q
+            "$hubdir"/jhvmdir-$vm/ssh-shortcut.sh -q sudo docker ps -a -q
         )"
 	[ "$containerlist" == "" ] && continue
 	echo "Removing existing containers on $vm."
-	"$hubdir"/jhvmdir-$vm/ssh-to-kvm.sh -q sudo docker rm -f $containerlist
+	"$hubdir"/jhvmdir-$vm/ssh-shortcut.sh -q sudo docker rm -f $containerlist
     done
 
-    "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker start root_jupyterhub_1
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_jupyterhub_1
     
     echo "Restarting nginx proxy."
-    "$ahdir/000"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker stop root_nginx_1
-    "$ahdir/000"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker start root_nginx_1
+    "$ahdir/000"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_nginx_1
+    "$ahdir/000"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_nginx_1
 }
 
 : ${urlbase:="niidemo.com"}
@@ -114,7 +114,7 @@ reconfigure_one_jupyterhub()
     # database timeout while jupyterhub is restarting.  The current workaround
     # is to keep restarting jupyterhub until all entries are initialized.  Use
     # the dumpdb command to make sure progress is being made at each restart.
-    "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker exec -i root_jupyterhub_1 bash <<EOF
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_jupyterhub_1 bash <<EOF
     cat >/srv/jupyterhub_users/userlist <<EOF3
 $teacherid admin
 $(head -n 30 "$rootdir/usernames")
@@ -136,7 +136,7 @@ EOF
     # make it clear if this happens again.
     
     checklastline="$(
-      "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -q \
+      "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q \
            sudo docker exec -i root_jupyterhub_1 \
                tail -n 1 /srv/jupyterhub_config/jupyterhub_config.py
     )"
@@ -151,7 +151,7 @@ EOF
 reconfigure_nginx()
 {
     local hubdir="$1"
-    "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker exec -i root_nginx_1 bash <<EOF
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_1 bash <<EOF
 cat >/etc/nginx/nginx.conf <<'EOF2'
 $(config_toplevel "$ahdir/"*)
 EOF2
@@ -423,15 +423,15 @@ delete_jupyterhub()
 
     reconfigure_nginx "$ahdir/000"
     echo "Restarting nginx proxy."
-    "$ahdir/000"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker stop root_nginx_1
-    "$ahdir/000"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker start root_nginx_1
+    "$ahdir/000"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_nginx_1
+    "$ahdir/000"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_nginx_1
 }
 
 restart_jupyterhub()
 {
     hubpath="$(classid_to_hubpath "$1")" || exit
-    "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker stop root_jupyterhub_1
-    "$hubpath"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker start root_jupyterhub_1
+    "$hubpath"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_jupyterhub_1
+    "$hubpath"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_jupyterhub_1
 }
 
 dump_database()
@@ -440,7 +440,7 @@ dump_database()
     for table in api_tokens users proxies hubs servers; do
 	echo
 	echo "Table: $table"
-	"$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -q \
+	"$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q \
 	    	 sudo docker exec -i root_jpydb_1 \
 	    	 /usr/lib/postgresql/9.6/bin/psql -U postgres -d jupyterhub <<<"select * from $table ;"
     done
@@ -455,7 +455,7 @@ fetch_hub_patch()
     filelist="$(cd "$hppath" && find -type f)"
     [ "$filelist" = "" ] && reportfailed "No files in hub-patch-dir-tree"
 
-    "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -qt sudo docker exec -i root_jupyterhub_1 bash <<EOF | ( cd "$rootdir/hub-patch-dir-tree" && tar xzv )
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -qt sudo docker exec -i root_jupyterhub_1 bash <<EOF | ( cd "$rootdir/hub-patch-dir-tree" && tar xzv )
 set -e
 cd /
 tar cz $(echo $filelist)
@@ -474,7 +474,7 @@ push_hub_patch()
 	cd "$rootdir/hub-patch-dir-tree" || exit
 	# the tar on the prev line will start reading from stdin, which is provided by this tar:
 	tar cz $filelist
-    ) | "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -q sudo docker exec -i root_jupyterhub_1 bash
+    ) | "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_jupyterhub_1 bash
 }
 
 create_directory_structure()
@@ -482,7 +482,7 @@ create_directory_structure()
     local hubdir="$1"
     local teacherid="$2"
 
-    "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -q sudo bash <<EOF
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo bash <<EOF
        mkdir -p /jupyter/admin/{copybook,admin_tools,tools,info}
        chmod a+wr /jupyter/admin/{copybook,admin_tools,tools,info}
 
@@ -514,10 +514,10 @@ EOF
 
     # update with latest version
     tar c adapt-notebooks-for-user.sh background-command-processor.sh | \
-	"$hubdir/jhvmdir-hub/ssh-to-kvm.sh" -q sudo tar xv -C /srv
+	"$hubdir/jhvmdir-hub/ssh-shortcut.sh" -q sudo tar xv -C /srv
 
     # TODO: redo this
-    "$hubdir"/jhvmdir-hub/ssh-to-kvm.sh -q sudo bash <<EOF
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo bash <<EOF
 killall background-command-processor.sh
 cd /srv
 bash -c 'setsid ./background-command-processor.sh 1>>bcp.log 2>&1 </dev/null &'
