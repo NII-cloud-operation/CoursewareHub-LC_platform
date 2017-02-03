@@ -1,18 +1,6 @@
 #!/bin/bash
 
-reportfailed()
-{
-    echo "Script failed...exiting. ($*)" 1>&2
-    exit 255
-}
-
-DATADIR="$(readlink -f "$1")"  # required
-
-export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
-
-source "$ORGCODEDIR/simple-defaults-for-bashsteps.source"
-
-source "$DATADIR/datadir-jh.conf" || reportfailed
+source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.source" || exit
 
 # one fuction to handle both local and remove kvms
 runonvm()
@@ -39,7 +27,7 @@ runonvm()
 	$skip_step_if_already_done;  set -e
 	runonvm "$DATADIR/$avmdir" <<<'[ -f datadir.conf ]' #sanity check
 	runonvm "$DATADIR/$avmdir" <<<'echo "KVMMEM=16384" >>datadir.conf'
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 
     do1_morecpu()
     (
@@ -50,13 +38,13 @@ runonvm()
 	$skip_step_if_already_done;  set -e
 	runonvm "$DATADIR/$avmdir" <<<'[ -f datadir.conf ]' #sanity check
 	runonvm "$DATADIR/$avmdir" <<<'sed -i "s,-smp [0-9]*,-smp 8," kvm-boot.sh'
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 
     for i in "${vmlist[@]}"; do
-	do1_morecpu "$i" ; prev_cmd_failed
-	do1_moremem "$i" ; prev_cmd_failed
+	do1_morecpu "$i" ; $iferr_exit
+	do1_moremem "$i" ; $iferr_exit
     done
-) ; prev_cmd_failed
+) ; $iferr_exit
 
 (
     $starting_group "Setup hub for networking using qemu socket"
@@ -71,7 +59,7 @@ runonvm()
 	$skip_step_if_already_done
 	runonvm "$DATADIR/$avmdir" <<<'sed -i "s/,addr=.*$//" kvm-boot.sh'  # because extra nics confict with preassigned pci slots
 	runonvm "$DATADIR/$avmdir" <<<'sed -i "s,mcastnet$,mcastnet \$(source extra-kvm-net.sh)," kvm-boot.sh'
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 
     (
 	avmdir=jhvmdir-hub
@@ -97,8 +85,8 @@ $(
 EOFsourced
 EOF2
 EOF
-    ) ; prev_cmd_failed
-) ; prev_cmd_failed
+    ) ; $iferr_exit
+) ; $iferr_exit
 
 
 (
@@ -115,7 +103,7 @@ EOF
 	[[ "$output" == *extra-kvm-net.sh* ]]
 	$skip_step_if_already_done
 	runonvm "$DATADIR/$avmdir" <<<'sed -i "s,mcastnet$,(source extra-kvm-net.sh)," kvm-boot.sh'
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 
     # extra-kvm-net.sh could use cat instead of source, because there are no expansions,
     # but keeping it as source to be the same as the code for the hub VM
@@ -161,13 +149,13 @@ $(
 EOFsourced
 EOF2
 EOF
-    ) ; prev_cmd_failed
+    ) ; $iferr_exit
 
     for i in "${vmlist[@]}"; do
 	[[ "$i" == *node* ]] || continue
-	do1_patchnode_bootscript "$i" ; prev_cmd_failed
-	do1_node_socketnic "$i" ; prev_cmd_failed
+	do1_patchnode_bootscript "$i" ; $iferr_exit
+	do1_node_socketnic "$i" ; $iferr_exit
     done
 
-) ; prev_cmd_failed
+) ; $iferr_exit
 
