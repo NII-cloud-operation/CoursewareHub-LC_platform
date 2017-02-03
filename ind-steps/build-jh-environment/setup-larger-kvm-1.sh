@@ -2,6 +2,15 @@
 
 source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.source" || exit
 
+# It seems that when the source above sources datadir.conf, this line
+# is not done correctly:
+#    "declare -a 'vmlist=([0]="jhvmdir-hub" [1]="jhvmdir" [2]="jhvmdir-node1" [3]="jhvmdir-node2")'"
+# such that set -u makes "${vmlist[@]}" flag an error.  So
+# loading it again directly from this file:
+source "$DATADIR/datadir.conf"
+
+# TODO: figure out the above bash bug/oddity
+
 # one fuction to handle both local and remove kvms
 runonvm()
 {
@@ -37,7 +46,7 @@ runonvm()
 	[[ "$output" == *-smp\ 8* ]]
 	$skip_step_if_already_done;  set -e
 	runonvm "$DATADIR/$avmdir" <<<'[ -f datadir.conf ]' #sanity check
-	runonvm "$DATADIR/$avmdir" <<<'sed -i "s,-smp [0-9]*,-smp 8," kvm-boot.sh'
+	runonvm "$DATADIR/$avmdir" <<<'sed -i --follow-symlinks "s,-smp [0-9]*,-smp 8," kvm-boot.sh'
     ) ; $iferr_exit
 
     for i in "${vmlist[@]}"; do

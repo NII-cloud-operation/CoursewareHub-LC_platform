@@ -2,6 +2,15 @@
 
 source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.source" || exit
 
+# It seems that when the source above sources datadir.conf, this line
+# is not done correctly:
+#    "declare -a 'vmlist=([0]="jhvmdir-hub" [1]="jhvmdir" [2]="jhvmdir-node1" [3]="jhvmdir-node2")'"
+# such that set -u makes "${vmlist[@]}" flag an error.  So
+# loading it again directly from this file:
+source "$DATADIR/datadir.conf"
+
+# TODO: figure out the above bash bug/oddity
+
 # one fuction to handle both local and remove kvms
 runonvm()
 {
@@ -24,8 +33,8 @@ runonvm()
 	output="$(runonvm "$DATADIR/$avmdir" <<<'grep -F -e "mcastnet" kvm-boot.sh')"
 	[[ "$output" == *mcastnet*extra-kvm-net.sh* ]]
 	$skip_step_if_already_done
-	runonvm "$DATADIR/$avmdir" <<<'sed -i "s/,addr=.*$//" kvm-boot.sh'  # because extra nics confict with preassigned pci slots
-	runonvm "$DATADIR/$avmdir" <<<'sed -i "s,mcastnet$,mcastnet \$(source extra-kvm-net.sh)," kvm-boot.sh'
+	runonvm "$DATADIR/$avmdir" <<<'sed -i --follow-symlinks "s/,addr=.*$//" kvm-boot.sh'  # because extra nics confict with preassigned pci slots
+	runonvm "$DATADIR/$avmdir" <<<'sed -i --follow-symlinks "s,mcastnet$,mcastnet \$(source extra-kvm-net.sh)," kvm-boot.sh'
     ) ; $iferr_exit
 
     (
@@ -69,7 +78,7 @@ EOF
 	output="$(runonvm "$DATADIR/$avmdir" <<<'grep -F -e "extra-kvm" kvm-boot.sh')"
 	[[ "$output" == *extra-kvm-net.sh* ]]
 	$skip_step_if_already_done
-	runonvm "$DATADIR/$avmdir" <<<'sed -i "s,mcastnet$,(source extra-kvm-net.sh)," kvm-boot.sh'
+	runonvm "$DATADIR/$avmdir" <<<'sed -i --follow-symlinks "s,mcastnet$,(source extra-kvm-net.sh)," kvm-boot.sh'
     ) ; $iferr_exit
 
     # extra-kvm-net.sh could use cat instead of source, because there are no expansions,
