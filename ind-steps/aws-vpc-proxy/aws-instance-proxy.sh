@@ -15,9 +15,33 @@ eval_iferr_exit 'source "$DATADIR/vpc-datadir/datadir.conf"'
     # check that these have been set by vpc-datadir:
     : ${VPCNAME?} ${vpcsecuritygroup?}  ${vpcsubnet?}
     # TODO: is it enough just to just let "set -u" *and* iferr_exit catch these?
-    
+
+    # extracted with: aws ec2 describe-images --image-ids ami-5dd8b73a
+    # but had to delete the "encrypted" tag
+    cat >/tmp/modified-mappings.json <<EOF
+[
+                {
+                    "DeviceName": "/dev/sda1", 
+                    "Ebs": {
+                        "DeleteOnTermination": true, 
+                        "SnapshotId": "snap-089b2f07be211d887", 
+                        "VolumeSize": 50, 
+                        "VolumeType": "gp2"
+                    }
+                }, 
+                {
+                    "DeviceName": "/dev/sdb", 
+                    "VirtualName": "ephemeral0"
+                }, 
+                {
+                    "DeviceName": "/dev/sdc", 
+                    "VirtualName": "ephemeral1"
+                }
+            ]
+EOF
     awsout="$(aws ec2 run-instances --image-id ami-5dd8b73a --count 1 \
-        --instance-type t2.micro --key-name "$VPCNAME" \
+        --instance-type c4.xlarge --key-name "$VPCNAME" \
+        --block-device-mapping file:///tmp/modified-mappings.json \
 	--security-group-ids "$vpcsecuritygroup" --subnet-id "$vpcsubnet"
         )"
     iferr_exit "run-instances"
