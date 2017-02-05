@@ -4,20 +4,28 @@ source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.s
 
 "$DATADIR/vpcproxy/aws-vpc-proxy.sh" wrapped ; $iferr_exit
 
-install_git()
+install_git_etc()
 {
     local VMDIR="$1"
     (
 	$starting_step "Install git in $VMDIR"
 	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
-which git
+apt list --installed | grep linux-image-extra || exit 1
+which git || exit 1
 EOF
 	$skip_step_if_already_done ; set -e
 
 	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 sudo apt-get update
-sudo apt-get -y install git
+# from https://gist.github.com/ferrouswheel/d17da01b110308db896e
+sudo apt-get -y install linux-image-extra-\$(uname -r)
+
+# The linux-image-extra is so docker will use aufs.  Otherwise, docker
+# uses devicemapper, which has race conditions with udev
+# https://github.com/docker/docker/issues/4036
+
+sudo apt-get -y install git 
 EOF
     ) ; $iferr_exit
 }
@@ -42,12 +50,12 @@ EOF
 }
 
 "$DATADIR/jhvmdir/aws-instance-proxy.sh" wrapped ; $iferr_exit
-install_git jhvmdir
+install_git_etc jhvmdir
 
 for n in hub $node_list; do
     v="jhvmdir-$n"
     "$DATADIR/$v/aws-instance-proxy.sh" wrapped ; $iferr_exit
-    install_git "$v"
+    install_git_etc "$v"
     aws_ubuntu_root "$v"
 done
 
