@@ -76,15 +76,24 @@ source "$DATADIR/datadir.conf"
     eval_iferr_exit '[[ "'$allocationid'" == eipalloc-* ]]'
 ) ; $iferr_exit
 
+source "$DATADIR/datadir.conf"
+
 (
     $starting_step "Associate new aws elastic IP to ${DATADIR##*/}"
     [ "${associationid=}" != '' ]  # the = is because of set -u
     $skip_step_if_already_done ; # (no set -e)
 
     # step2: associate
-    awsout2="$(aws ec2 associate-address --instance-id "$instanceid" --allocation-id "$allocationid")"
-    iferr_exit "associate-address: $awsout2"
-    echo "$awsout2" >> "$DATADIR/awsoutput"
+    for i in 1 2 3 4 5 6; do
+	echo "Will try associate-address attempt #$i in 10 seconds"
+	sleep 10
+	awsout2="$(aws ec2 associate-address --instance-id "$instanceid" --allocation-id "$allocationid")"
+	rc="$?"
+	echo "$awsout2" >> "$DATADIR/awsoutput"
+	[ "$rc" = "0" ] && break
+    done
+    [ "$rc" = "0" ] || just_exit "associate-address: $awsout2"
+    # if no success in 6X10 seconds, let outer logic handle it 
 
     remove='[,\[\]{}"]' # double quotes, commas, braces, and brackets
     awsout2="${awsout2//$remove}"
