@@ -55,8 +55,8 @@ EOF
 source "$DATADIR/datadir.conf"
 
 (
-    $starting_step "Associate new aws elastic IP to ${DATADIR##*/}"
-    [ "${associationid=}" != '' ]  # the = is because of set -u
+    $starting_step "Allocate new aws elastic IP address"
+    [ "${allocationid=}" != '' ]  # the = is because of set -u
     $skip_step_if_already_done ; # (no set -e)
 
     # step1: allocate
@@ -74,12 +74,19 @@ source "$DATADIR/datadir.conf"
     read allocationid therest <<<"${awsout#*AllocationId:}"  # parse line w/ "   AllocationId: eipalloc-d2b8acb7 "
     echo "allocationid=\"$allocationid\"" >> "$DATADIR/datadir.conf"
     eval_iferr_exit '[[ "'$allocationid'" == eipalloc-* ]]'
+) ; $iferr_exit
+
+(
+    $starting_step "Associate new aws elastic IP to ${DATADIR##*/}"
+    [ "${associationid=}" != '' ]  # the = is because of set -u
+    $skip_step_if_already_done ; # (no set -e)
 
     # step2: associate
     awsout2="$(aws ec2 associate-address --instance-id "$instanceid" --allocation-id "$allocationid")"
     iferr_exit "associate-address: $awsout2"
     echo "$awsout2" >> "$DATADIR/awsoutput"
 
+    remove='[,\[\]{}"]' # double quotes, commas, braces, and brackets
     awsout2="${awsout2//$remove}"
     read associationid therest <<<"${awsout2#*AssociationId:}"  # parse line w/ "   AssociationId: eipassoc-2bebb745 "
     echo "associationid=\"$associationid\"" >> "$DATADIR/datadir.conf"
