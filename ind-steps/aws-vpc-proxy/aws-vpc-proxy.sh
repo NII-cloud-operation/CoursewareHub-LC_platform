@@ -5,6 +5,9 @@ source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.s
 # check required DATADIR parameters
 : "${VPCNAME?}"
 
+# default
+: ${cidrblock:="192.168.11.0/24"}
+
 # This script will make sure vpc{keypair,subnet,securitygroup} are set
 
 (
@@ -27,7 +30,7 @@ source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.s
 	    echo "vpcid=\"${ids[0]}\"" >> "$DATADIR/datadir.conf"
 	;;
 	0) # create a new VPC
-	    awsout="$(aws ec2 create-vpc --cidr-block 192.168.11.0/24)"
+	    awsout="$(aws ec2 create-vpc --cidr-block $cidrblock)"
 	    iferr_exit "create-vpc"
 	    awsout="${awsout//$remove}"
 	    read vpcid therest <<<"${awsout#*VpcId:}"  # parse line w/ "   VpcId: vpc-8f2d81eb "
@@ -73,7 +76,7 @@ source "$DATADIR/datadir.conf"
 	    echo "vpcsubnet=\"${ids[0]}\"" >> "$DATADIR/datadir.conf"
 	;;
 	0) # create a new subnet
-	    awsout="$(aws ec2 create-subnet --vpc-id "$vpcid" --cidr-block 192.168.11.0/24)"
+	    awsout="$(aws ec2 create-subnet --vpc-id "$vpcid" --cidr-block $cidrblock)"
 	    iferr_exit "create-subnet"
 	    awsout="${awsout//$remove}"
 	    read subnetid therest <<<"${awsout#*SubnetId:}"  # parse line w/ "   SubnetId: subnet-5723920f "
@@ -168,6 +171,8 @@ source "$DATADIR/datadir.conf"
 	    for p in 22 80 443; do
 		aws ec2 authorize-security-group-ingress --group-id "$sgid" --protocol tcp --port $p --cidr 0.0.0.0/0
 	    done
+	    # allow all traffic on the private network
+	    aws ec2 authorize-security-group-ingress --group-id "$sgid" --protocol all --cidr $cidrblock
 	    echo "vpcsecuritygroup=\"$sgid\"" >> "$DATADIR/datadir.conf"
 	    ;;
 	*)
