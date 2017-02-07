@@ -18,7 +18,7 @@ mainscript="${thisfile%-new}"
 eval_iferr_exit 'mkdir -p "$new_dir"'
 ln -s "$ORGCODEDIR/$mainscript" "$new_dir" || iferr_exit "ln to $mainscript"
 ln -s "$ORGCODEDIR/instance-scripts"/* "$new_dir" || iferr_exit "ln to instance control scripts"
-cp bashsteps-bash-utils-jan2017.source "$new_dir"
+cp "$ORGCODEDIR"/bashsteps-bash-utils-jan2017.source "$new_dir"
 ln -s "$(readlink -f $vpcdd)" "$new_dir/vpc-datadir"
 
 cat  >"$new_dir/datadir.conf" <<EOF || reportfailed "datadir.conf init failed"

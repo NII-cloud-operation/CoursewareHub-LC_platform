@@ -1,0 +1,21 @@
+#!/bin/bash
+
+source "$(dirname $(readlink -f "$0"))/bashsteps-bash-utils-jan2017.source" || exit
+
+new_dir="$1"
+
+: "${nodecount:=2}"
+
+(
+    "$ORGCODEDIR/build-jh-environment.sh-new" "$new_dir"
+    iferr_exit
+    
+    thisfile="${0##*/}"
+    mainscript="${thisfile%-new}"
+    ln -s "$ORGCODEDIR/$mainscript" "$new_dir" || iferr_exit "ln to $mainscript"
+    
+    "$ORGCODEDIR/aws-vm-setup.sh-new" "$new_dir" "$nodecount"
+) || {
+    # clean up if error
+    rm -fr "$new_dir"
+}
