@@ -39,7 +39,7 @@ aws_ubuntu_root()
 	# >>  Please login as the user "ubuntu" rather than the user "root".
 	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 	    "$DATADIR/$VMDIR/ssh-shortcut.sh" sudo bash <<'EOF' 2>/dev/null 1>/dev/null
-[ "$(cat /root/.ssh/authorized_keys)" == *command* ]
+[[ "$(cat /root/.ssh/authorized_keys)" == *command* ]]
 EOF
 	$skip_step_if_already_done ; set -e
 
