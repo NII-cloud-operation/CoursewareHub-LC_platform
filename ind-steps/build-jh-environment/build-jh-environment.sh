@@ -388,40 +388,6 @@ EOF
     $starting_group "Misc steps"
 
     (
-	$starting_step "Clone old repository that has notebooks"
-	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
-[ -d /srv/nii-project-2016 ]
-EOF
-	$skip_step_if_already_done
-	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF
-set -x
-set -e
-
-cd /srv
-sudo git clone https://github.com/axsh/nii-project-2016.git
-
-EOF
-    ) ; $iferr_exit
-
-    (
-	$starting_step "Download Oracle Java rpm"
-	targetfile=jdk-8u73-linux-x64.rpm
-	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
-[ -f /srv/nii-project-2016/notebooks/.downloads/$targetfile ]
-EOF
-	$skip_step_if_already_done; set -e
-	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF
-        set -x
-        set -e
-	sudo mkdir -p "/srv/nii-project-2016/notebooks/.downloads"
-	sudo wget --progress=dot:mega --no-check-certificate --no-cookies \
-	     --header "Cookie: oraclelicense=accept-securebackup-cookie" \
-	     http://download.oracle.com/otn-pub/java/jdk/8u73-b02/$targetfile \
-	     -O "/srv/nii-project-2016/notebooks/.downloads/$targetfile"
-EOF
-    ) ; $iferr_exit
-
-    (
 	$starting_step "Copy in adapt-notebooks-for-user.sh and background-command-processor.sh"
 	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
 [ -f /srv/adapt-notebooks-for-user.sh ] && [ -f /srv/background-command-processor.sh ]
