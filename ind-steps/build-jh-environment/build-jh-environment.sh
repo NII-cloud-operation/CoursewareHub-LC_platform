@@ -55,6 +55,11 @@ EOF
 )"
     
     "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+# TODO: improve this temporary fix...maybe putting in ansible vault or using 
+#       hub's servicenet_ip.
+tmppath=/home/ubuntu/jupyterhub-deploy/roles/proxy/defaults/main.yml
+sed -i 's,192.168.11.88,$(source "$DATADIR/$VMDIR-hub/datadir.conf" ; echo "$VMIP"),' \$tmppath
+
 node_list="$node_list"
 
 [ -f jupyterhub-deploy/inventory.bak ] || cp jupyterhub-deploy/inventory jupyterhub-deploy/inventory.bak 
