@@ -2,10 +2,6 @@
 
 source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.source" || exit
 
-## TODO: remove this comment in another commit
-## This script assumes link to ubuntu image is already at
-## "$DATADIR/ubuntu-image-links/ubuntu-image.tar.gz"
-
 VMDIR=jhvmdir
 
 (
