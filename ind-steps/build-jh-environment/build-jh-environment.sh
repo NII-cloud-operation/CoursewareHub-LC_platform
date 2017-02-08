@@ -27,8 +27,6 @@ EOF
     $starting_step "Adjust ansible config files for node_list"
     [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
-	# TODO: fix this, it always shows not done
-set -x
 [ -f nodelist ] && [ "\$(cat nodelist)" = "$node_list" ]
 EOF
     $skip_step_if_already_done ; set -e
@@ -57,6 +55,11 @@ EOF
 )"
     
     "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+# TODO: improve this temporary fix...maybe putting in ansible vault or using 
+#       hub's servicenet_ip.
+tmppath=/home/ubuntu/jupyterhub-deploy/roles/proxy/defaults/main.yml
+sed -i 's,192.168.11.88,$(source "$DATADIR/$VMDIR-hub/datadir.conf" ; echo "$VMIP"),' \$tmppath
+
 node_list="$node_list"
 
 [ -f jupyterhub-deploy/inventory.bak ] || cp jupyterhub-deploy/inventory jupyterhub-deploy/inventory.bak 
@@ -87,10 +90,15 @@ while IFS='' read -r ln ; do
         ;;
    esac
 done <jupyterhub-deploy/script/assemble_certs.bak  >jupyterhub-deploy/script/assemble_certs
+
+# Debugging output:
 echo ------ jupyterhub-deploy/inventory ------------
 diff jupyterhub-deploy/inventory.bak jupyterhub-deploy/inventory || :
 echo ------ jupyterhub-deploy/script/assemble_certs ---------
 diff  jupyterhub-deploy/script/assemble_certs.bak jupyterhub-deploy/script/assemble_certs || :
+
+# Flag that step has been done:
+echo "$node_list" >nodelist
 EOF
 ) ; $iferr_exit
 
@@ -403,6 +411,7 @@ EOF
      ) ; $iferr_exit
 
      (
+	 exit 0 # disable to prevent multi-GB transfers when testing on AWS
 	 $starting_step "Download snapshot of the Tensorflow container"
 	 [ -f "$DATADIR/tensorflow-image.tar" ]
 	 $skip_step_if_already_done
@@ -417,6 +426,7 @@ do_distribute_one_image()
 {
     anode="$1"
     (
+	exit 0 # disable to prevent multi-GB transfers when testing on AWS
 	$starting_step "Upload tensorflow image to $anode"
 	images="$("$DATADIR/$VMDIR-$anode/ssh-shortcut.sh" -q sudo docker images)"
 	grep '^tensorflow' <<<"$images"  1>/dev/null
