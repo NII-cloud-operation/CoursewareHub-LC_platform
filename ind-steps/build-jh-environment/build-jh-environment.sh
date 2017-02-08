@@ -2,10 +2,6 @@
 
 source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.source" || exit
 
-## TODO: remove this comment in another commit
-## This script assumes link to ubuntu image is already at
-## "$DATADIR/ubuntu-image-links/ubuntu-image.tar.gz"
-
 VMDIR=jhvmdir
 
 (
@@ -385,96 +381,7 @@ EOF
 ) ; $iferr_exit
 
 (
-     $starting_group "Build TensorFlow container image"
-     [ -f "$DATADIR/tensorflow-image.tar" ]
-     $skip_group_if_unnecessary
-     
-     (
-	 $starting_step "Upload a DockerFile and other files for the Tensorflow Ubuntu container"
-	 "$DATADIR/$VMDIR-node1/ssh-shortcut.sh" -q '[ -d /srv/tensorflow-ubuntu ]'
-	 $skip_step_if_already_done; set -e
-	 (
-	     cd "$ORGCODEDIR/../.."
-	     tar c tensorflow-ubuntu
-	 ) | "$DATADIR/$VMDIR-node1/ssh-shortcut.sh" sudo tar xv -C /srv
-     ) ; $iferr_exit
-     
-     (
-	 $starting_step "Run 'docker build' for the Tensorflow container"
-	 images="$("$DATADIR/$VMDIR-node1/ssh-shortcut.sh" -q sudo docker images)"
-	 grep -w '^tensorflow' <<<"$images"  1>/dev/null
-	 $skip_step_if_already_done
-	 "$DATADIR/$VMDIR-node1/ssh-shortcut.sh" -q sudo bash <<EOF
-cd  /srv/tensorflow-ubuntu
-docker build -t tensorflow ./
-EOF
-     ) ; $iferr_exit
-
-     (
-	 exit 0 # disable to prevent multi-GB transfers when testing on AWS
-	 $starting_step "Download snapshot of the Tensorflow container"
-	 [ -f "$DATADIR/tensorflow-image.tar" ]
-	 $skip_step_if_already_done
-	 "$DATADIR/$VMDIR-node1/ssh-shortcut.sh" -q sudo bash >"$DATADIR/tensorflow-image.tar" <<EOF 
-docker save tensorflow
-EOF
-	 echo "tensorflow" >"$DATADIR/tensorflow-image.tar.uniquename" # used by bin/serverctl
-     ) ; $iferr_exit
-) ; $iferr_exit
-
-do_distribute_one_image()
-{
-    anode="$1"
-    (
-	exit 0 # disable to prevent multi-GB transfers when testing on AWS
-	$starting_step "Upload tensorflow image to $anode"
-	images="$("$DATADIR/$VMDIR-$anode/ssh-shortcut.sh" -q sudo docker images)"
-	grep '^tensorflow' <<<"$images"  1>/dev/null
-	$skip_step_if_already_done ; set -e
-	"$DATADIR/$VMDIR-$anode/ssh-shortcut.sh" -q sudo docker load <"$DATADIR/tensorflow-image.tar"
-    ) ; $iferr_exit
-}
-
-for n in $node_list; do
-    do_distribute_one_image "$n"
-done
-
-(
     $starting_group "Misc steps"
-
-    (
-	$starting_step "Clone old repository that has notebooks"
-	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
-[ -d /srv/nii-project-2016 ]
-EOF
-	$skip_step_if_already_done
-	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF
-set -x
-set -e
-
-cd /srv
-sudo git clone https://github.com/axsh/nii-project-2016.git
-
-EOF
-    ) ; $iferr_exit
-
-    (
-	$starting_step "Download Oracle Java rpm"
-	targetfile=jdk-8u73-linux-x64.rpm
-	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
-[ -f /srv/nii-project-2016/notebooks/.downloads/$targetfile ]
-EOF
-	$skip_step_if_already_done; set -e
-	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF
-        set -x
-        set -e
-	sudo mkdir -p "/srv/nii-project-2016/notebooks/.downloads"
-	sudo wget --progress=dot:mega --no-check-certificate --no-cookies \
-	     --header "Cookie: oraclelicense=accept-securebackup-cookie" \
-	     http://download.oracle.com/otn-pub/java/jdk/8u73-b02/$targetfile \
-	     -O "/srv/nii-project-2016/notebooks/.downloads/$targetfile"
-EOF
-    ) ; $iferr_exit
 
     (
 	$starting_step "Copy in adapt-notebooks-for-user.sh and background-command-processor.sh"
@@ -484,20 +391,6 @@ EOF
 	$skip_step_if_already_done; set -e
 	cd "$ORGCODEDIR/../.."
 	tar c adapt-notebooks-for-user.sh background-command-processor.sh | "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" sudo tar xv -C /srv
-    ) ; $iferr_exit
-
-    (
-	$starting_step "Clone sshuttle to 192.168.11.99 VM"
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
-which sshuttle
-EOF
-	$skip_step_if_already_done; set -e
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
-git clone https://github.com/apenwarr/sshuttle.git
-echo "hint: sshuttle -l 0.0.0.0 -vr centos@192.168.11.90 10.0.2.0/24" >sshuttle-hint
-cd sshuttle
-sudo ./setup.py install
-EOF
     ) ; $iferr_exit
 
     (
