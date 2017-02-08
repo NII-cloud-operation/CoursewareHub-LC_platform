@@ -23,8 +23,8 @@ total 580760
 The ``*.tar.gz`` file contains Ubuntu 14.04.1 LTS with a 242GB root
 file system.  It was made by doing a fresh install from an ISO, then
 ``apt-get update``, then ``apt-get upgrade``.  Finally, a public key
-was placed in /home/ubuntu/.ssh/authorized_keys.  The private part of
-the key pair is in the ``*.sshkey``.  The ``*.sshuer`` file just
+was placed in ``/home/ubuntu/.ssh/authorized_keys``.  The private part of
+the key pair is in the ``*.sshkey``.  The ``*.sshuser`` file just
 contains the string "ubuntu", because that is the user name to use
 when doing ssh to a VM booted from the image.
 
