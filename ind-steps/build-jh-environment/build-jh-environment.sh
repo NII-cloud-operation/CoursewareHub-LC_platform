@@ -411,6 +411,7 @@ EOF
      ) ; $iferr_exit
 
      (
+	 exit 0 # disable to prevent multi-GB transfers when testing on AWS
 	 $starting_step "Download snapshot of the Tensorflow container"
 	 [ -f "$DATADIR/tensorflow-image.tar" ]
 	 $skip_step_if_already_done
@@ -425,6 +426,7 @@ do_distribute_one_image()
 {
     anode="$1"
     (
+	exit 0 # disable to prevent multi-GB transfers when testing on AWS
 	$starting_step "Upload tensorflow image to $anode"
 	images="$("$DATADIR/$VMDIR-$anode/ssh-shortcut.sh" -q sudo docker images)"
 	grep '^tensorflow' <<<"$images"  1>/dev/null
