@@ -398,20 +398,6 @@ EOF
     ) ; $iferr_exit
 
     (
-	$starting_step "Clone sshuttle to 192.168.11.99 VM"
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
-which sshuttle
-EOF
-	$skip_step_if_already_done; set -e
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
-git clone https://github.com/apenwarr/sshuttle.git
-echo "hint: sshuttle -l 0.0.0.0 -vr centos@192.168.11.90 10.0.2.0/24" >sshuttle-hint
-cd sshuttle
-sudo ./setup.py install
-EOF
-    ) ; $iferr_exit
-
-    (
 	$starting_step "Start background-command-processor.sh in background on 192.168.11.88 (hub) VM"
 	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
 ps auxwww | grep 'background-command-processo[r]' 1>/dev/null 2>&1
