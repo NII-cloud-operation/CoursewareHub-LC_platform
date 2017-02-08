@@ -27,8 +27,6 @@ EOF
     $starting_step "Adjust ansible config files for node_list"
     [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
-	# TODO: fix this, it always shows not done
-set -x
 [ -f nodelist ] && [ "\$(cat nodelist)" = "$node_list" ]
 EOF
     $skip_step_if_already_done ; set -e
@@ -87,10 +85,15 @@ while IFS='' read -r ln ; do
         ;;
    esac
 done <jupyterhub-deploy/script/assemble_certs.bak  >jupyterhub-deploy/script/assemble_certs
+
+# Debugging output:
 echo ------ jupyterhub-deploy/inventory ------------
 diff jupyterhub-deploy/inventory.bak jupyterhub-deploy/inventory || :
 echo ------ jupyterhub-deploy/script/assemble_certs ---------
 diff  jupyterhub-deploy/script/assemble_certs.bak jupyterhub-deploy/script/assemble_certs || :
+
+# Flag that step has been done:
+echo "$node_list" >nodelist
 EOF
 ) ; $iferr_exit
 
