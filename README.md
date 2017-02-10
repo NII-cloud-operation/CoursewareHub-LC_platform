@@ -66,6 +66,9 @@ build have completed. (The same as above, just change ``do`` to ``check``)
 $ /some/directory/path/buildname/toplevel-kvm-build.sh check
 ```
 
+The above command will output a list of steps similar to this:
+https://github.com/axsh/jupyter-platform-dev/blob/master/ind-steps/build-jh-environment/toplevel-kvm-build-map.md
+
 The build defaults to 2 docker swarm nodes.  This can be changed
 with the ``nodecount`` environment variable.
 
