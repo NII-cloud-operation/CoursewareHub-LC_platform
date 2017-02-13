@@ -32,7 +32,7 @@ standard_datadir_setup
 
 (
     cat  >>"$DATADIR/datadir.conf" <<EOF || reportfailed "datadir.conf init failed"
-: ${KVMMEM:=4096}
+: \${KVMMEM:=4096}
 imagesource="$path_to_ubuntu_image"
 EOF
     # Because vmdirs are sometimes migrated around independently, actually make full copies
