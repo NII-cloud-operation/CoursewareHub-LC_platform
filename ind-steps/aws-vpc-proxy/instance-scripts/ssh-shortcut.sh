@@ -12,6 +12,6 @@ extraoptions=(
 
 ## TODO, better error checking, etc.
 
-ssh "${extraoptions[@]}" "ubuntu@$publicip" -i "$LINKCODEDIR/vpc-datadir/pkey" "$@"
+ssh "${extraoptions[@]}" "ubuntu@$publicip" -i "$LINKCODEDIR/vpc-datadir/sshkey" "$@"
 
 
