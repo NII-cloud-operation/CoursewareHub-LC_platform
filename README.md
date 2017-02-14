@@ -5,6 +5,84 @@ $ git clone git@github.com:axsh/jupyter-platform-dev.git
 $ cd jupyter-platform-dev
 ```
 
+## Generic Build
+
+For a generic build, the build directory can be create either before
+or after the instance servers.  For the explanation here, let's start
+with the build directory.
+
+```
+$ nodecount=3 ./ind-steps/build-jh-environment/toplevel-generic-build.sh-new /some/directory/path/buildname
+## ( The value for the environment variable nodecount could be 1, 2 or some other reasonable integer. )
+```
+
+The ``toplevel-kvm-build.sh-new`` script creates a folder structure with the following files and contents:
+
+```
+$ head $(find /some/directory/path/buildname -name datadir.conf)
+==> testing/jhvmdir-node3/datadir.conf <==
+VMIP=192.168.999.999  # replace with the private IP used between instances
+publicip=180.123.999.999 # replace with IP used by this script
+publicport=22   # if needed, replace with the port used by this script
+
+==> testing/jhvmdir-node2/datadir.conf <==
+VMIP=192.168.999.999  # replace with the private IP used between instances
+publicip=180.123.999.999 # replace with IP used by this script
+publicport=22   # if needed, replace with the port used by this script
+
+==> testing/jhvmdir-node1/datadir.conf <==
+VMIP=192.168.999.999  # replace with the private IP used between instances
+publicip=180.123.999.999 # replace with IP used by this script
+publicport=22   # if needed, replace with the port used by this script
+
+==> testing/jhvmdir/datadir.conf <==
+VMIP=192.168.999.999  # replace with the private IP used between instances
+publicip=180.123.999.999 # replace with IP used by this script
+publicport=22   # if needed, replace with the port used by this script
+
+==> testing/jhvmdir-hub/datadir.conf <==
+VMIP=192.168.999.999  # replace with the private IP used between instances
+publicip=180.123.999.999 # replace with IP used by this script
+publicport=22   # if needed, replace with the port used by this script
+
+==> testing/datadir.conf <==
+node_list="node1 node2 node3"
+```
+
+Each ``jhvmdir*/datadir.conf`` file will contain information for one
+instance.  (In this example, there are 5, i.e. three docker swarm
+instances plus a hub instance, plus an instance for ansible.)
+
+The ``publicip`` variable value should be replaced by an IP address
+that can be used to ssh from the machine hosting the build directory
+to the corresponding instance.  The ``publicport`` variable value
+should point to the ssh port, if port forwarding is used to reach the
+instance.
+
+``VMIP`` should be a private IP address visible to all the other
+instances.  Ssh must be possible to port 22 on this address.
+
+The instances be a fresh install of Ubuntu 14.4 with an account with
+user name "ubuntu".  It should also have the same public ssh key saved
+at ``/home/ubuntu/.ssh/authorized_keys`` and
+``/root/.ssh/authorized_keys``.  The corresponding private key should
+be saved in the build directory in a file named ``sshkey``.  The
+commands ``apt-get update``, then ``apt-get upgrade`` should be run on
+each instance.
+
+Once all the instances exist and all the information has been filled into
+the ``datadir.conf" files, the following will install JupyterHub:
+
+```
+$ /path/to/just/a/little/disk/buildname/toplevel-generic-build.sh do
+```
+
+The build can be checked by running: 
+
+```
+$ /path/to/just/a/little/disk/buildname/toplevel-generic-build.sh check
+```
+
 ## Build on KVM
 
 The directory ``~/ubuntu-image-resources`` must exist in the home directory
@@ -23,10 +101,11 @@ total 580760
 The ``*.tar.gz`` file contains Ubuntu 14.04.1 LTS with a 242GB root
 file system.  It was made by doing a fresh install from an ISO, then
 ``apt-get update``, then ``apt-get upgrade``.  Finally, a public key
-was placed in ``/home/ubuntu/.ssh/authorized_keys``.  The private part of
-the key pair is in the ``*.sshkey``.  The ``*.sshuser`` file just
-contains the string "ubuntu", because that is the user name to use
-when doing ssh to a VM booted from the image.
+was placed in both ``/home/ubuntu/.ssh/authorized_keys`` and
+``/root/.ssh/authorized_keys``.  The private part of the key
+pair is in the ``*.sshkey``.  The ``*.sshuser`` file just contains the
+string "ubuntu", because that is the user name to use when doing ssh
+to a VM booted from the image.
 
 The next step is to make a build directory by using the toplevel-kvm-build.sh-new
 in the repository like this:
