@@ -20,32 +20,32 @@ The ``toplevel-kvm-build.sh-new`` script creates a folder structure with the fol
 
 ```
 $ head $(find /some/directory/path/buildname -name datadir.conf)
-==> testing/jhvmdir-node3/datadir.conf <==
+==> /some/directory/path/buildname/jhvmdir-node3/datadir.conf <==
 VMIP=192.168.999.999  # replace with the private IP used between instances
 publicip=180.123.999.999 # replace with IP used by this script
 publicport=22   # if needed, replace with the port used by this script
 
-==> testing/jhvmdir-node2/datadir.conf <==
+==> /some/directory/path/buildname/jhvmdir-node2/datadir.conf <==
 VMIP=192.168.999.999  # replace with the private IP used between instances
 publicip=180.123.999.999 # replace with IP used by this script
 publicport=22   # if needed, replace with the port used by this script
 
-==> testing/jhvmdir-node1/datadir.conf <==
+==> /some/directory/path/buildname/jhvmdir-node1/datadir.conf <==
 VMIP=192.168.999.999  # replace with the private IP used between instances
 publicip=180.123.999.999 # replace with IP used by this script
 publicport=22   # if needed, replace with the port used by this script
 
-==> testing/jhvmdir/datadir.conf <==
+==> /some/directory/path/buildname/jhvmdir/datadir.conf <==
 VMIP=192.168.999.999  # replace with the private IP used between instances
 publicip=180.123.999.999 # replace with IP used by this script
 publicport=22   # if needed, replace with the port used by this script
 
-==> testing/jhvmdir-hub/datadir.conf <==
+==> /some/directory/path/buildname/jhvmdir-hub/datadir.conf <==
 VMIP=192.168.999.999  # replace with the private IP used between instances
 publicip=180.123.999.999 # replace with IP used by this script
 publicport=22   # if needed, replace with the port used by this script
 
-==> testing/datadir.conf <==
+==> /some/directory/path/buildname/datadir.conf <==
 node_list="node1 node2 node3"
 ```
 
@@ -71,7 +71,8 @@ commands ``apt-get update``, then ``apt-get upgrade`` should be run on
 each instance.
 
 Once all the instances exist and all the information has been filled into
-the ``datadir.conf" files, the following will install JupyterHub:
+the ``datadir.conf" files, the following will install JupyterHub, taking
+somewhat more than 60 minutes:
 
 ```
 $ /path/to/just/a/little/disk/buildname/toplevel-generic-build.sh do
