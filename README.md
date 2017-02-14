@@ -62,6 +62,21 @@ instance.
 ``VMIP`` should be a private IP address visible to all the other
 instances.  Ssh must be possible to port 22 on this address.
 
+If necessary, the ssh wrapper scripts for each instance can be
+modified directly.  Normally this should only be necessary if special
+ssh parameters or workarounds are required.
+
+
+```
+$ cd /some/directory/path/buildname
+$ find -name ssh-shortcut.sh
+jhvmdir/ssh-shortcut.sh
+jhvmdir-hub/ssh-shortcut.sh
+jhvmdir-node3/ssh-shortcut.sh
+jhvmdir-node2/ssh-shortcut.sh
+jhvmdir-node1/ssh-shortcut.sh
+```
+
 The instances be a fresh install of Ubuntu 14.4 with an account with
 user name "ubuntu".  It should also have the same public ssh key saved
 at ``/home/ubuntu/.ssh/authorized_keys`` and
