@@ -77,12 +77,12 @@ jhvmdir-node2/ssh-shortcut.sh
 jhvmdir-node1/ssh-shortcut.sh
 ```
 
-The instances be a fresh install of Ubuntu 14.4 with an account with
-user name "ubuntu".  It should also have the same public ssh key saved
-at ``/home/ubuntu/.ssh/authorized_keys`` and
+Each instances should be a fresh install of Ubuntu 14.4 with an
+account with the user name "ubuntu".  It should also have the same
+public ssh key saved at ``/home/ubuntu/.ssh/authorized_keys`` and
 ``/root/.ssh/authorized_keys``.  The corresponding private key should
 be saved in the build directory in a file named ``sshkey``.  The
-commands ``apt-get update``, then ``apt-get upgrade`` should be run on
+commands ``apt-get update`` and ``apt-get upgrade`` should be run on
 each instance.
 
 Once all the instances exist and all the information has been filled into
