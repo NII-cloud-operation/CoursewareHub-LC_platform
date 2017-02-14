@@ -16,7 +16,7 @@ $ nodecount=3 ./ind-steps/build-jh-environment/toplevel-generic-build.sh-new /so
 ## ( The value for the environment variable nodecount could be 1, 2 or some other reasonable integer. )
 ```
 
-The ``toplevel-kvm-build.sh-new`` script creates a folder structure with the following files and contents:
+The ``toplevel-generic-build.sh-new`` script creates a folder structure with the following files and contents:
 
 ```
 $ head $(find /some/directory/path/buildname -name datadir.conf)
@@ -49,9 +49,10 @@ publicport=22   # if needed, replace with the port used by this script
 node_list="node1 node2 node3"
 ```
 
-Each ``jhvmdir*/datadir.conf`` file will contain information for one
-instance.  (In this example, there are 5, i.e. three docker swarm
-instances plus a hub instance, plus an instance for ansible.)
+Each ``jhvmdir*/datadir.conf`` file should be edited to contain
+information for one instance.  (In this example, there are 5,
+i.e. three docker swarm instances plus a hub instance, plus an
+instance for ansible.)
 
 The ``publicip`` variable value should be replaced by an IP address
 that can be used to ssh from the machine hosting the build directory
@@ -85,8 +86,8 @@ be saved in the build directory in a file named ``sshkey``.  The
 commands ``apt-get update`` and ``apt-get upgrade`` should be run on
 each instance.
 
-Once all the instances exist and all the information has been filled into
-the ``datadir.conf" files, the following will install JupyterHub, taking
+Once all the instances exist and all the information has been edited into
+the ``datadir.conf`` files, the following will install JupyterHub, taking
 somewhat more than 60 minutes:
 
 ```
