@@ -185,7 +185,7 @@ source "$DATADIR/datadir.conf"
 
 (
     $starting_step "Create keypair"
-    [ -f "$DATADIR/pkey" ]
+    [ -f "$DATADIR/sshkey" ]
     $skip_step_if_already_done ; # (no set -e)
 
     # next command returns error if --keynames does not match anything
@@ -202,7 +202,7 @@ source "$DATADIR/datadir.conf"
 	1) # use the existing security group
 	    echo "Key pair named ($VPCNAME) already exists.  You must"
 	    echo "find its private key and copy it to a file named:"
-	    echo "     $DATADIR/pkey"
+	    echo "     $DATADIR/sshkey"
 	    just_exit
 	;;
 	0) # create a new security group
@@ -215,8 +215,8 @@ source "$DATADIR/datadir.conf"
 	    eval_iferr_exit '[[ "'$line_with_private_key'" == *BEGIN*PRIVATE*END*PRIVATE* ]]'
 
 	    # use printf to convert \n
-	    printf -- "${line_with_private_key# }\n" >"$DATADIR/pkey" ; iferr_exit
-	    eval_iferr_exit 'chmod 400 "'$DATADIR/pkey'"' ; iferr_exit
+	    printf -- "${line_with_private_key# }\n" >"$DATADIR/sshkey" ; iferr_exit
+	    eval_iferr_exit 'chmod 400 "'$DATADIR/sshkey'"' ; iferr_exit
 	    echo "Created new private key"
 	    ;;
 	*)

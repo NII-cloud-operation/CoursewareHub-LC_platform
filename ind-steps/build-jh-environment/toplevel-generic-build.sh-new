@@ -1,0 +1,74 @@
+#!/bin/bash
+
+source "$(dirname $(readlink -f "$0"))/bashsteps-bash-utils-jan2017.source" || exit
+
+new_dir="$1"
+
+: "${nodecount:=2}"
+
+make_generic_instance_template()
+{
+    instdir="$1"
+    (
+	set -e
+	mkdir "$instdir"
+
+	cat >"$instdir/datadir.conf" <<'EOF'
+VMIP=192.168.999.999  # replace with the private IP used between instances
+publicip=180.123.999.999 # replace with IP used by this script
+publicport=22   # if needed, replace with the port used by this script
+EOF
+
+	# assume one copy of the key is shared in the build dir
+	ln -s ../sshkey "$instdir/sshkey"
+	
+	cat >"$instdir/ssh-shortcut.sh" <<'EOF'
+#!/bin/bash
+
+# This simple ssh wrapper script will probably work as is.
+# However, if something more complicated is needed, it
+# should be easy to make changes directly to the script here.
+
+# Currently, it requires that the private key (or a link to it) be in
+# the same directory and be named "sshkey".  Also, the variables
+# $publicip and $publicport must be set in the datadir.conf file
+# in the same directory.
+
+cd "$(dirname "$0")"
+source "datadir.conf"
+
+extraoptions=(
+    -o StrictHostKeyChecking=no
+    -o UserKnownHostsFile=/dev/null
+    -o GSSAPIAuthentication=no
+    )
+
+[ -f "sshkey" ] || {
+   echo "Private key not found at $(pwd)/sshkey" 1>&2
+   exit 1
+}
+ssh "${extraoptions[@]}" "ubuntu@$publicip" -p "$publicport" -i "sshkey" "$@"
+
+EOF
+	chmod +x "$instdir/ssh-shortcut.sh"
+    ) || iferr_exit "Error while creating $instdir"
+}
+
+(
+    "$ORGCODEDIR/build-jh-environment.sh-new" "$new_dir"
+    iferr_exit
+    
+    thisfile="${0##*/}"
+    mainscript="${thisfile%-new}"
+    ln -s "$ORGCODEDIR/$mainscript" "$new_dir" || iferr_exit "ln to $mainscript"
+
+    make_generic_instance_template "$new_dir/jhvmdir"
+    make_generic_instance_template "$new_dir/jhvmdir-hub"
+
+    for ((i=1 ; i <= nodecount ; i++)); do
+	make_generic_instance_template "$new_dir/jhvmdir-node$i"
+    done
+) || {
+    # clean up if error
+    rm -fr "$new_dir"
+}
