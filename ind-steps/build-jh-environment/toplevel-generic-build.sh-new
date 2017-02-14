@@ -20,7 +20,7 @@ publicport=22   # if needed, replace with the port used by this script
 EOF
 
 	# assume one copy of the key is shared in the build dir
-	ln -s ../pkey "$instdir/pkey"
+	ln -s ../sshkey "$instdir/sshkey"
 	
 	cat >"$instdir/ssh-shortcut.sh" <<'EOF'
 #!/bin/bash
@@ -30,7 +30,7 @@ EOF
 # should be easy to make changes directly to the script here.
 
 # Currently, it requires that the private key (or a link to it) be in
-# the same directory and be named "pkey".  Also, the variables
+# the same directory and be named "sshkey".  Also, the variables
 # $publicip and $publicport must be set in the datadir.conf file
 # in the same directory.
 
@@ -43,11 +43,11 @@ extraoptions=(
     -o GSSAPIAuthentication=no
     )
 
-[ -f "pkey" ] || {
-   echo "Private key not found at $(pwd)/pkey" 1>&2
+[ -f "sshkey" ] || {
+   echo "Private key not found at $(pwd)/sshkey" 1>&2
    exit 1
 }
-ssh "${extraoptions[@]}" "ubuntu@$publicip" -p "$publicport" -i "pkey" "$@"
+ssh "${extraoptions[@]}" "ubuntu@$publicip" -p "$publicport" -i "sshkey" "$@"
 
 EOF
 	chmod +x "$instdir/ssh-shortcut.sh"
