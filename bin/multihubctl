@@ -381,41 +381,6 @@ EOF
 }
 
 
-build_jupyterhub()
-{
-    # which hub is next?
-    hubn=0
-    while true; do
-	digits3="$(( hubn + 1000 ))"
-	digits3="${digits3#1}"
-	[ -d "$ahdir/$digits3" ] || break
-	(( hubn++ ))
-    done
-
-    local hubdir="$ahdir/$digits3"
-
-    cd "$ahdir" || reportfailed cd "$ahdir"
-
-    set -x
-    set -e
-    #  (the repository is private, so using http still required a password prompt)
-    #    git clone http://github.com/axsh/jupyter-platform-dev || reportfailed git clone
-    # (..so back to the ssh verion:)
-    git clone git@github.com:axsh/jupyter-platform-dev.git || reportfailed git clone
-    mv jupyter-platform-dev "$digits3" || reportfailed mv jupyter-platform-dev "$digits3"
-    cd "$digits3"
-
-    ./demo-scripts/google-oauth-distribute-notebooks-via-dir-softlink.sh initial-setup || reportfailed initial-setup
-
-    echo "Doing first pass of build: $(date)"
-    time ./test2-build-nbgrader-environment-w-ansible >>build.log 2>&1
-
-    echo "Doing second pass of build: $(date)"
-    time ./test2-build-nbgrader-environment-w-ansible >>build.log 2>&1
-
-    echo "Finished $(date)"
-}
-
 delete_jupyterhub()
 {
     hubpath="$(classid_to_hubpath "$1")" || exit
@@ -535,9 +500,11 @@ case "$cmd" in
     debugjhub) reconfigure_one_jupyterhub "$@"
 	 ;;
     debugnginx) reconfigure_nginx "$@"
-	 ;;
-    buildnewjh) build_jupyterhub "$@"
-	 ;;
+		;;
+    #    buildnewjh) build_jupyterhub "$@"
+    # ((This does not work with the recently refactored code.
+    #   TODO: decide if it needs to be replaced ))
+    #	 ;;
     restart) restart_jupyterhub "$@"
 	 ;;
     dumpdb) dump_database "$@"
