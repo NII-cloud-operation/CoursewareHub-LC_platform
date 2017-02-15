@@ -95,6 +95,40 @@ do_new()
     "$ahdir/000"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_nginx_1
 }
 
+do_simpleinit()
+{
+    # This is a simplified version of do_new() for single jupyterhub
+    # environments running separately.  It does not require the
+    # active-hubs/00x naming convention, and it does use one nginx to
+    # dispatch to multiple jupyterhub environments.  Each environment
+    # uses its own nginx for SSL connections.  The extra word in the
+    # URL (e.g. "/master/")is not used.  The teacher name is assumed to
+    # be "sensei"
+    
+    hubdir="$1"  # Path to the build directory
+
+    echo "none" >"$hubdir/hubid"
+    
+    reconfigure_one_jupyterhub "$hubdir" "none"
+    push_hub_patch "$hubdir" 1>/dev/null
+    create_directory_structure "$hubdir" "sensei"
+    
+    # next part is based on reconfigure_nginx()
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_1 bash <<EOF
+cat >/etc/nginx/nginx.conf <<'EOF2'
+$(config_toplevel "$hubdir")
+EOF2
+EOF
+
+    echo "Restarting new JupyterHub container."
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_jupyterhub_1
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_jupyterhub_1
+    
+    echo "Restarting nginx proxy."
+    "$ahdir/000"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_nginx_1
+    "$ahdir/000"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_nginx_1
+}
+
 : ${urlbase:="niidemo.com"}
 reconfigure_one_jupyterhub()
 {
@@ -494,6 +528,8 @@ shift
 
 case "$cmd" in
     new) do_new "$@"
+	 ;;
+    simpleinit) do_simpleinit "$@"
 	 ;;
     delete) delete_jupyterhub "$@"
 	 ;;

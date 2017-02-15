@@ -28,6 +28,12 @@ cat  >>"$DATADIR/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for
 node_list="${node_list# }"
 EOF
 
+# Actually put this debugging script in the directory, not its symbolic link.
+cat >"$DATADIR/simpleinit.sh" <<EOF
+'$ORGCODEDIR/../../bin/multihubctl' simpleinit "$(dirname "$0")"
+EOF
+chmod +x "$DATADIR/simpleinit.sh" 
+
 echo "Success"
 echo "Note, the VM directories still need to be created inside .../${DATADIR##*/}"
 
