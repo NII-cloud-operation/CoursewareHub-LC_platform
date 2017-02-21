@@ -30,7 +30,7 @@ EOF
 
 # Actually put this debugging script in the directory, not its symbolic link.
 cat >"$DATADIR/simpleinit.sh" <<EOF
-'$ORGCODEDIR/../../bin/multihubctl' simpleinit "$(dirname "$0")"
+'$ORGCODEDIR/../../bin/multihubctl' simpleinit "\$(dirname "\$0")"
 EOF
 chmod +x "$DATADIR/simpleinit.sh" 
 
