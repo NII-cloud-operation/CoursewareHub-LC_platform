@@ -107,9 +107,7 @@ do_simpleinit()
     
     hubdir="$1"  # Path to the build directory
 
-    echo "none" >"$hubdir/hubid"
-    
-    reconfigure_one_jupyterhub "$hubdir" "none"
+    reconfigure_one_jupyterhub "$hubdir" "sensei"
     push_hub_patch "$hubdir" 1>/dev/null
     create_directory_structure "$hubdir" "sensei"
     
@@ -428,7 +426,11 @@ delete_jupyterhub()
 
 restart_jupyterhub()
 {
-    hubpath="$(classid_to_hubpath "$1")" || exit
+    if [ -f "$1/hubid" ]; then  # Allow either hubpath or hubid
+	hubpath="$1"
+    else
+	hubpath="$(classid_to_hubpath "$1")" || exit
+    fi
     "$hubpath"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_jupyterhub_1
     "$hubpath"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_jupyterhub_1
 }

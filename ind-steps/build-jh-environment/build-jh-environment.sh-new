@@ -30,6 +30,9 @@ EOF
 
 # Actually put this debugging script in the directory, not its symbolic link.
 cat >"$DATADIR/simpleinit.sh" <<EOF
+# This script is to make it easy to run jupyterhub environments outside
+# of the active-hubs/00* setup.
+echo none >"\$(dirname "\$0")/hubid"
 '$ORGCODEDIR/../../bin/multihubctl' simpleinit "\$(dirname "\$0")"
 EOF
 chmod +x "$DATADIR/simpleinit.sh" 
