@@ -107,6 +107,7 @@ do_simpleinit()
     
     hubdir="$1"  # Path to the build directory
 
+    NUSERS=3 # fewer users during develpment to work around database init bug
     reconfigure_one_jupyterhub "$hubdir" "sensei"
     push_hub_patch "$hubdir" 1>/dev/null
     create_directory_structure "$hubdir" "sensei"
@@ -146,10 +147,13 @@ reconfigure_one_jupyterhub()
     # database timeout while jupyterhub is restarting.  The current workaround
     # is to keep restarting jupyterhub until all entries are initialized.  Use
     # the dumpdb command to make sure progress is being made at each restart.
+    # The var NUSERS has been added to drop down to a few user names to speed up
+    # setup during development and debugging.
+    : ${NUSERS:=30}
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_jupyterhub_1 bash <<EOF
     cat >/srv/jupyterhub_users/userlist <<EOF3
 $teacherid admin
-$(head -n 30 "$rootdir/usernames")
+$(head -n "$NUSERS" "$rootdir/usernames")
 EOF3
 
     cat >>/srv/jupyterhub_config/jupyterhub_config.py <<EOF2
