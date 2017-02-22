@@ -11,8 +11,8 @@ usage()
     cat <<EOF
 Usage:
 
-./bin/serverctl list {hubid}                       ## List servers
-./bin/serverctl allow-sudo {hubid} {server_name}   ## Give sudo powers
+./bin/serverctl {hubid} list                       ## List servers
+./bin/serverctl {hubid} netconnections             ## List all(?) ESTABLISHED connections in system
 
 EOF
 }
@@ -55,13 +55,64 @@ get_container_names()
 
 do_list()
 {
-    local hubpath ; hubpath="$(classid_to_hubpath "$1")" || exit
-    source "$hubpath/$DDCONFFILE" || reportfailed "missing $DDCONFFILE"
-
     for n in $node_list; do
 	"$hubpath"/jhvmdir-${n}/ssh-shortcut.sh -q sudo docker ps -a | get_container_names " ($n)"
     done
 }
+
+netstat_filter1()
+{
+    while read ln; do
+	# skip ssh connections
+	[[ "$ln" == *10.0.3.15:22* ]] && continue
+
+	# skip header lines
+	[[ "$ln" == Active* ]] && continue
+	[[ "$ln" == Proto* ]] && continue
+
+	# skip NFS lines
+	[[ "$ln" == *192.168.33.1?:848* ]] && continue
+	[[ "$ln" == *192.168.33.1?:834* ]] && continue
+	echo "$ln"
+    done
+}
+
+info_from_inside_a_kvm()
+{
+    local vmdir="$1"
+    "$hubpath/$vmdir/ssh-shortcut.sh" -q sudo netstat -ntp | netstat_filter1
+
+    containerlist="$(
+         "$hubpath/$vmdir/ssh-shortcut.sh" -q sudo docker ps | (
+     read skipfirst
+     rev | while read token1 therest ; do echo "$token1" ; done | rev
+           )
+    )"
+#    echo "$containerlist"
+
+    for c in $containerlist; do
+	if [ "$aptupdate" != "" ]; then
+	    "$hubpath/$vmdir/ssh-shortcut.sh" -q sudo docker exec $c apt-get update
+	    "$hubpath/$vmdir/ssh-shortcut.sh" -q sudo docker exec $c apt-get install -y net-tools
+	fi
+	echo "Container (($c))"
+#        echo "$hubpath/$vmdir/ssh-shortcut.sh -q sudo docker exec $c netstat -ntp"
+        "$hubpath/$vmdir/ssh-shortcut.sh" -q sudo docker exec $c netstat -ntp | netstat_filter1
+    done
+}
+
+do_netconnections()
+{
+    for vm in "${vmdirlist[@]}"; do
+	echo ",,,,,,,,,,,,,,,,,,,,,,,,,$vm,,,,,,,,,,,,,,,,,,,,,,"
+	info_from_inside_a_kvm "$vm"
+    done
+#    "$hubpath/jhvmdir-hub/ssh-shortcut.sh" -q sudo docker exec root_jupyterhub_1 netstat -ntp4 | netstat_filter1
+}
+
+hubpath="$(classid_to_hubpath "$1")" || exit
+source "$hubpath/$DDCONFFILE" || reportfailed "missing $DDCONFFILE"
+shift
 
 cmd="$1"
 shift
@@ -69,7 +120,10 @@ shift
 case "$cmd" in
     list)
 	do_list "$@"
-	 ;;
+	;;
+    netconnections)
+	do_netconnections "$@"
+	;;
     *) usage
        ;;
 esac
