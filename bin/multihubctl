@@ -95,6 +95,39 @@ do_new()
     "$ahdir/000"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_nginx_1
 }
 
+do_simpleinit()
+{
+    # This is a simplified version of do_new() for single jupyterhub
+    # environments running separately.  It does not require the
+    # active-hubs/00x naming convention, and it does use one nginx to
+    # dispatch to multiple jupyterhub environments.  Each environment
+    # uses its own nginx for SSL connections.  The extra word in the
+    # URL (e.g. "/master/")is not used.  The teacher name is assumed to
+    # be "sensei"
+    
+    hubdir="$1"  # Path to the build directory
+
+    NUSERS=3 # fewer users during develpment to work around database init bug
+    reconfigure_one_jupyterhub "$hubdir" "sensei"
+    push_hub_patch "$hubdir" 1>/dev/null
+    create_directory_structure "$hubdir" "sensei"
+    
+    # next part is based on reconfigure_nginx()
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_1 bash <<EOF
+cat >/etc/nginx/nginx.conf <<'EOF2'
+$(config_toplevel "$hubdir")
+EOF2
+EOF
+
+    echo "Restarting new JupyterHub container."
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_jupyterhub_1
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_jupyterhub_1
+    
+    echo "Restarting nginx proxy."
+    "$ahdir/000"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_nginx_1
+    "$ahdir/000"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_nginx_1
+}
+
 : ${urlbase:="niidemo.com"}
 reconfigure_one_jupyterhub()
 {
@@ -114,10 +147,13 @@ reconfigure_one_jupyterhub()
     # database timeout while jupyterhub is restarting.  The current workaround
     # is to keep restarting jupyterhub until all entries are initialized.  Use
     # the dumpdb command to make sure progress is being made at each restart.
+    # The var NUSERS has been added to drop down to a few user names to speed up
+    # setup during development and debugging.
+    : ${NUSERS:=30}
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_jupyterhub_1 bash <<EOF
     cat >/srv/jupyterhub_users/userlist <<EOF3
 $teacherid admin
-$(head -n 30 "$rootdir/usernames")
+$(head -n "$NUSERS" "$rootdir/usernames")
 EOF3
 
     cat >>/srv/jupyterhub_config/jupyterhub_config.py <<EOF2
@@ -381,41 +417,6 @@ EOF
 }
 
 
-build_jupyterhub()
-{
-    # which hub is next?
-    hubn=0
-    while true; do
-	digits3="$(( hubn + 1000 ))"
-	digits3="${digits3#1}"
-	[ -d "$ahdir/$digits3" ] || break
-	(( hubn++ ))
-    done
-
-    local hubdir="$ahdir/$digits3"
-
-    cd "$ahdir" || reportfailed cd "$ahdir"
-
-    set -x
-    set -e
-    #  (the repository is private, so using http still required a password prompt)
-    #    git clone http://github.com/axsh/jupyter-platform-dev || reportfailed git clone
-    # (..so back to the ssh verion:)
-    git clone git@github.com:axsh/jupyter-platform-dev.git || reportfailed git clone
-    mv jupyter-platform-dev "$digits3" || reportfailed mv jupyter-platform-dev "$digits3"
-    cd "$digits3"
-
-    ./demo-scripts/google-oauth-distribute-notebooks-via-dir-softlink.sh initial-setup || reportfailed initial-setup
-
-    echo "Doing first pass of build: $(date)"
-    time ./test2-build-nbgrader-environment-w-ansible >>build.log 2>&1
-
-    echo "Doing second pass of build: $(date)"
-    time ./test2-build-nbgrader-environment-w-ansible >>build.log 2>&1
-
-    echo "Finished $(date)"
-}
-
 delete_jupyterhub()
 {
     hubpath="$(classid_to_hubpath "$1")" || exit
@@ -429,7 +430,11 @@ delete_jupyterhub()
 
 restart_jupyterhub()
 {
-    hubpath="$(classid_to_hubpath "$1")" || exit
+    if [ -f "$1/hubid" ]; then  # Allow either hubpath or hubid
+	hubpath="$1"
+    else
+	hubpath="$(classid_to_hubpath "$1")" || exit
+    fi
     "$hubpath"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_jupyterhub_1
     "$hubpath"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_jupyterhub_1
 }
@@ -530,14 +535,18 @@ shift
 case "$cmd" in
     new) do_new "$@"
 	 ;;
+    simpleinit) do_simpleinit "$@"
+	 ;;
     delete) delete_jupyterhub "$@"
 	 ;;
     debugjhub) reconfigure_one_jupyterhub "$@"
 	 ;;
     debugnginx) reconfigure_nginx "$@"
-	 ;;
-    buildnewjh) build_jupyterhub "$@"
-	 ;;
+		;;
+    #    buildnewjh) build_jupyterhub "$@"
+    # ((This does not work with the recently refactored code.
+    #   TODO: decide if it needs to be replaced ))
+    #	 ;;
     restart) restart_jupyterhub "$@"
 	 ;;
     dumpdb) dump_database "$@"

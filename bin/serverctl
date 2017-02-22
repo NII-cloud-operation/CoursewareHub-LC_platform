@@ -22,7 +22,7 @@ export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfa
 rootdir="${ORGCODEDIR%/*}"
 ahdir="$rootdir/active-hubs"
 
-DDCONFFILE="datadir-jh.conf"
+DDCONFFILE="datadir.conf"
 
 
 [ -d "$ahdir" ] || mkdir "$ahdir" || reportfailed
