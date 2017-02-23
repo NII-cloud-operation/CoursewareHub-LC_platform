@@ -109,6 +109,18 @@ netstat_filter1()
     done
 }
 
+info_from_inside_continer()
+{
+    local c="$1"
+    echo "Container (($c))"
+    if [ "$aptupdate" != "" ]; then
+	"$hubpath/$vmdir/ssh-shortcut.sh" -q sudo docker exec $c apt-get update
+	"$hubpath/$vmdir/ssh-shortcut.sh" -q sudo docker exec $c apt-get install -y net-tools
+    fi
+    #        echo "$hubpath/$vmdir/ssh-shortcut.sh -q sudo docker exec $c netstat -ntp"
+    "$hubpath/$vmdir/ssh-shortcut.sh" -q sudo docker exec $c netstat -ntp | netstat_filter1
+}
+
 info_from_inside_a_kvm()
 {
     local vmdir="$1"
@@ -124,13 +136,7 @@ info_from_inside_a_kvm()
 #    echo "$containerlist"
 
     for c in $containerlist; do
-	if [ "$aptupdate" != "" ]; then
-	    "$hubpath/$vmdir/ssh-shortcut.sh" -q sudo docker exec $c apt-get update
-	    "$hubpath/$vmdir/ssh-shortcut.sh" -q sudo docker exec $c apt-get install -y net-tools
-	fi
-	echo "Container (($c))"
-#        echo "$hubpath/$vmdir/ssh-shortcut.sh -q sudo docker exec $c netstat -ntp"
-        "$hubpath/$vmdir/ssh-shortcut.sh" -q sudo docker exec $c netstat -ntp | netstat_filter1
+	info_from_inside_continer "$c"
     done
 }
 
