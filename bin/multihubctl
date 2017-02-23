@@ -163,7 +163,7 @@ EOF3
 
     cat >>/srv/jupyterhub_config/jupyterhub_config.py <<EOF2
 # change to unix authentication:
-c.JupyterHub.authenticator_class = 'docker_oauth.DockerAuthenticator'
+c.JupyterHub.authenticator_class = 'remote_user.remote_user_auth.RemoteUserLocalAuthenticator'
 
 c.JupyterHub.base_url='$withslash/'
 
