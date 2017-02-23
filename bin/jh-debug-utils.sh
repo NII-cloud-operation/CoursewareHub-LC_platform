@@ -63,6 +63,14 @@ do_list()
 netstat_filter1()
 {
     while read ln; do
+	# delete "tcp        0      0 " starting part of line
+	prefix="${ln:0:20}"
+	if [[ "$prefix" == tcp* ]] && [ "${prefix//[0-9 tcp ]}" = "" ]; then
+	    ln="${ln#"$prefix"}"
+	fi
+
+	ln="${ln//ESTABLISHED/EST}" # shorten output more
+
 	# skip internal connections (used by notebook kernels?)
 	[[ "$ln" == *127.0.0.1*127.0.0.1* ]] && continue
 	
