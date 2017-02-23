@@ -135,9 +135,11 @@ info_from_inside_a_kvm()
     )"
 #    echo "$containerlist"
 
+    cmdline2=''
     for c in $containerlist; do
-	info_from_inside_container "$c"
+	cmdline2="$cmdline2 <(info_from_inside_container '$c')"
     done
+    [ "$cmdline2" != '' ] && eval cat "$cmdline2"
 }
 
 do_netconnections()
