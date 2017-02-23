@@ -63,6 +63,9 @@ do_list()
 netstat_filter1()
 {
     while read ln; do
+	# skip internal connections (used by notebook kernels?)
+	[[ "$ln" == *127.0.0.1*127.0.0.1* ]] && continue
+	
 	# skip ssh connections
 	[[ "$ln" == *10.0.3.15:22* ]] && continue
 
@@ -73,6 +76,27 @@ netstat_filter1()
 	# skip NFS lines
 	[[ "$ln" == *192.168.33.1?:848* ]] && continue
 	[[ "$ln" == *192.168.33.1?:834* ]] && continue
+
+	if [[ "$ln" == *:2376[^0-9]* ]]; then
+	    echo "$ln  (2376=docker TLS control)"
+	    continue
+	fi
+
+	if [[ "$ln" == *:2375[^0-9]* ]]; then
+	    echo "$ln  (2375=swarm (nonTLS?) control)"
+	    continue
+	fi
+
+	if [[ "$ln" == *:8000[^0-9]* ]]; then
+	    echo "$ln  (8000=jupyterhub, plain html)"
+	    continue
+	fi
+
+	if [[ "$ln" == *:5432[^0-9]* ]]; then
+	    echo "$ln  (5432=postgresql)"
+	    continue
+	fi
+
 	echo "$ln"
     done
 }
