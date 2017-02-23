@@ -109,7 +109,7 @@ netstat_filter1()
     done
 }
 
-info_from_inside_continer()
+info_from_inside_container()
 {
     local c="$1"
     echo "Container (($c))"
@@ -136,7 +136,7 @@ info_from_inside_a_kvm()
 #    echo "$containerlist"
 
     for c in $containerlist; do
-	info_from_inside_continer "$c"
+	info_from_inside_container "$c"
     done
 }
 
@@ -144,10 +144,9 @@ do_netconnections()
 {
     cmdline=''
     for vm in "${vmdirlist[@]}"; do
-	cmdline="$cmdline <(info_from_inside_a_kvm "$vm")"
+	cmdline="$cmdline <(info_from_inside_a_kvm '$vm')"
     done
-    eval cat "$cmdline"
-#    "$hubpath/jhvmdir-hub/ssh-shortcut.sh" -q sudo docker exec root_jupyterhub_1 netstat -ntp4 | netstat_filter1
+    [ "$cmdline" != '' ] && eval cat "$cmdline"
 }
 
 hubpath="$(classid_to_hubpath "$1")" || exit
