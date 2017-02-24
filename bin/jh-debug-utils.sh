@@ -151,6 +151,16 @@ do_netconnections()
     [ "$cmdline" != '' ] && eval cat "$cmdline"
 }
 
+# tcpdump line from:
+# http://serverfault.com/questions/504431/human-readable-format-for-http-headers-with-tcpdump
+do_tcpdump1()
+{
+    "$hubpath"/jhvmdir-hub/ssh-shortcut.sh -qt sudo docker exec -i root_jupyterhub_1 bash <<EOF
+which tcpdump || {  apt-get update ;  apt-get install -y tcpdump ; }
+tcpdump -U -A -s 10240 'tcp port 8000 and (((ip[2:2] - ((ip[0]&0xf)<<2)) - ((tcp[12]&0xf0)>>2)) != 0)' | egrep --line-buffered "^........(GET |HTTP\/|POST |HEAD )|^[A-Za-z0-9-]+: " | sed -r 's/^........(GET |HTTP\/|POST |HEAD )/\n\1/g'
+EOF
+}
+
 hubpath="$(classid_to_hubpath "$1")" || exit
 source "$hubpath/$DDCONFFILE" || reportfailed "missing $DDCONFFILE"
 shift
@@ -164,6 +174,9 @@ case "$cmd" in
 	;;
     netconnections)
 	do_netconnections "$@"
+	;;
+    tcpdumphub1)
+	do_tcpdump1 "$@"
 	;;
     *) usage
        ;;
