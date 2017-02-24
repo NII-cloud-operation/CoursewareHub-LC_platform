@@ -161,6 +161,14 @@ tcpdump -U -A -s 10240 'tcp port 8000 and (((ip[2:2] - ((ip[0]&0xf)<<2)) - ((tcp
 EOF
 }
 
+do_tcpdumpsensei()
+{
+    "$hubpath"/jhvmdir-node1/ssh-shortcut.sh -qt sudo docker exec -i jupyter-sensei bash <<EOF
+which tcpdump || {  apt-get update ;  apt-get install -y tcpdump ; }
+tcpdump -U -A -s 10240 'tcp port 8888 and (((ip[2:2] - ((ip[0]&0xf)<<2)) - ((tcp[12]&0xf0)>>2)) != 0)' | egrep --line-buffered "^........(GET |HTTP\/|POST |HEAD )|^[A-Za-z0-9-]+: " | sed -r 's/^........(GET |HTTP\/|POST |HEAD )/\n\1/g'
+EOF
+}
+
 do_tcpdumpnode1()
 {
     "$hubpath"/jhvmdir-hub/ssh-shortcut.sh -qt sudo bash <<EOF
@@ -188,6 +196,9 @@ case "$cmd" in
 	;;
     tcpdumpnode1)
 	do_tcpdumpnode1 "$@"
+	;;
+    tcpdumpsensei)
+	do_tcpdumpsensei "$@"
 	;;
     *) usage
        ;;
