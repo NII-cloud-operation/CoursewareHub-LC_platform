@@ -198,6 +198,7 @@ case "$cmd" in
 	do_tcpdumpnode1 "$@"
 	;;
     tcpdumpsensei)
+	echo "Note: Assumes sensei jupyter server is on node1."
 	do_tcpdumpsensei "$@"
 	;;
     *) usage
