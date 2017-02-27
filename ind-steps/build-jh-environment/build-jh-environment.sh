@@ -4,6 +4,33 @@ source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.s
 
 VMDIR=jhvmdir
 
+
+clone_remote_git()
+{
+    giturl="$1"
+    reponame="$(basename "$giturl" .git)" # basename removes the .git suffix
+
+    # NOTE: This puts the repository cache mixed with the original
+    # scripts instead of the build directory, so that it can be shared
+    # between multiple builds.
+    (
+	$starting_step "Cache git repository: $giturl"
+	[ -d "$ORGCODEDIR/repo-cache/$reponame" ]
+	$skip_step_if_already_done; set -e
+	mkdir -p "$ORGCODEDIR/repo-cache"
+	cd "$ORGCODEDIR/repo-cache"
+	git clone "$giturl"
+    ) ; $iferr_exit
+}
+
+
+(
+    $starting_group "Cache uesd repositories locally"
+
+    clone_remote_git https://github.com/triggers/jupyterhub-deploy.git
+    
+) ; $iferr_exit
+
 (
     $starting_step "Clone https://github.com/(compmodels)/jupyterhub-deploy.git"
     [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
