@@ -25,25 +25,26 @@ clone_remote_git()
 
 
 (
-    $starting_group "Cache uesd repositories locally"
+    $starting_group "Cache used repositories locally"
 
+    # clone from our exploration/debugging copy
     clone_remote_git https://github.com/triggers/jupyterhub-deploy.git
     
 ) ; $iferr_exit
 
 (
-    $starting_step "Clone https://github.com/(compmodels)/jupyterhub-deploy.git"
+    $starting_step "Copy jupyterhub-deploy repository into ansible VM"
     [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 [ -d jupyterhub-deploy ]
 EOF
     $skip_step_if_already_done ; set -e
 
-    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
-# clone from our exploration/debugging copy
-git clone https://github.com/triggers/jupyterhub-deploy.git
-#git clone https://github.com/compmodels/jupyterhub-deploy.git
-EOF
+    (
+	# clone from our cached copy
+	cd "$ORGCODEDIR/repo-cache"
+	tar c jupyterhub-deploy
+    ) |	"$DATADIR/$VMDIR/ssh-shortcut.sh" tar xv
 ) ; $iferr_exit
 
 (
