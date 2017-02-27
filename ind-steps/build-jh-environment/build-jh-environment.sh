@@ -29,6 +29,10 @@ clone_remote_git()
 
     # clone from our exploration/debugging copy
     clone_remote_git https://github.com/triggers/jupyterhub-deploy.git
+
+    clone_remote_git https://github.com/triggers/jupyterhub.git
+
+    clone_remote_git https://github.com/minrk/restuser.git
     
 ) ; $iferr_exit
 
