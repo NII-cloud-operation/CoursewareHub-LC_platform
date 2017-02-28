@@ -37,24 +37,26 @@ clone_remote_git()
 copy_in_one_cached_repository()
 {
     repo_name="$1"
+    vmdir="$2"
+    targetdir="$3"
     (
 	$starting_step "Copy $repo_name repository into ansible VM"
-	[ -x "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" ] &&
-	    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
-[ -d "/srv/$repo_name" ]
+	[ -x "$DATADIR/$vmdir/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$vmdir/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -d "$targetdir/$repo_name" ]
 EOF
 	$skip_step_if_already_done ; set -e
 	(
 	    # clone from our cached copy
 	    cd "$ORGCODEDIR/repo-cache"
 	    tar c "$repo_name"
-	) |	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" sudo tar x -C /srv
+	) |	"$DATADIR/$vmdir/ssh-shortcut.sh" sudo tar x -C "$targetdir"
     ) ; $iferr_exit
 }
 
-copy_in_one_cached_repository jupyterhub-deploy
-copy_in_one_cached_repository jupyterhub
-copy_in_one_cached_repository restuser
+copy_in_one_cached_repository jupyterhub-deploy "$VMDIR"     /home/ubuntu
+copy_in_one_cached_repository jupyterhub        "$VMDIR-hub" /srv
+copy_in_one_cached_repository restuser          "$VMDIR-hub" /srv
 
 (
     $starting_step "Adjust ansible config files for node_list"
