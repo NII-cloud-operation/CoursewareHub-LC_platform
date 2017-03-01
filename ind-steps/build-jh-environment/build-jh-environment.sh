@@ -168,16 +168,17 @@ EOF
     done
 ) ; $iferr_exit
 
-
 (
-    $starting_step "Adjust ansible config files for node_list"
-    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+    $starting_group "Pre-ansible build steps"
+    (
+	$starting_step "Adjust ansible config files for node_list"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 [ -f nodelist ] && [ "\$(cat nodelist)" = "$node_list" ]
 EOF
-    $skip_step_if_already_done ; set -e
+	$skip_step_if_already_done ; set -e
 
-    invfile="$(
+	invfile="$(
   echo "[jupyterhub_host]"
   hubip="$(source "$DATADIR/$VMDIR-hub/datadir.conf" ; echo "$VMIP")"
   printf "hub ansible_ssh_user=root ansible_ssh_host=%s servicenet_ip=%s\n" "$hubip" "$hubip"
@@ -199,8 +200,8 @@ EOF
      echo "$n"
   done
 )"
-    
-    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+	
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 # TODO: improve this temporary fix...maybe putting in ansible vault or using 
 #       hub's servicenet_ip.
 tmppath=/home/ubuntu/jupyterhub-deploy/roles/proxy/defaults/main.yml
@@ -246,20 +247,20 @@ diff  jupyterhub-deploy/script/assemble_certs.bak jupyterhub-deploy/script/assem
 # Flag that step has been done:
 echo "$node_list" >nodelist
 EOF
-) ; $iferr_exit
+    ) ; $iferr_exit
 
-(
-    exit 0  # The contents here are now part of triggers/jupyterhub-deploy.git
-    $starting_step "Set secrets.vault"
-    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+    (
+	exit 0  # The contents here are now part of triggers/jupyterhub-deploy.git
+	$starting_step "Set secrets.vault"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 [ -f /home/ubuntu/jupyterhub-deploy/secrets.vault.yml.org ]
 EOF
-    $skip_step_if_already_done ; set -e
-    
-    # The access to /dev/random must be done on the host because
-    # it hangs in KVM
-    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+	$skip_step_if_already_done ; set -e
+	
+	# The access to /dev/random must be done on the host because
+	# it hangs in KVM
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 set -x
 cd jupyterhub-deploy/
@@ -280,19 +281,19 @@ cp secrets.vault.yml secrets.vault.yml.tmp-for-debugging
 
 ansible-vault encrypt --vault-password-file vault-password secrets.vault.yml
 EOF
-) ; $iferr_exit
+    ) ; $iferr_exit
 
-(
-    $starting_step "Set users.vault"
-    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+    (
+	$starting_step "Set users.vault"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 [ -f /home/ubuntu/jupyterhub-deploy/users.vault.yml.org ]
 EOF
-    $skip_step_if_already_done ; set -e
-    
-    # The access to /dev/random must be done on the host because
-    # it hangs in KVM
-    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+	$skip_step_if_already_done ; set -e
+	
+	# The access to /dev/random must be done on the host because
+	# it hangs in KVM
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 set -x
 cd jupyterhub-deploy/
@@ -303,15 +304,15 @@ jupyterhub_admins:
 EOF2
 ansible-vault encrypt --vault-password-file vault-password users.vault.yml
 EOF
-) ; $iferr_exit
+    ) ; $iferr_exit
 
-(
-    $starting_step "Copy private ssh key to main KVM, plus minimal ssh config"
-    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
+    (
+	$starting_step "Copy private ssh key to main KVM, plus minimal ssh config"
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
 [ -f .ssh/id_rsa ]
 EOF
-    $skip_step_if_already_done
-    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+	$skip_step_if_already_done
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -x
 
 cat >.ssh/id_rsa <<EOF2
@@ -329,16 +330,16 @@ EOF2
 chmod 644 .ssh/config
 
 EOF
-) ; $iferr_exit
+    ) ; $iferr_exit
 
-(
-    $starting_step "Run ./script/assemble_certs (from the jupyterhub-deploy repository)"
-    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
+    (
+	$starting_step "Run ./script/assemble_certs (from the jupyterhub-deploy repository)"
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
 cd jupyterhub-deploy
 [ -f ./host_vars/node2 ]
 EOF
-    $skip_step_if_already_done
-    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+	$skip_step_if_already_done
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -x
 set -e
 
@@ -346,15 +347,15 @@ cd jupyterhub-deploy
 ./script/assemble_certs 
 
 EOF
-) ; $iferr_exit
+    ) ; $iferr_exit
 
-(
-    $starting_step "Copy user ubuntu's .ssh dir to shared NFS area"
-    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null 1>&2
+    (
+	$starting_step "Copy user ubuntu's .ssh dir to shared NFS area"
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null 1>&2
 [ -d /mnt/nfs/home/ubuntu/.ssh ]
 EOF
-    $skip_step_if_already_done
-    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF
+	$skip_step_if_already_done
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF
 set -x
 set -e
 
@@ -362,6 +363,7 @@ sudo mkdir -p /mnt/nfs
 sudo tar c /home/ubuntu/.ssh | ( cd /mnt/nfs && sudo tar xv )
 
 EOF
+    ) ; $iferr_exit
 ) ; $iferr_exit
 
 (
@@ -390,19 +392,23 @@ time ./script/deploy | tee -a deploylog.log
 EOF
 ) ; $iferr_exit
 
+
 (
-    $starting_step "Copy proxy's certificate and key to hub VM"
-    # TODO: find out why Ansible step did not do this correctly.
-    # When using Ansible to do this, all the end of line characters
-    # were stripped out.
-    # Note: the root_nginx_1 container probably needs restarting,
-    #       which seems to happen automatically eventually.
-    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
+    $starting_group "Post-ansible build steps"
+
+    (
+	$starting_step "Copy proxy's certificate and key to hub VM"
+	# TODO: find out why Ansible step did not do this correctly.
+	# When using Ansible to do this, all the end of line characters
+	# were stripped out.
+	# Note: the root_nginx_1 container probably needs restarting,
+	#       which seems to happen automatically eventually.
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
 lines=\$(cat /tmp/proxykey /tmp/proxycert | wc -l)
 [ "\$lines" -gt 10 ]
 EOF
-    $skip_step_if_already_done
-    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF
+	$skip_step_if_already_done
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF
 set -x
 set -e
 
@@ -417,19 +423,19 @@ $("$DATADIR/$VMDIR/ssh-shortcut.sh" cat jupyterhub-deploy/certificates/hub-key.p
 EOF3
 
 EOF
-) ; $iferr_exit
+    ) ; $iferr_exit
 
-(
-    $starting_step "Copy manage-tools to hub VM"
-    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" -q <<EOF 2>/dev/null >/dev/null
+    (
+	$starting_step "Copy manage-tools to hub VM"
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" -q <<EOF 2>/dev/null >/dev/null
 [ -f /jupyter/admin/admin_tools/00_GuidanceForTeacher.ipynb ]
 EOF
-    $skip_step_if_already_done; set -e
-    cd "$ORGCODEDIR/../.."
-    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" rm -fr /tmp/manage-tools
-    tar cz manage-tools | \
-	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" tar xzv -C /tmp
-    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" -q <<EOF
+	$skip_step_if_already_done; set -e
+	cd "$ORGCODEDIR/../.."
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" rm -fr /tmp/manage-tools
+	tar cz manage-tools | \
+	    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" tar xzv -C /tmp
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" -q <<EOF
     set -e
     # mkdir stuff is also in multihubctl, but needed here
     # because multihubctl has not been run yet.
@@ -446,10 +452,7 @@ EOF
     sudo chmod 444  */*ipynb
     sudo chmod 555 tools/notebook-diff admin_tools/notebook-diff admin_tools/collect-answer
 EOF
-) ; $iferr_exit
-
-(
-    $starting_group "Misc steps"
+    ) ; $iferr_exit
 
     (
 	$starting_step "Copy in adapt-notebooks-for-user.sh and background-command-processor.sh"
