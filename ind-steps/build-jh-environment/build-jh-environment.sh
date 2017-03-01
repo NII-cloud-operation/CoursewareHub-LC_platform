@@ -29,6 +29,7 @@ VMDIR=jhvmdir
 
     clone_remote_git https://github.com/triggers/jupyterhub-deploy.git
     clone_remote_git https://github.com/triggers/jupyterhub.git
+    clone_remote_git https://github.com/triggers/systemuser.git
     clone_remote_git https://github.com/minrk/restuser.git
     
 ) ; $iferr_exit
@@ -59,6 +60,7 @@ EOF
 
     copy_in_one_cached_repository jupyterhub-deploy "$VMDIR"     /home/ubuntu
     copy_in_one_cached_repository jupyterhub        "$VMDIR-hub" /srv
+    copy_in_one_cached_repository systemuser        "$VMDIR"     /srv
     copy_in_one_cached_repository restuser          "$VMDIR-hub" /srv
 
 ) ; $iferr_exit
@@ -87,7 +89,26 @@ EOF
 # #    fi
 
 (
-    $starting_group "Make TLS/SSL certificates with docker"
+    $starting_group "Build docker images cache for later distribution"
+
+    (
+	$starting_step "Build systemuser docker image"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+docker images | grep triggers/systemuser
+EOF
+	$skip_step_if_already_done ; set -e
+
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+set -e
+cd /srv/systemuser
+
+docker build -t triggers/systemuser .
+EOF
+    ) ; $iferr_exit
+    
+
+) ; $iferr_exit
 
     # following guide at: https://github.com/compmodels/jupyterhub-deploy/blob/master/INSTALL.md
 
