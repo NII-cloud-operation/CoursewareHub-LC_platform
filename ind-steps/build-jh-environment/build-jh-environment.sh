@@ -367,7 +367,7 @@ EOF
 ) ; $iferr_exit
 
 (
-    $starting_step "Run main **Ansible script** (from the jupyterhub-deploy repository)"
+    $starting_step "Run main **Ansible script** (PART 1)"
     nodesarray=( $node_list )
     vmcount=$(( ${#nodesarray[@]} + 1 )) # nodes + just the hub
     "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
@@ -378,7 +378,7 @@ cd jupyterhub-deploy
 #   hub                        : ok=97   changed=84   unreachable=0    failed=0   
 #   node1                      : ok=41   changed=32   unreachable=0    failed=0   
 #   node2                      : ok=41   changed=32   unreachable=0    failed=0   
-count="\$(tail deploylog.log | grep -o "unreachable=0.*failed=0" | wc -l)"
+count="\$(tail deploylog-part1.log | grep -o "unreachable=0.*failed=0" | wc -l)"
 [ "\$count" -eq "$vmcount" ]
 EOF
     $skip_step_if_already_done
@@ -387,7 +387,28 @@ set -x
 set -e
 
 cd jupyterhub-deploy
-time ./script/deploy | tee -a deploylog.log
+time ./script/deploy "-part1" | tee -a deploylog-part1.log
+
+EOF
+) ; $iferr_exit
+
+(
+    $starting_step "Run main **Ansible script** (PART 2)"  # mostly copy/pasted from above
+    nodesarray=( $node_list )
+    vmcount=$(( ${#nodesarray[@]} + 1 )) # nodes + just the hub
+    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+set -x
+cd jupyterhub-deploy
+count="\$(tail deploylog-part2.log | grep -o "unreachable=0.*failed=0" | wc -l)"
+[ "\$count" -eq "$vmcount" ]
+EOF
+    $skip_step_if_already_done
+    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+set -x
+set -e
+
+cd jupyterhub-deploy
+time ./script/deploy "-part2" | tee -a deploylog-part2.log
 
 EOF
 ) ; $iferr_exit
