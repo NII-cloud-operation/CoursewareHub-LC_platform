@@ -5,27 +5,27 @@ source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.s
 VMDIR=jhvmdir
 
 
-clone_remote_git()
-{
-    giturl="$1"
-    reponame="$(basename "$giturl" .git)" # basename removes the .git suffix
-
-    # NOTE: This puts the repository cache mixed with the original
-    # scripts instead of the build directory, so that it can be shared
-    # between multiple builds.
-    (
-	$starting_step "Cache git repository: $giturl"
-	[ -d "$ORGCODEDIR/repo-cache/$reponame" ]
-	$skip_step_if_already_done; set -e
-	mkdir -p "$ORGCODEDIR/repo-cache"
-	cd "$ORGCODEDIR/repo-cache"
-	git clone "$giturl"
-    ) ; $iferr_exit
-}
-
-
 (
     $starting_group "Cache used repositories locally"
+
+    clone_remote_git()
+    {
+	giturl="$1"
+	reponame="$(basename "$giturl" .git)" # basename removes the .git suffix
+
+	# NOTE: This puts the repository cache mixed with the original
+	# scripts instead of the build directory, so that it can be shared
+	# between multiple builds.
+	(
+	    $starting_step "Cache git repository: $giturl"
+	    [ -d "$ORGCODEDIR/repo-cache/$reponame" ]
+	    $skip_step_if_already_done; set -e
+	    mkdir -p "$ORGCODEDIR/repo-cache"
+	    cd "$ORGCODEDIR/repo-cache"
+	    git clone "$giturl"
+	) ; $iferr_exit
+    }
+
 
     clone_remote_git https://github.com/triggers/jupyterhub-deploy.git
     clone_remote_git https://github.com/triggers/jupyterhub.git
@@ -34,29 +34,34 @@ clone_remote_git()
 ) ; $iferr_exit
 
 
-copy_in_one_cached_repository()
-{
-    repo_name="$1"
-    vmdir="$2"
-    targetdir="$3"
-    (
-	$starting_step "Copy $repo_name repository into ansible VM"
-	[ -x "$DATADIR/$vmdir/ssh-shortcut.sh" ] &&
-	    "$DATADIR/$vmdir/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+(
+    $starting_group "Copy repositories to build VMs"
+
+    copy_in_one_cached_repository()
+    {
+	repo_name="$1"
+	vmdir="$2"
+	targetdir="$3"
+	(
+	    $starting_step "Copy $repo_name repository into ansible VM"
+	    [ -x "$DATADIR/$vmdir/ssh-shortcut.sh" ] &&
+		"$DATADIR/$vmdir/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 [ -d "$targetdir/$repo_name" ]
 EOF
-	$skip_step_if_already_done ; set -e
-	(
-	    # clone from our cached copy
-	    cd "$ORGCODEDIR/repo-cache"
-	    tar c "$repo_name"
-	) |	"$DATADIR/$vmdir/ssh-shortcut.sh" sudo tar x -C "$targetdir"
-    ) ; $iferr_exit
-}
+	    $skip_step_if_already_done ; set -e
+	    (
+		# clone from our cached copy
+		cd "$ORGCODEDIR/repo-cache"
+		tar c "$repo_name"
+	    ) |	"$DATADIR/$vmdir/ssh-shortcut.sh" sudo tar x -C "$targetdir"
+	) ; $iferr_exit
+    }
 
-copy_in_one_cached_repository jupyterhub-deploy "$VMDIR"     /home/ubuntu
-copy_in_one_cached_repository jupyterhub        "$VMDIR-hub" /srv
-copy_in_one_cached_repository restuser          "$VMDIR-hub" /srv
+    copy_in_one_cached_repository jupyterhub-deploy "$VMDIR"     /home/ubuntu
+    copy_in_one_cached_repository jupyterhub        "$VMDIR-hub" /srv
+    copy_in_one_cached_repository restuser          "$VMDIR-hub" /srv
+
+) ; $iferr_exit
 
 (
     $starting_step "Adjust ansible config files for node_list"
