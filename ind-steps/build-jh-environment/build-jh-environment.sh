@@ -110,8 +110,10 @@ EOF
 
 ) ; $iferr_exit
 
-    # following guide at: https://github.com/compmodels/jupyterhub-deploy/blob/master/INSTALL.md
+(
+    $starting_group "Make TLS/SSL certificates with docker"
 
+    # following the guide at: https://github.com/compmodels/jupyterhub-deploy/blob/master/INSTALL.md
     KEYMASTER="docker run --rm -v /home/ubuntu/jupyterhub-deploy/certificates/:/certificates/ cloudpipe/keymaster"
 
     (
