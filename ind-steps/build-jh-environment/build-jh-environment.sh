@@ -64,6 +64,89 @@ EOF
 ) ; $iferr_exit
 
 (
+    $starting_step "Install Docker in main KVM"
+    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] && {
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<<"which docker" 2>/dev/null 1>&2
+    }
+    $skip_step_if_already_done; set -e
+    "$DATADIR/$VMDIR/ssh-shortcut.sh" "curl -fsSL https://get.docker.com/ | sudo sh"
+    "$DATADIR/$VMDIR/ssh-shortcut.sh" "sudo usermod -aG docker ubuntu"
+    # #	touch "$DATADIR/extrareboot" # necessary to make the usermod take effect in Jupyter environment
+) ; $iferr_exit
+
+# # Maybe the reboot was never necessary?  Simply doing ssh again is enough?
+# #    : ${extrareboot:=} # set -u workaround
+# #    if [ "$extrareboot" != "" ] || \
+    # #	   [ -f "$DATADIR/extrareboot" ] ; then  # this flag can also be set before calling ./build-nii.sh
+# #	rm -f "$DATADIR/extrareboot"
+# #	## TODO: this step is dynamically added/removed, which is awkward for bashsteps.  Alternatives?
+# #	"$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" wrapped ; $iferr_exit
+# #    fi
+# #    if [ -f "$DATADIR/$VMDIR/kvm-boot.sh" ]; then  # TODO: find better way
+# #	"$DATADIR/$VMDIR/kvm-boot.sh" wrapped ; $iferr_exit
+# #    fi
+
+(
+    $starting_group "Make TLS/SSL certificates with docker"
+
+    # following guide at: https://github.com/compmodels/jupyterhub-deploy/blob/master/INSTALL.md
+
+    KEYMASTER="docker run --rm -v /home/ubuntu/jupyterhub-deploy/certificates/:/certificates/ cloudpipe/keymaster"
+
+    (
+	$starting_step "Gather random data from host, set vault-password"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -f jupyterhub-deploy/certificates/password ]
+EOF
+	$skip_step_if_already_done ; set -e
+
+	# The access to /dev/random must be done on the host because
+	# it hangs in KVM
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+mkdir -p jupyterhub-deploy/certificates
+
+echo ubuntu >/home/ubuntu/jupyterhub-deploy/vault-password
+
+cat >jupyterhub-deploy/certificates/password <<EOF2
+$(cat /dev/random | head -c 128 | base64)
+EOF2
+
+${KEYMASTER} ca
+
+EOF
+    ) ; $iferr_exit
+
+    do-one-keypair()
+    {
+	(
+	    $starting_step "Generate a keypair for a server $1"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -f /home/ubuntu/jupyterhub-deploy/certificates/$1-key.pem ]
+EOF
+	    $skip_step_if_already_done ; set -e
+	    
+	    # The access to /dev/random must be done on the host because
+	    # it hangs in KVM
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+set -e
+set -x
+cd jupyterhub-deploy/certificates
+${KEYMASTER} signed-keypair -n $1 -h $1.website.com -p both -s IP:$2
+EOF
+	) ; $iferr_exit
+    }
+    hubip="$(source "$DATADIR/$VMDIR-hub/datadir.conf" ; echo "$VMIP")"
+    do-one-keypair hub "$hubip"
+    for n in $node_list; do
+        nodeip="$(source "$DATADIR/$VMDIR-$n/datadir.conf" ; echo "$VMIP")"
+	do-one-keypair "$n" "$nodeip"
+    done
+) ; $iferr_exit
+
+
+(
     $starting_step "Adjust ansible config files for node_list"
     [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
@@ -141,88 +224,6 @@ diff  jupyterhub-deploy/script/assemble_certs.bak jupyterhub-deploy/script/assem
 echo "$node_list" >nodelist
 EOF
 ) ; $iferr_exit
-
-(
-    $starting_group "Make TLS/SSL certificates with docker"
-    (
-	$starting_step "Install Docker in main KVM"
-	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] && {
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<<"which docker" 2>/dev/null 1>&2
-	}
-	$skip_step_if_already_done; set -e
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" "curl -fsSL https://get.docker.com/ | sudo sh"
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" "sudo usermod -aG docker ubuntu"
-# #	touch "$DATADIR/extrareboot" # necessary to make the usermod take effect in Jupyter environment
-    ) ; $iferr_exit
-
-# # Maybe the reboot was never necessary?  Simply doing ssh again is enough?
-# #    : ${extrareboot:=} # set -u workaround
-# #    if [ "$extrareboot" != "" ] || \
-# #	   [ -f "$DATADIR/extrareboot" ] ; then  # this flag can also be set before calling ./build-nii.sh
-# #	rm -f "$DATADIR/extrareboot"
-# #	## TODO: this step is dynamically added/removed, which is awkward for bashsteps.  Alternatives?
-# #	"$DATADIR/$VMDIR/kvm-shutdown-via-ssh.sh" wrapped ; $iferr_exit
-# #    fi
-# #    if [ -f "$DATADIR/$VMDIR/kvm-boot.sh" ]; then  # TODO: find better way
-# #	"$DATADIR/$VMDIR/kvm-boot.sh" wrapped ; $iferr_exit
-# #    fi
-
-    # following guide at: https://github.com/compmodels/jupyterhub-deploy/blob/master/INSTALL.md
-
-    KEYMASTER="docker run --rm -v /home/ubuntu/jupyterhub-deploy/certificates/:/certificates/ cloudpipe/keymaster"
-
-    (
-	$starting_step "Gather random data from host, set vault-password"
-	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
-[ -f jupyterhub-deploy/certificates/password ]
-EOF
-	$skip_step_if_already_done ; set -e
-
-	# The access to /dev/random must be done on the host because
-	# it hangs in KVM
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
-mkdir -p jupyterhub-deploy/certificates
-
-echo ubuntu >/home/ubuntu/jupyterhub-deploy/vault-password
-
-cat >jupyterhub-deploy/certificates/password <<EOF2
-$(cat /dev/random | head -c 128 | base64)
-EOF2
-
-${KEYMASTER} ca
-
-EOF
-    ) ; $iferr_exit
-
-    do-one-keypair()
-    {
-	(
-	    $starting_step "Generate a keypair for a server $1"
-	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
-[ -f /home/ubuntu/jupyterhub-deploy/certificates/$1-key.pem ]
-EOF
-	    $skip_step_if_already_done ; set -e
-	    
-	    # The access to /dev/random must be done on the host because
-	    # it hangs in KVM
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
-set -e
-set -x
-cd jupyterhub-deploy/certificates
-${KEYMASTER} signed-keypair -n $1 -h $1.website.com -p both -s IP:$2
-EOF
-	) ; $iferr_exit
-    }
-    hubip="$(source "$DATADIR/$VMDIR-hub/datadir.conf" ; echo "$VMIP")"
-    do-one-keypair hub "$hubip"
-    for n in $node_list; do
-        nodeip="$(source "$DATADIR/$VMDIR-$n/datadir.conf" ; echo "$VMIP")"
-	do-one-keypair "$n" "$nodeip"
-    done
-) ; $iferr_exit
-
 
 (
     exit 0  # The contents here are now part of triggers/jupyterhub-deploy.git
