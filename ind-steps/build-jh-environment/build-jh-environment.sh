@@ -43,6 +43,7 @@ VMDIR=jhvmdir
 	repo_name="$1"
 	vmdir="$2"
 	targetdir="$3"
+	sudo="$4"
 	(
 	    $starting_step "Copy $repo_name repository into ansible VM"
 	    [ -x "$DATADIR/$vmdir/ssh-shortcut.sh" ] &&
@@ -54,14 +55,14 @@ EOF
 		# clone from our cached copy
 		cd "$ORGCODEDIR/repo-cache"
 		tar c "$repo_name"
-	    ) |	"$DATADIR/$vmdir/ssh-shortcut.sh" sudo tar x -C "$targetdir"
+	    ) |	"$DATADIR/$vmdir/ssh-shortcut.sh" $sudo tar x -C "$targetdir"
 	) ; $iferr_exit
     }
 
-    copy_in_one_cached_repository jupyterhub-deploy "$VMDIR"     /home/ubuntu
-    copy_in_one_cached_repository jupyterhub        "$VMDIR-hub" /srv
-    copy_in_one_cached_repository systemuser        "$VMDIR"     /srv
-    copy_in_one_cached_repository restuser          "$VMDIR-hub" /srv
+    copy_in_one_cached_repository jupyterhub-deploy "$VMDIR"     /home/ubuntu ""
+    copy_in_one_cached_repository jupyterhub        "$VMDIR-hub" /srv  sudo
+    copy_in_one_cached_repository systemuser        "$VMDIR"     /srv  sudo
+    copy_in_one_cached_repository restuser          "$VMDIR-hub" /srv  sudo
 
 ) ; $iferr_exit
 
