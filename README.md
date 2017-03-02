@@ -189,3 +189,53 @@ $ /path/to/just/a/little/disk/buildname/toplevel-aws-build.sh do
 times may be necessary.)
 
 <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
+
+## Final Setup
+
+Building takes a long time, so two solutions were made to make development go faster: snapshots and patching.
+
+### Snapshots:
+
+The snapshot-whole-environment.sh script shutdowns all VMs and then makes
+a tar file of each VM directory.  For example:
+
+```
+$ ./ind-steps/build-jh-environment/snapshot-whole-environment.sh build-feb15/ guest do
+```
+
+The "guest do" part is fixed and required, for reasons that will be
+explained elsewhere.
+
+Now the build-feb15/ has a collection of tar files that can be used to create new
+JupyterHub environments quickly.  It is done in two steps:
+
+```
+$ ./ind-steps/build-jh-environment/restore-environment-from-snapshot.sh-new build-feb15  build-feb15-copy1
+$ ./ind-steps/build-jh-environment/restore-environment-from-snapshot.sh build-feb15-copy1 do
+
+```
+
+Now all VMs and containers are running, but more setup is probably
+neccessary before the JupyterHub environment can be used.
+
+### Patching
+
+The following will load the latest patches and restart the JupyterHub
+container so that any patched code and changes to jupyterhub_config.py
+will be loaded:
+
+```
+$ ./build-feb15-copy1/simpleinit.sh
+```
+
+Note that this command will only work if the Jupyterhub container does not crash on startup.  Otherwise,
+it is necessary to restore another environment from a snapshot, or recreate the jupyterhub container somehow, perhaps doing something like this:
+
+```
+./active-hubs/000/jhvmdir-hub/ssh-shortcut.sh 
+$ sudo su
+$ cd /root
+$ docker-compose stop jupyterhub
+$ docker-compose up -d  jupyterhub
+```
+
