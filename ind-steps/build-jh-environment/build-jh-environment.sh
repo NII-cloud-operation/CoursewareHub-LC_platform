@@ -108,6 +108,19 @@ docker build -t triggers/systemuser .
 EOF
     ) ; $iferr_exit
     
+    (
+	$starting_step "Cache systemuser docker image to tar file"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -f systemuser.tar ]
+EOF
+	$skip_step_if_already_done ; set -e
+
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+set -e
+docker save triggers/systemuser >systemuser.tar
+EOF
+    ) ; $iferr_exit
 
 ) ; $iferr_exit
 
