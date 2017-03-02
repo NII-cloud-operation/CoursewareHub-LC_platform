@@ -226,6 +226,10 @@ will be loaded:
 $ ./build-feb15-copy1/simpleinit.sh
 ```
 
+One nice thing about the simpleinit.sh script, is it makes use of the active-hub directory and
+the ``./bin/multihubctl new`` command unnecessary.  The simpleinit.sh script will make the Jupyterhub
+environment usable at whatever port, without any additional /master/ (for example) inserted into the path.
+
 Note that this command will only work if the Jupyterhub container does not crash on startup.  Otherwise,
 it is necessary to restore another environment from a snapshot, or recreate the jupyterhub container somehow, perhaps doing something like this:
 
