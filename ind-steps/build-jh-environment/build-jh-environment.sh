@@ -413,7 +413,7 @@ EOF
 	$starting_step "Distribute systemuser docker image to hub"
 	[ -x "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" ] &&
 	    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
-docker images | grep triggers/systemuser
+sudo docker images | grep triggers/systemuser
 EOF
 	$skip_step_if_already_done ; set -e
 
