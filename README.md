@@ -188,8 +188,6 @@ $ /path/to/just/a/little/disk/buildname/toplevel-aws-build.sh do
 (Some waits still need to be implemented, so repeating "toplevel-aws-build.sh do" several
 times may be necessary.)
 
-<a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
-
 ## Final Setup
 
 Building takes a long time, so two solutions were made to make development go faster: snapshots and patching.
@@ -238,4 +236,6 @@ $ cd /root
 $ docker-compose stop jupyterhub
 $ docker-compose up -d  jupyterhub
 ```
+
+<a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
 
