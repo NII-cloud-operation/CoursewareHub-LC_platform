@@ -34,6 +34,18 @@ VMDIR=jhvmdir
     
 ) ; $iferr_exit
 
+( # not a step, just a little sanity checking
+    if [ -d "$ORGCODEDIR/repo-cache/jupyterhub-deploy" ]; then
+	cd "$ORGCODEDIR/repo-cache/jupyterhub-deploy"
+	git log | grep 07bc0aa6aaad5df 1>/dev/null && exit 0
+	cat 1>&2 <<EOF
+The repository jupyterhub-deploy does not have commit 07bc0aa6aaad5df,
+which means it is probably too old of a version to work with the
+recent changes to this build script.
+EOF
+	exit 1
+    fi
+) ; $iferr_exit
 
 (
     $starting_group "Copy repositories to build VMs"
@@ -45,7 +57,7 @@ VMDIR=jhvmdir
 	targetdir="$3"
 	sudo="$4"
 	(
-	    $starting_step "Copy $repo_name repository into ansible VM"
+	    $starting_step "Copy $repo_name repository into $vmdir"
 	    [ -x "$DATADIR/$vmdir/ssh-shortcut.sh" ] &&
 		"$DATADIR/$vmdir/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 [ -d "$targetdir/$repo_name" ]
