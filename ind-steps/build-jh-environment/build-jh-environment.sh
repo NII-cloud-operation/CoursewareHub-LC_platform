@@ -409,21 +409,28 @@ EOF
 (
     $starting_group "Distribute cached docker images"
 
-    (  ##  TODO: generalize this step
-	$starting_step "Distribute systemuser docker image to hub"
-	[ -x "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" ] &&
-	    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
-sudo docker images | grep triggers/systemuser
+    distribute_one_image()
+    {
+	imagename="$1"
+	tarname="$2"
+	targetvm="$3"
+	(
+	    $starting_step "Distribute systemuser docker image to hub"
+	    [ -x "$DATADIR/$targetvm/ssh-shortcut.sh" ] &&
+		"$DATADIR/$targetvm/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+sudo docker images | grep $imagename
 EOF
-	$skip_step_if_already_done ; set -e
+	    $skip_step_if_already_done ; set -e
 
-	hubip="$(source "$DATADIR/$VMDIR-hub/datadir.conf" ; echo "$VMIP")"
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+	    hubip="$(source "$DATADIR/$targetvm/datadir.conf" ; echo "$VMIP")"
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -ex
-cat systemuser.tar | ssh root@$hubip docker load
+cat $tarname | ssh root@$hubip docker load
 EOF
-    ) ; $iferr_exit
+	) ; $iferr_exit
+    }
 
+    distribute_one_image triggers/systemuser systemuser.tar "$VMDIR-hub"
     
 ) ; $iferr_exit
 
