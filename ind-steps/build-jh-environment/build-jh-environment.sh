@@ -415,23 +415,27 @@ EOF
 	tarname="$2"
 	targetvm="$3"
 	(
-	    $starting_step "Distribute systemuser docker image to hub"
+	    $starting_step "Distribute systemuser docker image to $targetvm"
 	    [ -x "$DATADIR/$targetvm/ssh-shortcut.sh" ] &&
 		"$DATADIR/$targetvm/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 sudo docker images | grep $imagename
 EOF
 	    $skip_step_if_already_done ; set -e
 
+	    echo "   Starting transfer at: $(date)"
 	    hubip="$(source "$DATADIR/$targetvm/datadir.conf" ; echo "$VMIP")"
 	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -ex
 cat $tarname | ssh root@$hubip docker load
 EOF
+	    echo "   Finished transfer at: $(date)"
 	) ; $iferr_exit
     }
 
     distribute_one_image triggers/systemuser systemuser.tar "$VMDIR-hub"
-    
+    for n in $node_list; do
+	distribute_one_image triggers/systemuser systemuser.tar "$VMDIR-$n"
+    done
 ) ; $iferr_exit
 
 (
