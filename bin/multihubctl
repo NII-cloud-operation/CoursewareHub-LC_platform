@@ -124,8 +124,8 @@ EOF
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_jupyterhub_1
     
     echo "Restarting nginx proxy."
-    "$ahdir/000"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_nginx_1
-    "$ahdir/000"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_nginx_1
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_nginx_1
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_nginx_1
 }
 
 : ${urlbase:="niidemo.com"}
