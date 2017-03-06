@@ -4,11 +4,14 @@ source "$(dirname $(readlink -f "$0"))/bashsteps-bash-utils-jan2017.source" || e
 
 existing_dir="$1"
 path_to_ubuntu_image="$2"
-ipaddress="$3"
 
 eval_iferr_exit 'path_to_ubuntu_image="$(readlink -f "$path_to_ubuntu_image")"'
 
-[ "${ipaddress//[0-9]}" = "..." ] || iferr_exit "Parameter ($ipaddress) is not a valid IP4 address"
+shift 2
+ip_array=( "$@" )
+for ip in "${ip_array[@]}"; do
+    [ "${ip//[0-9]}" = "..." ] || iferr_exit "Parameter ($ip) is not a valid IP4 address"
+done
 
 thisfile="${0##*/}"
 mainscript="${thisfile%-new}"
@@ -24,16 +27,30 @@ existing_directory_for_datadir()
 }
 existing_directory_for_datadir
 
-vmdirname=civmdir
+[ "${#ip_array[@]}" -eq 2 ] || iferr_exit "Number of IP addresses on command line does not match number of two"
+
+vmdirlist=(
+    civmdir
+    civmdir-notebook
+)
 
 randomport="$(( 5000 + ( $RANDOM % 5000 ) ))"
 
-IP=${ipaddress}
-imagepath="$path_to_ubuntu_image"
-MAC=52:54:00:12:00:91
-
-"$ORGCODEDIR/../kvmsteps/kvmsteps.sh-new" "$DATADIR/$vmdirname" "$imagepath" OK || iferr_exit
-cat >>"$DATADIR/$i/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for $vmdirname"
+ipindex=0
+for i in "${vmdirlist[@]}"; do
+    IP="${ip_array[ipindex++]}"
+    case "$i" in
+        civmdir)
+            imagepath="$path_to_ubuntu_image"
+            MAC=52:54:00:12:00:91
+            ;;
+        civmdir-notebook)
+            imagepath="$DATADIR/civmdir/ubuntu-before-nbgrader.tar.gz"
+            MAC=52:54:00:12:00:92
+            ;;
+    esac
+    "$ORGCODEDIR/../kvmsteps/kvmsteps.sh-new" "$DATADIR/$i" "$imagepath" OK || iferr_exit
+    cat >>"$DATADIR/$i/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for $i"
 # Not all of these are used on every VM
 export EXTRAHOSTFWDREL=""
 
@@ -49,9 +66,10 @@ export VMIP="$IP"
 export mcastMAC="$MAC"
 export mcastPORT=$randomport
 EOF
+done
 
 cat  >>"$DATADIR/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for whole environment"
-$(declare -p vmdirname)
+$(declare -p vmdirlist)
 EOF
 
 echo "Success"
