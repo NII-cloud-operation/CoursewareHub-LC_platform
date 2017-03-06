@@ -23,7 +23,7 @@ source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.s
 VMDIR=civmdir
 
 (
-    $starting_group "Setup clean VM for hub and nodes"
+    $starting_group "Setup clean VM for notebook"
     # not currently snapshotting this VM, but if the next snapshot exists
     # then this group can be skipped.
     [ -f "$DATADIR/$VMDIR/ubuntu-before-nbgrader.tar.gz" ]
@@ -173,7 +173,7 @@ EOF
 ) ; $iferr_exit
 
 (
-    $starting_group "Boot CI VM"
+    $starting_group "Boot CI VMs"
 
     boot-one-vm()
     {
@@ -218,6 +218,7 @@ EOF
 	    hn=$(
 		case "$2" in
 		    *main*) echo main ;;
+		    *notebook*) echo notebook ;;
 		    *) reportfailed "BUG"
 		esac
 	      )
@@ -231,6 +232,7 @@ EOF
     }
 
     boot-one-vm "$VMDIR" "main KVM" datadir-ci.conf
+    boot-one-vm "$VMDIR-notebook" "notebook KVM" datadir-ci-notebook.conf
 
 ) ; $iferr_exit
 exit
