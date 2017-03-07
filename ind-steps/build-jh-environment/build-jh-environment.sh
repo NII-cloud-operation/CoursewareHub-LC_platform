@@ -11,7 +11,9 @@ VMDIR=jhvmdir
     clone_remote_git()
     {
 	giturl="$1"
-	reponame="$(basename "$giturl" .git)" # basename removes the .git suffix
+	reponame="${2:-}" # simple workaround for name conflicts, can be empty
+	
+	[ "$reponame" = "" ] && reponame="$(basename "$giturl" .git)" # basename removes the .git suffix
 
 	# NOTE: This puts the repository cache mixed with the original
 	# scripts instead of the build directory, so that it can be shared
@@ -22,7 +24,7 @@ VMDIR=jhvmdir
 	    $skip_step_if_already_done; set -e
 	    mkdir -p "$ORGCODEDIR/repo-cache"
 	    cd "$ORGCODEDIR/repo-cache"
-	    git clone "$giturl"
+	    git clone "$giturl" "$reponame"
 	) ; $iferr_exit
     }
 
@@ -37,7 +39,9 @@ VMDIR=jhvmdir
 
     # next is for two docker files: singleuser/Dockerfile and systemuser/Dockerfile
     clone_remote_git https://github.com/jupyterhub/dockerspawner
-    
+
+    clone_remote_git https://github.com/jupyterhub/jupyterhub jh-jupyterhub
+
 ) ; $iferr_exit
 
 ( # not a step, just a little sanity checking
@@ -85,6 +89,7 @@ EOF
     copy_in_one_cached_repository docker-stacks     "$VMDIR"     /srv  sudo
     copy_in_one_cached_repository dockerspawner     "$VMDIR"     /srv  sudo
 
+    copy_in_one_cached_repository jh-jupyterhub     "$VMDIR"     /srv  sudo
 ) ; $iferr_exit
 
 (
@@ -225,8 +230,29 @@ EOF
 	) ; $iferr_exit
 
     ) ; $iferr_exit
-) ; $iferr_exit
 
+    (
+	$starting_group "Build jupyterhub image from scratch"
+
+	(
+	    $starting_step "Build jupyterhub/jupyterhub docker image"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+docker images | grep jupyter/jupyterhub
+EOF
+	    $skip_step_if_already_done ; set -e
+
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+set -e
+cd /srv/jh-jupyterhub
+
+docker build -t jupyter/jupyterhub .
+EOF
+	) ; $iferr_exit
+
+    ) ; $iferr_exit
+) ; $iferr_exit
+exit 1
 (
     $starting_group "Make TLS/SSL certificates with docker"
 
