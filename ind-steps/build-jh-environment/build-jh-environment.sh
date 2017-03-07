@@ -114,113 +114,117 @@ EOF
     $starting_group "Build docker images cache for later distribution"
 
     (
-	$starting_step "Build base-notebook docker image"
-	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+	$starting_group "Build systemuser image from scratch"
+
+	(
+	    $starting_step "Build base-notebook docker image"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 docker images | grep jupyter/base-notebook
 EOF
-	$skip_step_if_already_done ; set -e
+	    $skip_step_if_already_done ; set -e
 
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 cd /srv/docker-stacks/base-notebook
 
 docker build -t jupyter/base-notebook .
 EOF
-    ) ; $iferr_exit
+	) ; $iferr_exit
 
-    (
-	$starting_step "Build minimal-notebook docker image"
-	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+	(
+	    $starting_step "Build minimal-notebook docker image"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 docker images | grep jupyter/minimal-notebook
 EOF
-	$skip_step_if_already_done ; set -e
+	    $skip_step_if_already_done ; set -e
 
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 cd /srv/docker-stacks/minimal-notebook
 
 docker build -t jupyter/minimal-notebook .
 EOF
-    ) ; $iferr_exit
+	) ; $iferr_exit
 
-    (
-	$starting_step "Build scipy-notebook docker image"
-	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+	(
+	    $starting_step "Build scipy-notebook docker image"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 docker images | grep jupyter/scipy-notebook
 EOF
-	$skip_step_if_already_done ; set -e
+	    $skip_step_if_already_done ; set -e
 
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 cd /srv/docker-stacks/scipy-notebook
 
 docker build -t jupyter/scipy-notebook .
 EOF
-    ) ; $iferr_exit
+	) ; $iferr_exit
 
-    (
-	$starting_step "Build singleuser docker image"
-	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+	(
+	    $starting_step "Build singleuser docker image"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 docker images | grep jupyterhub/singleuser
 EOF
-	$skip_step_if_already_done ; set -e
+	    $skip_step_if_already_done ; set -e
 
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 cd /srv/dockerspawner/singleuser
 docker build -t jupyterhub/singleuser .
 EOF
-    ) ; $iferr_exit
+	) ; $iferr_exit
 
-    (
-	$starting_step "Build jupyter/systemuser docker image"
-	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+	(
+	    $starting_step "Build jupyter/systemuser docker image"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 docker images | grep jupyter/systemuser
 EOF
-	$skip_step_if_already_done ; set -e
+	    $skip_step_if_already_done ; set -e
 
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 cd /srv/dockerspawner/systemuser
 docker build -t jupyter/systemuser .
 EOF
-    ) ; $iferr_exit
+	) ; $iferr_exit
 
-    (
-	$starting_step "Build triggers/systemuser docker image"
-	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+	(
+	    $starting_step "Build triggers/systemuser docker image"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 docker images | grep triggers/systemuser
 EOF
-	$skip_step_if_already_done ; set -e
+	    $skip_step_if_already_done ; set -e
 
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 cd /srv/systemuser
 
 docker build -t triggers/systemuser .
 EOF
-    ) ; $iferr_exit
-    
-    (
-	$starting_step "Cache systemuser docker image to tar file"
-	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+	) ; $iferr_exit
+	
+	(
+	    $starting_step "Cache systemuser docker image to tar file"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 [ -f systemuser.tar ]
 EOF
-	$skip_step_if_already_done ; set -e
+	    $skip_step_if_already_done ; set -e
 
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 docker save triggers/systemuser >systemuser.tar
 EOF
-    ) ; $iferr_exit
+	) ; $iferr_exit
 
+    ) ; $iferr_exit
 ) ; $iferr_exit
 
 (
