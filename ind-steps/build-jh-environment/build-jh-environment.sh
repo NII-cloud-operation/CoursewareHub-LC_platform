@@ -230,6 +230,20 @@ docker save triggers/systemuser >systemuser.tar
 EOF
 	) ; $iferr_exit
 
+	(
+	    $starting_step "Cache jupyterhub docker image to tar file"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -f jupyterhub.tar ]
+EOF
+	    $skip_step_if_already_done ; set -e
+
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+set -e
+docker save triggers/jupyterhub >jupyterhub.tar
+EOF
+	) ; $iferr_exit
+
     ) ; $iferr_exit
 
     (
@@ -269,7 +283,7 @@ EOF
 
     ) ; $iferr_exit
 ) ; $iferr_exit
-exit 1
+
 (
     $starting_group "Make TLS/SSL certificates with docker"
 
@@ -561,7 +575,7 @@ EOF
 	tarname="$2"
 	targetvm="$3"
 	(
-	    $starting_step "Distribute systemuser docker image to $targetvm"
+	    $starting_step "Distribute $1 docker image to $targetvm"
 	    [ -x "$DATADIR/$targetvm/ssh-shortcut.sh" ] &&
 		"$DATADIR/$targetvm/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 sudo docker images | grep $imagename
@@ -578,6 +592,7 @@ EOF
 	) ; $iferr_exit
     }
 
+    distribute_one_image triggers/jupyterhub jupyterhub.tar "$VMDIR-hub"
     distribute_one_image triggers/systemuser systemuser.tar "$VMDIR-hub"
     for n in $node_list; do
 	distribute_one_image triggers/systemuser systemuser.tar "$VMDIR-$n"
