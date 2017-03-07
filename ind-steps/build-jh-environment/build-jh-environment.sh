@@ -177,7 +177,22 @@ EOF
     ) ; $iferr_exit
 
     (
-	$starting_step "Build systemuser docker image"
+	$starting_step "Build jupyter/systemuser docker image"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+docker images | grep jupyter/systemuser
+EOF
+	$skip_step_if_already_done ; set -e
+
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+set -e
+cd /srv/dockerspawner/systemuser
+docker build -t jupyter/systemuser .
+EOF
+    ) ; $iferr_exit
+
+    (
+	$starting_step "Build triggers/systemuser docker image"
 	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 docker images | grep triggers/systemuser
