@@ -31,6 +31,12 @@ VMDIR=jhvmdir
     clone_remote_git https://github.com/triggers/jupyterhub.git
     clone_remote_git https://github.com/triggers/systemuser.git
     clone_remote_git https://github.com/minrk/restuser.git
+
+    # next is for 3 docker files: scipy-notebook/Dockerfile, minimal-notebook/Dockerfile, and base-notebook/Dockerfile
+    clone_remote_git https://github.com/jupyter/docker-stacks
+
+    # next is for two docker files: singleuser/Dockerfile and systemuser/Dockerfile
+    clone_remote_git https://github.com/jupyterhub/dockerspawner
     
 ) ; $iferr_exit
 
@@ -75,6 +81,9 @@ EOF
     copy_in_one_cached_repository jupyterhub        "$VMDIR-hub" /srv  sudo
     copy_in_one_cached_repository systemuser        "$VMDIR"     /srv  sudo
     copy_in_one_cached_repository restuser          "$VMDIR-hub" /srv  sudo
+
+    copy_in_one_cached_repository docker-stacks     "$VMDIR"     /srv  sudo
+    copy_in_one_cached_repository dockerspawner     "$VMDIR"     /srv  sudo
 
 ) ; $iferr_exit
 
