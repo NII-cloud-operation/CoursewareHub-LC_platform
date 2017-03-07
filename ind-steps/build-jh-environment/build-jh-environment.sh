@@ -31,6 +31,12 @@ VMDIR=jhvmdir
     clone_remote_git https://github.com/triggers/jupyterhub.git
     clone_remote_git https://github.com/triggers/systemuser.git
     clone_remote_git https://github.com/minrk/restuser.git
+
+    # next is for 3 docker files: scipy-notebook/Dockerfile, minimal-notebook/Dockerfile, and base-notebook/Dockerfile
+    clone_remote_git https://github.com/jupyter/docker-stacks
+
+    # next is for two docker files: singleuser/Dockerfile and systemuser/Dockerfile
+    clone_remote_git https://github.com/jupyterhub/dockerspawner
     
 ) ; $iferr_exit
 
@@ -76,6 +82,9 @@ EOF
     copy_in_one_cached_repository systemuser        "$VMDIR"     /srv  sudo
     copy_in_one_cached_repository restuser          "$VMDIR-hub" /srv  sudo
 
+    copy_in_one_cached_repository docker-stacks     "$VMDIR"     /srv  sudo
+    copy_in_one_cached_repository dockerspawner     "$VMDIR"     /srv  sudo
+
 ) ; $iferr_exit
 
 (
@@ -105,7 +114,85 @@ EOF
     $starting_group "Build docker images cache for later distribution"
 
     (
-	$starting_step "Build systemuser docker image"
+	$starting_step "Build base-notebook docker image"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+docker images | grep jupyter/base-notebook
+EOF
+	$skip_step_if_already_done ; set -e
+
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+set -e
+cd /srv/docker-stacks/base-notebook
+
+docker build -t jupyter/base-notebook .
+EOF
+    ) ; $iferr_exit
+
+    (
+	$starting_step "Build minimal-notebook docker image"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+docker images | grep jupyter/minimal-notebook
+EOF
+	$skip_step_if_already_done ; set -e
+
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+set -e
+cd /srv/docker-stacks/minimal-notebook
+
+docker build -t jupyter/minimal-notebook .
+EOF
+    ) ; $iferr_exit
+
+    (
+	$starting_step "Build scipy-notebook docker image"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+docker images | grep jupyter/scipy-notebook
+EOF
+	$skip_step_if_already_done ; set -e
+
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+set -e
+cd /srv/docker-stacks/scipy-notebook
+
+docker build -t jupyter/scipy-notebook .
+EOF
+    ) ; $iferr_exit
+
+    (
+	$starting_step "Build singleuser docker image"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+docker images | grep jupyterhub/singleuser
+EOF
+	$skip_step_if_already_done ; set -e
+
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+set -e
+cd /srv/dockerspawner/singleuser
+docker build -t jupyterhub/singleuser .
+EOF
+    ) ; $iferr_exit
+
+    (
+	$starting_step "Build jupyter/systemuser docker image"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+docker images | grep jupyter/systemuser
+EOF
+	$skip_step_if_already_done ; set -e
+
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+set -e
+cd /srv/dockerspawner/systemuser
+docker build -t jupyter/systemuser .
+EOF
+    ) ; $iferr_exit
+
+    (
+	$starting_step "Build triggers/systemuser docker image"
 	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 docker images | grep triggers/systemuser
