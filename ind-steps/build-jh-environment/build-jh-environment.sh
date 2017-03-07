@@ -30,7 +30,6 @@ VMDIR=jhvmdir
 
 
     clone_remote_git https://github.com/triggers/jupyterhub-deploy.git
-    clone_remote_git https://github.com/triggers/jupyterhub.git
     clone_remote_git https://github.com/triggers/systemuser.git
     clone_remote_git https://github.com/minrk/restuser.git
 
@@ -41,6 +40,7 @@ VMDIR=jhvmdir
     clone_remote_git https://github.com/jupyterhub/dockerspawner
 
     clone_remote_git https://github.com/jupyterhub/jupyterhub jh-jupyterhub
+    clone_remote_git https://github.com/triggers/jupyterhub.git
 
 ) ; $iferr_exit
 
@@ -90,6 +90,7 @@ EOF
     copy_in_one_cached_repository dockerspawner     "$VMDIR"     /srv  sudo
 
     copy_in_one_cached_repository jh-jupyterhub     "$VMDIR"     /srv  sudo
+    copy_in_one_cached_repository jupyterhub        "$VMDIR"     /srv  sudo
 ) ; $iferr_exit
 
 (
@@ -247,6 +248,22 @@ set -e
 cd /srv/jh-jupyterhub
 
 docker build -t jupyter/jupyterhub .
+EOF
+	) ; $iferr_exit
+
+	(
+	    $starting_step "Build jupyterhub/jupyterhub docker image"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+docker images | grep triggers/jupyterhub
+EOF
+	    $skip_step_if_already_done ; set -e
+
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+set -e
+cd /srv/jupyterhub
+
+docker build -t triggers/jupyterhub .
 EOF
 	) ; $iferr_exit
 
