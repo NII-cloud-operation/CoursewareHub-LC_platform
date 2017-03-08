@@ -11,7 +11,9 @@ VMDIR=jhvmdir
     clone_remote_git()
     {
 	giturl="$1"
-	reponame="$(basename "$giturl" .git)" # basename removes the .git suffix
+	reponame="${2:-}" # simple workaround for name conflicts, can be empty
+	
+	[ "$reponame" = "" ] && reponame="$(basename "$giturl" .git)" # basename removes the .git suffix
 
 	# NOTE: This puts the repository cache mixed with the original
 	# scripts instead of the build directory, so that it can be shared
@@ -22,13 +24,12 @@ VMDIR=jhvmdir
 	    $skip_step_if_already_done; set -e
 	    mkdir -p "$ORGCODEDIR/repo-cache"
 	    cd "$ORGCODEDIR/repo-cache"
-	    git clone "$giturl"
+	    git clone "$giturl" "$reponame"
 	) ; $iferr_exit
     }
 
 
     clone_remote_git https://github.com/triggers/jupyterhub-deploy.git
-    clone_remote_git https://github.com/triggers/jupyterhub.git
     clone_remote_git https://github.com/triggers/systemuser.git
     clone_remote_git https://github.com/minrk/restuser.git
 
@@ -37,7 +38,10 @@ VMDIR=jhvmdir
 
     # next is for two docker files: singleuser/Dockerfile and systemuser/Dockerfile
     clone_remote_git https://github.com/jupyterhub/dockerspawner
-    
+
+    clone_remote_git https://github.com/jupyterhub/jupyterhub jh-jupyterhub
+    clone_remote_git https://github.com/triggers/jupyterhub.git
+
 ) ; $iferr_exit
 
 ( # not a step, just a little sanity checking
@@ -85,6 +89,8 @@ EOF
     copy_in_one_cached_repository docker-stacks     "$VMDIR"     /srv  sudo
     copy_in_one_cached_repository dockerspawner     "$VMDIR"     /srv  sudo
 
+    copy_in_one_cached_repository jh-jupyterhub     "$VMDIR"     /srv  sudo
+    copy_in_one_cached_repository jupyterhub        "$VMDIR"     /srv  sudo
 ) ; $iferr_exit
 
 (
@@ -114,99 +120,141 @@ EOF
     $starting_group "Build docker images cache for later distribution"
 
     (
-	$starting_step "Build base-notebook docker image"
-	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+	$starting_group "Build systemuser image from scratch"
+
+	(
+	    $starting_step "Build base-notebook docker image"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 docker images | grep jupyter/base-notebook
 EOF
-	$skip_step_if_already_done ; set -e
+	    $skip_step_if_already_done ; set -e
 
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 cd /srv/docker-stacks/base-notebook
 
 docker build -t jupyter/base-notebook .
 EOF
-    ) ; $iferr_exit
+	) ; $iferr_exit
 
-    (
-	$starting_step "Build minimal-notebook docker image"
-	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+	(
+	    $starting_step "Build minimal-notebook docker image"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 docker images | grep jupyter/minimal-notebook
 EOF
-	$skip_step_if_already_done ; set -e
+	    $skip_step_if_already_done ; set -e
 
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 cd /srv/docker-stacks/minimal-notebook
 
 docker build -t jupyter/minimal-notebook .
 EOF
-    ) ; $iferr_exit
+	) ; $iferr_exit
 
-    (
-	$starting_step "Build scipy-notebook docker image"
-	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+	(
+	    $starting_step "Build scipy-notebook docker image"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 docker images | grep jupyter/scipy-notebook
 EOF
-	$skip_step_if_already_done ; set -e
+	    $skip_step_if_already_done ; set -e
 
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 cd /srv/docker-stacks/scipy-notebook
 
 docker build -t jupyter/scipy-notebook .
 EOF
-    ) ; $iferr_exit
+	) ; $iferr_exit
 
-    (
-	$starting_step "Build singleuser docker image"
-	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+	(
+	    $starting_step "Build singleuser docker image"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 docker images | grep jupyterhub/singleuser
 EOF
-	$skip_step_if_already_done ; set -e
+	    $skip_step_if_already_done ; set -e
 
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 cd /srv/dockerspawner/singleuser
 docker build -t jupyterhub/singleuser .
 EOF
-    ) ; $iferr_exit
+	) ; $iferr_exit
 
-    (
-	$starting_step "Build jupyter/systemuser docker image"
-	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+	(
+	    $starting_step "Build jupyter/systemuser docker image"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 docker images | grep jupyter/systemuser
 EOF
-	$skip_step_if_already_done ; set -e
+	    $skip_step_if_already_done ; set -e
 
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 cd /srv/dockerspawner/systemuser
 docker build -t jupyter/systemuser .
 EOF
-    ) ; $iferr_exit
+	) ; $iferr_exit
 
-    (
-	$starting_step "Build triggers/systemuser docker image"
-	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+	(
+	    $starting_step "Build triggers/systemuser docker image"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 docker images | grep triggers/systemuser
 EOF
-	$skip_step_if_already_done ; set -e
+	    $skip_step_if_already_done ; set -e
 
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 cd /srv/systemuser
 
 docker build -t triggers/systemuser .
 EOF
+	) ; $iferr_exit
+	
     ) ; $iferr_exit
-    
+
+    (
+	$starting_group "Build jupyterhub image from scratch"
+
+	(
+	    $starting_step "Build jupyterhub/jupyterhub docker image"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+docker images | grep jupyter/jupyterhub
+EOF
+	    $skip_step_if_already_done ; set -e
+
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+set -e
+cd /srv/jh-jupyterhub
+
+docker build -t jupyter/jupyterhub .
+EOF
+	) ; $iferr_exit
+
+	(
+	    $starting_step "Build jupyterhub/jupyterhub docker image"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+docker images | grep triggers/jupyterhub
+EOF
+	    $skip_step_if_already_done ; set -e
+
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+set -e
+cd /srv/jupyterhub
+
+docker build -t triggers/jupyterhub .
+EOF
+	) ; $iferr_exit
+
+    ) ; $iferr_exit
+
     (
 	$starting_step "Cache systemuser docker image to tar file"
 	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
@@ -220,6 +268,21 @@ set -e
 docker save triggers/systemuser >systemuser.tar
 EOF
     ) ; $iferr_exit
+
+    (
+	$starting_step "Cache jupyterhub docker image to tar file"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -f jupyterhub.tar ]
+EOF
+	$skip_step_if_already_done ; set -e
+
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+set -e
+docker save triggers/jupyterhub >jupyterhub.tar
+EOF
+    ) ; $iferr_exit
+
 
 ) ; $iferr_exit
 
@@ -514,7 +577,7 @@ EOF
 	tarname="$2"
 	targetvm="$3"
 	(
-	    $starting_step "Distribute systemuser docker image to $targetvm"
+	    $starting_step "Distribute $1 docker image to $targetvm"
 	    [ -x "$DATADIR/$targetvm/ssh-shortcut.sh" ] &&
 		"$DATADIR/$targetvm/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 sudo docker images | grep $imagename
@@ -530,11 +593,36 @@ EOF
 	    echo "   Finished transfer at: $(date)"
 	) ; $iferr_exit
     }
-
+    distribute_one_image triggers/jupyterhub jupyterhub.tar "$VMDIR-hub"
     distribute_one_image triggers/systemuser systemuser.tar "$VMDIR-hub"
     for n in $node_list; do
 	distribute_one_image triggers/systemuser systemuser.tar "$VMDIR-$n"
     done
+) ; $iferr_exit
+
+(
+    $starting_step "Put in workaround to avoid a docker-compose problem"
+    [ -x "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" ] &&
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -f /srv/jh-image-wrap/Dockerfile ]
+EOF
+    $skip_step_if_already_done ; set -e
+	    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" sudo bash <<EOF
+set -e
+mkdir -p /srv/jh-image-wrap
+cat >/srv/jh-image-wrap/Dockerfile <<EOF2
+FROM triggers/jupyterhub
+
+# This empty Dockerfile's purpose is to work around a problem with docker-compose.
+# The triggers/jupyterhub image should already exist before docker-compose is called,
+# but docker-compose tries to verify that there is no more-recent image at docker.io.
+# This image is not at docker.io, so an error is returned.  But if we just build on
+# top of the image with this docker file, then all is OK.
+
+EOF2
+
+EOF
+
 ) ; $iferr_exit
 
 (
