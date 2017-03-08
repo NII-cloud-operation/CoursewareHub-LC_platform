@@ -216,34 +216,6 @@ docker build -t triggers/systemuser .
 EOF
 	) ; $iferr_exit
 	
-	(
-	    $starting_step "Cache systemuser docker image to tar file"
-	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
-[ -f systemuser.tar ]
-EOF
-	    $skip_step_if_already_done ; set -e
-
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
-set -e
-docker save triggers/systemuser >systemuser.tar
-EOF
-	) ; $iferr_exit
-
-	(
-	    $starting_step "Cache jupyterhub docker image to tar file"
-	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
-[ -f jupyterhub.tar ]
-EOF
-	    $skip_step_if_already_done ; set -e
-
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
-set -e
-docker save triggers/jupyterhub >jupyterhub.tar
-EOF
-	) ; $iferr_exit
-
     ) ; $iferr_exit
 
     (
@@ -282,6 +254,36 @@ EOF
 	) ; $iferr_exit
 
     ) ; $iferr_exit
+
+    (
+	$starting_step "Cache systemuser docker image to tar file"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -f systemuser.tar ]
+EOF
+	$skip_step_if_already_done ; set -e
+
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+set -e
+docker save triggers/systemuser >systemuser.tar
+EOF
+    ) ; $iferr_exit
+
+    (
+	$starting_step "Cache jupyterhub docker image to tar file"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -f jupyterhub.tar ]
+EOF
+	$skip_step_if_already_done ; set -e
+
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+set -e
+docker save triggers/jupyterhub >jupyterhub.tar
+EOF
+    ) ; $iferr_exit
+
+
 ) ; $iferr_exit
 
 (
@@ -591,12 +593,36 @@ EOF
 	    echo "   Finished transfer at: $(date)"
 	) ; $iferr_exit
     }
-
     distribute_one_image triggers/jupyterhub jupyterhub.tar "$VMDIR-hub"
     distribute_one_image triggers/systemuser systemuser.tar "$VMDIR-hub"
     for n in $node_list; do
 	distribute_one_image triggers/systemuser systemuser.tar "$VMDIR-$n"
     done
+) ; $iferr_exit
+
+(
+    $starting_step "Put in workaround to avoid a docker-compose problem"
+    [ -x "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" ] &&
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -f /srv/jh-image-wrap/Dockerfile ]
+EOF
+    $skip_step_if_already_done ; set -e
+	    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" sudo bash <<EOF
+set -e
+mkdir -p /srv/jh-image-wrap
+cat >/srv/jh-image-wrap/Dockerfile <<EOF2
+FROM triggers/jupyterhub
+
+# This empty Dockerfile's purpose is to work around a problem with docker-compose.
+# The triggers/jupyterhub image should already exist before docker-compose is called,
+# but docker-compose tries to verify that there is no more-recent image at docker.io.
+# This image is not at docker.io, so an error is returned.  But if we just build on
+# top of the image with this docker file, then all is OK.
+
+EOF2
+
+EOF
+
 ) ; $iferr_exit
 
 (
