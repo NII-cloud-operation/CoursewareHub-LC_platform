@@ -82,15 +82,18 @@ EOF
     }
 
     copy_in_one_cached_repository jupyterhub-deploy "$VMDIR"     /home/ubuntu ""
-    copy_in_one_cached_repository jupyterhub        "$VMDIR-hub" /srv  sudo
+    copy_in_one_cached_repository jupyterhub        "$VMDIR-hub" /srv  sudo  # TODO: is this dup still needed here
     copy_in_one_cached_repository systemuser        "$VMDIR"     /srv  sudo
-    copy_in_one_cached_repository restuser          "$VMDIR-hub" /srv  sudo
 
     copy_in_one_cached_repository docker-stacks     "$VMDIR"     /srv  sudo
     copy_in_one_cached_repository dockerspawner     "$VMDIR"     /srv  sudo
 
     copy_in_one_cached_repository jh-jupyterhub     "$VMDIR"     /srv  sudo
     copy_in_one_cached_repository jupyterhub        "$VMDIR"     /srv  sudo
+
+    # This repository is not for a docker container.  It is for a process started
+    # directly on the hub VM.
+    copy_in_one_cached_repository restuser          "$VMDIR-hub" /srv  sudo
 ) ; $iferr_exit
 
 (
@@ -121,6 +124,14 @@ EOF
 
     (
 	$starting_group "Build systemuser image from scratch"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -f systemuser.tar ]
+EOF
+	$skip_group_if_unnecessary
+	# Note that if cached image have been copied to the ansible VM from
+	# elsewhere, the actual image may not exist on ansible VM, which
+	# is OK because it is not used to create containers in the ansible VM.
 
 	(
 	    $starting_step "Build base-notebook docker image"
@@ -220,6 +231,14 @@ EOF
 
     (
 	$starting_group "Build jupyterhub image from scratch"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -f jupyterhub.tar ]
+EOF
+	$skip_group_if_unnecessary
+	# Note that if cached image have been copied to the ansible VM from
+	# elsewhere, the actual image may not exist on ansible VM, which
+	# is OK because it is not used to create containers in the ansible VM.
 
 	(
 	    $starting_step "Build jupyterhub/jupyterhub docker image"
@@ -233,12 +252,14 @@ EOF
 set -e
 cd /srv/jh-jupyterhub
 
+# Note we are pulling from the newer jupyterhub/jupyterhub, but still
+# calling it jupyter/jupyterhub to match name in triggers/systemuser.
 docker build -t jupyter/jupyterhub .
 EOF
 	) ; $iferr_exit
 
 	(
-	    $starting_step "Build jupyterhub/jupyterhub docker image"
+	    $starting_step "Build triggers/jupyterhub docker image"
 	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 docker images | grep triggers/jupyterhub

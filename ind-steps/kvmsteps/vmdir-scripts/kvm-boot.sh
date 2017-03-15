@@ -60,6 +60,18 @@ calculate_ports
     : ${mcastPORT:="1234"}  ${mcastMAC:="52:54:00:12:00:00"}
     : ${mcastnet="-net nic,vlan=1,macaddr=$mcastMAC  -net socket,vlan=1,mcast=239.255.10.10:$mcastPORT"}
 
+    : ${KVMVMNAME:=} # set -u workaround
+    if [ "$KVMVMNAME" == "" ]; then
+	# name the VM after that last two directory elements
+	KVMVMNAME="$(
+	   IFS="/"
+	   read -a pathparts <<<"$DATADIR"
+           IFS="-"
+           echo "kvmsteps-${pathparts[*]: -2}"
+        )"
+	KVMVMNAME="${KVMVMNAME//[^0-9a-zA-Z-]}" # remove risky characters
+    fi
+    
     # Note: The default multicast IP address used to be 230.0.0.1, because that was the
     # address used in the multicast socket networking example in the qemu man page.  Now
     # after looking at https://tools.ietf.org/html/rfc2365, https://tools.ietf.org/html/rfc5771 and
@@ -82,7 +94,7 @@ calculate_ports
 
 	    -m $KVMMEM
 	    -smp 2
-	    -name kvmsteps
+	    -name $KVMVMNAME
 
 	    -monitor telnet:127.0.0.1:$MONPORT,server,nowait
 	    -no-kvm-pit-reinjection
