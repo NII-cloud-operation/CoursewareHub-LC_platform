@@ -252,12 +252,14 @@ EOF
 set -e
 cd /srv/jh-jupyterhub
 
+# Note we are pulling from the newer jupyterhub/jupyterhub, but still
+# calling it jupyter/jupyterhub to match name in triggers/systemuser.
 docker build -t jupyter/jupyterhub .
 EOF
 	) ; $iferr_exit
 
 	(
-	    $starting_step "Build jupyterhub/jupyterhub docker image"
+	    $starting_step "Build triggers/jupyterhub docker image"
 	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 docker images | grep triggers/jupyterhub
