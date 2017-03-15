@@ -82,15 +82,18 @@ EOF
     }
 
     copy_in_one_cached_repository jupyterhub-deploy "$VMDIR"     /home/ubuntu ""
-    copy_in_one_cached_repository jupyterhub        "$VMDIR-hub" /srv  sudo
+    copy_in_one_cached_repository jupyterhub        "$VMDIR-hub" /srv  sudo  # TODO: is this dup still needed here
     copy_in_one_cached_repository systemuser        "$VMDIR"     /srv  sudo
-    copy_in_one_cached_repository restuser          "$VMDIR-hub" /srv  sudo
 
     copy_in_one_cached_repository docker-stacks     "$VMDIR"     /srv  sudo
     copy_in_one_cached_repository dockerspawner     "$VMDIR"     /srv  sudo
 
     copy_in_one_cached_repository jh-jupyterhub     "$VMDIR"     /srv  sudo
     copy_in_one_cached_repository jupyterhub        "$VMDIR"     /srv  sudo
+
+    # This repository is not for a docker container.  It is for a process started
+    # directly on the hub VM.
+    copy_in_one_cached_repository restuser          "$VMDIR-hub" /srv  sudo
 ) ; $iferr_exit
 
 (
