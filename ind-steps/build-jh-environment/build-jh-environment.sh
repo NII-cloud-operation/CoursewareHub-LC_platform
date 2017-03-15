@@ -121,6 +121,14 @@ EOF
 
     (
 	$starting_group "Build systemuser image from scratch"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -f systemuser.tar ]
+EOF
+	$skip_group_if_unnecessary
+	# Note that if cached image have been copied to the ansible VM from
+	# elsewhere, the actual image may not exist on ansible VM, which
+	# is OK because it is not used to create containers in the ansible VM.
 
 	(
 	    $starting_step "Build base-notebook docker image"
@@ -220,6 +228,14 @@ EOF
 
     (
 	$starting_group "Build jupyterhub image from scratch"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -f jupyterhub.tar ]
+EOF
+	$skip_group_if_unnecessary
+	# Note that if cached image have been copied to the ansible VM from
+	# elsewhere, the actual image may not exist on ansible VM, which
+	# is OK because it is not used to create containers in the ansible VM.
 
 	(
 	    $starting_step "Build jupyterhub/jupyterhub docker image"
