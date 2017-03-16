@@ -27,11 +27,10 @@ existing_directory_for_datadir()
 }
 existing_directory_for_datadir
 
-[ "${#ip_array[@]}" -eq 2 ] || iferr_exit "Number of IP addresses on command line does not match number of two"
+[ "${#ip_array[@]}" -eq 1 ] || iferr_exit "Number of IP addresses on command line does not match number of one"
 
 vmdirlist=(
     civmdir
-    civmdir-notebook
 )
 
 randomport="$(( 5000 + ( $RANDOM % 5000 ) ))"
@@ -43,10 +42,6 @@ for i in "${vmdirlist[@]}"; do
         civmdir)
             imagepath="$path_to_ubuntu_image"
             MAC=52:54:00:12:00:91
-            ;;
-        civmdir-notebook)
-            imagepath="$DATADIR/civmdir/ubuntu-before-nbgrader.tar.gz"
-            MAC=52:54:00:12:00:92
             ;;
     esac
     "$ORGCODEDIR/../kvmsteps/kvmsteps.sh-new" "$DATADIR/$i" "$imagepath" OK || iferr_exit
