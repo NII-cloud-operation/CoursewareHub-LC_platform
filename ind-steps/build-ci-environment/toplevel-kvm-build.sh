@@ -9,7 +9,7 @@ source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.s
 ) ; iferr_exit
 
 #(
-#    $starting_group "Install Jupyterhub Environment"
+#    $starting_group "Install Jupyternotebook Environment"
 #    
-#    "$ORGCODEDIR/build-jh-environment.sh" "$DATADIR" wrapped
+#    "$ORGCODEDIR/build-ci-environment.sh" "$DATADIR" wrapped
 #) ; iferr_exit
