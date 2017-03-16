@@ -58,7 +58,32 @@ calculate_ports
 
     # TODO: decide if it is worth generalizing kvmsteps to deal with cases like this:
     : ${mcastPORT:="1234"}  ${mcastMAC:="52:54:00:12:00:00"}
-    : ${mcastnet="-net nic,vlan=1,macaddr=$mcastMAC  -net socket,vlan=1,mcast=230.0.0.1:$mcastPORT"}
+    : ${mcastnet="-net nic,vlan=1,macaddr=$mcastMAC  -net socket,vlan=1,mcast=239.255.10.10:$mcastPORT"}
+
+    : ${KVMVMNAME:=} # set -u workaround
+    if [ "$KVMVMNAME" == "" ]; then
+	# name the VM after that last two directory elements
+	KVMVMNAME="$(
+	   IFS="/"
+	   read -a pathparts <<<"$DATADIR"
+           IFS="-"
+           echo "kvmsteps-${pathparts[*]: -2}"
+        )"
+	KVMVMNAME="${KVMVMNAME//[^0-9a-zA-Z-]}" # remove risky characters
+    fi
+    
+    # Note: The default multicast IP address used to be 230.0.0.1, because that was the
+    # address used in the multicast socket networking example in the qemu man page.  Now
+    # after looking at https://tools.ietf.org/html/rfc2365, https://tools.ietf.org/html/rfc5771 and
+    # and http://stackoverflow.com/questions/236231/how-do-i-choose-a-multicast-address-for-my-applications-use
+    # it seems something from 239.255.0.0/16 is a more correct choice, because 230.0.0.1 is in a
+    # "RESERVED" range of addresses.  So now the default is 239.255.10.10.
+
+    # Note, to prevent this multicast address from leaving the machine hosting the KVM virtual machines,
+    # route the packets to localhost using "sudo ifconfig lo localhost" and
+    # "route add -net 239.255.10.0 netmask 255.255.255.0 dev lo".  It seems this should be done
+    # before the KVMs are booted, because (sometimes) the route command can stop existing KVMs using the
+    # multicast IP addresses from exchanging network packets.
 
     build-cmd-line() # a function, not a step
     {
@@ -69,7 +94,7 @@ calculate_ports
 
 	    -m $KVMMEM
 	    -smp 2
-	    -name kvmsteps
+	    -name $KVMVMNAME
 
 	    -monitor telnet:127.0.0.1:$MONPORT,server,nowait
 	    -no-kvm-pit-reinjection
