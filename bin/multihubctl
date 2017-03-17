@@ -126,6 +126,11 @@ EOF
     echo "Restarting nginx proxy."
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_nginx_1
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_nginx_1
+
+    # for auth-proxy:
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q <<EOF
+sed -i 's,master,,' /home/ubuntu/auth-proxy/php/hub-const.php
+EOF
 }
 
 : ${urlbase:="niidemo.com"}
