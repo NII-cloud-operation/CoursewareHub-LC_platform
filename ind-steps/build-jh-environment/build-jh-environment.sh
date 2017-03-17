@@ -828,6 +828,22 @@ EOF
 	    tar c php
 	) | "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" tar x -C /home/ubuntu/auth-proxy
     ) ; $iferr_exit
+
+    (
+	$starting_step "Run docker container for auth-proxy"
+
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
+sudo docker ps -a | grep auth-proxy:latest
+EOF
+	$skip_step_if_already_done
+
+	# Note, using port 9000 so this nginx can run at the same time as the
+	# original nginx.  The port forwarded to it is xxx90. (instead of xxx43)
+
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" -q sudo bash <<EOF
+  docker run -v /home/ubuntu/auth-proxy/php:/var/www/php -v /home/ubuntu/auth-proxy/nginx/certs:/etc/nginx/certs --privileged --name root_nginx_3 -p 9000:443 -d auth-proxy:latest /sbin/init	
+EOF
+    ) ; $iferr_exit
 )
 
 touch "$DATADIR/flag-inital-build-completed"
