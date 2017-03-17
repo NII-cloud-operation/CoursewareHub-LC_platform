@@ -775,4 +775,44 @@ EOF
     ) ; $iferr_exit
 ) ; $iferr_exit
 
+(
+    $starting_group "Post-ansible build steps for auth-proxy"
+
+    (
+	$starting_step "Copy auth-proxy's certificate and key to hub VM"
+
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
+[ -f /home/ubuntu/auth-proxy/nginx/certs/auth-proxy.key ] && \
+[ -f /home/ubuntu/auth-proxy/nginx/certs/auth-proxy.chained.cer ]
+EOF
+	$skip_step_if_already_done
+
+	# if no auth-proxy key and cert is in "$DATADIR", reuse the self-signed
+	# key generated for the hub
+	[ -f "$DATADIR/auth-proxy.key" ] || \
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" \
+		cat jupyterhub-deploy/certificates/hub-key.pem >"$DATADIR/auth-proxy.key"
+	
+	[ -f "$DATADIR/auth-proxy.chained.cer" ] || \
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" \
+		cat jupyterhub-deploy/certificates/hub-cert.pem >"$DATADIR/auth-proxy.chained.cer"
+	
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF
+set -x
+set -e
+
+mkdir -p /home/ubuntu/auth-proxy/nginx/certs
+
+cat >/home/ubuntu/auth-proxy/nginx/certs/auth-proxy.key <<EOF2
+$(cat "$DATADIR/auth-proxy.key")
+EOF2
+
+cat >/home/ubuntu/auth-proxy/nginx/certs/auth-proxy.chained.cer <<EOF3
+$(cat "$DATADIR/auth-proxy.chained.cer")
+EOF3
+
+EOF
+    ) ; $iferr_exit
+)
+
 touch "$DATADIR/flag-inital-build-completed"
