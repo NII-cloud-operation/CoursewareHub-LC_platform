@@ -78,7 +78,7 @@ EOF
 		# clone from our cached copy
 		cd "$ORGCODEDIR/repo-cache"
 		tar c "$repo_name"
-	    ) |	"$DATADIR/$vmdir/ssh-shortcut.sh" $sudo tar x -C "$targetdir"
+	    ) | "$DATADIR/$vmdir/ssh-shortcut.sh" $sudo tar x -C "$targetdir"
 	) ; $iferr_exit
     }
 
@@ -812,6 +812,21 @@ $(cat "$DATADIR/auth-proxy.chained.cer")
 EOF3
 
 EOF
+    ) ; $iferr_exit
+
+    (
+	$starting_step "Copy php scripts to hub VM"
+
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
+[ -d /home/ubuntu/auth-proxy/php ]
+EOF
+	$skip_step_if_already_done
+
+	(
+	    # clone from our cached copy
+	    cd "$ORGCODEDIR/repo-cache/auth-proxy/resources"
+	    tar c php
+	) | "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" tar x -C /home/ubuntu/auth-proxy
     ) ; $iferr_exit
 )
 
