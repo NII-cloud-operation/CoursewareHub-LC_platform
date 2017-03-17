@@ -844,6 +844,28 @@ EOF
   docker run -v /home/ubuntu/auth-proxy/php:/var/www/php -v /home/ubuntu/auth-proxy/nginx/certs:/etc/nginx/certs --privileged --name root_nginx_3 -p 9000:443 -d auth-proxy:latest /sbin/init	
 EOF
     ) ; $iferr_exit
+
+    (
+	$starting_step "Start daemons in the docker container for auth-proxy"
+
+	output="$( "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" -q <<EOF 2>/dev/null
+sudo docker exec -i root_nginx_3 bash <<EOF2 
+  /etc/init.d/nginx status
+  /etc/init.d/php5.6-fpm status
+EOF2
+EOF
+	)"
+	echo "$output"
+	[[ "$output" != *not* ]]
+	$skip_step_if_already_done
+
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" -q <<EOF
+sudo docker exec -i root_nginx_3 bash <<EOF2
+  /etc/init.d/nginx start
+  /etc/init.d/php5.6-fpm start
+EOF2
+EOF
+    ) ; $iferr_exit
 )
 
 touch "$DATADIR/flag-inital-build-completed"
