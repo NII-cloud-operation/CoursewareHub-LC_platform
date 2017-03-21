@@ -856,8 +856,9 @@ sudo docker exec -i root_nginx_3 bash <<EOF2
 EOF2
 EOF
 	)"
-	echo "$output"
-	[[ "$output" != *not* ]]
+	# echo "$output"
+	pat='*is running*is running*'
+	[[ "$output" == $pat ]]
 	$skip_step_if_already_done
 
 	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" -q <<EOF
