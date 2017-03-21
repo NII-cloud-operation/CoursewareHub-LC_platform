@@ -374,7 +374,7 @@ EOF
     (
 	$starting_step "Adjust ansible config files for node_list"
 	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
 [ -f nodelist ] && [ "\$(cat nodelist)" = "$node_list" ]
 EOF
 	$skip_step_if_already_done ; set -e
@@ -572,7 +572,7 @@ EOF
     $starting_step "Run main **Ansible script** (PART 1)"
     nodesarray=( $node_list )
     vmcount=$(( ${#nodesarray[@]} + 1 )) # nodes + just the hub
-    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
 set -x
 cd jupyterhub-deploy
 # last part of ansible log should show "failed=0" three times. e.g:
@@ -673,7 +673,7 @@ EOF
     $starting_step "Run main **Ansible script** (PART 2)"  # mostly copy/pasted from above
     nodesarray=( $node_list )
     vmcount=$(( ${#nodesarray[@]} + 1 )) # nodes + just the hub
-    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
 set -x
 cd jupyterhub-deploy
 count="\$(tail deploylog-part2.log | grep -o "unreachable=0.*failed=0" | wc -l)"
