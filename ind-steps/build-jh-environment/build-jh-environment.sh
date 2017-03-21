@@ -863,8 +863,11 @@ EOF
 
 	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" -q <<EOF
 sudo docker exec -i root_nginx_3 bash <<EOF2
+(
   /etc/init.d/nginx start
   /etc/init.d/php5.6-fpm start
+) >/tmp/dstart.log 2>&1
+# The redirection is necessary otherwise init.d/nginx makes "docker exec" hang
 EOF2
 EOF
     ) ; $iferr_exit
