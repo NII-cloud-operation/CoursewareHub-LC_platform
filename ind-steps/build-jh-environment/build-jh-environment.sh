@@ -560,7 +560,8 @@ EOF
 set -x
 set -e
 
-sudo mkdir -p /mnt/nfs
+sudo mkdir -p /mnt/nfs/home/ubuntu
+sudo chown ubuntu:ubuntu /mnt/nfs/home/ubuntu
 sudo tar c /home/ubuntu/.ssh | ( cd /mnt/nfs && sudo tar xv )
 
 EOF
