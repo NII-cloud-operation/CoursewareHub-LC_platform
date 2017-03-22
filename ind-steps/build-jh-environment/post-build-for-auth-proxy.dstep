@@ -68,7 +68,7 @@ EOF
 	# original nginx.  The port forwarded to it is xxx90. (instead of xxx43)
 
 	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" -q sudo bash <<EOF
-  docker run -v /home/ubuntu/auth-proxy/php:/var/www/php -v /home/ubuntu/auth-proxy/nginx/certs:/etc/nginx/certs --privileged --name root_nginx_3 -p 9000:443 -d auth-proxy:latest /sbin/init	
+  docker run -v /home/ubuntu/auth-proxy/php:/var/www/php -v /home/ubuntu/auth-proxy/nginx/certs:/etc/nginx/certs --privileged --name root_nginx_3 -p 9000:443 --link root_jpydb_1:root_jpydb_1 -d auth-proxy:latest /sbin/init	
 EOF
     ) ; $iferr_exit
 
