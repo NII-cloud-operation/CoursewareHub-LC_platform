@@ -47,11 +47,11 @@ EOF
 	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
 [ -d /home/ubuntu/auth-proxy/php ]
 EOF
-	$skip_step_if_already_done
+	$skip_step_if_already_done; set -e
 
 	(
 	    # clone from our cached copy
-	    cd "$ORGCODEDIR/repo-cache/auth-proxy/resources"
+	    cd "$ORGCODEDIR/../../auth-proxy/resources"
 	    tar c php
 	) | "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" tar x -C /home/ubuntu/auth-proxy
     ) ; $iferr_exit
