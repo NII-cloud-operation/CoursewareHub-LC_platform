@@ -191,6 +191,8 @@ sudo bash -c 'setsid ./background-command-processor.sh 1>>bcp.log 2>&1 </dev/nul
 EOF
 ) ; $iferr_exit
 
+source "$ORGCODEDIR/post-build-for-auth-proxy.dstep"
+
 (
     $starting_step "Output port forwarding hint script"
     false # just always refresh this
