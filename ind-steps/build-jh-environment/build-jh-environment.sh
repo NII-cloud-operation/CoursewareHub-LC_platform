@@ -42,6 +42,7 @@ VMDIR=jhvmdir
     clone_remote_git https://github.com/jupyterhub/jupyterhub jh-jupyterhub
     clone_remote_git https://github.com/triggers/jupyterhub.git
 
+    clone_remote_git https://github.com/k-oyakata/auth-proxy.git
 ) ; $iferr_exit
 
 ( # not a step, just a little sanity checking
@@ -77,7 +78,7 @@ EOF
 		# clone from our cached copy
 		cd "$ORGCODEDIR/repo-cache"
 		tar c "$repo_name"
-	    ) |	"$DATADIR/$vmdir/ssh-shortcut.sh" $sudo tar x -C "$targetdir"
+	    ) | "$DATADIR/$vmdir/ssh-shortcut.sh" $sudo tar x -C "$targetdir"
 	) ; $iferr_exit
     }
 
@@ -90,6 +91,9 @@ EOF
 
     copy_in_one_cached_repository jh-jupyterhub     "$VMDIR"     /srv  sudo
     copy_in_one_cached_repository jupyterhub        "$VMDIR"     /srv  sudo
+
+    # Building this docker directly on the hub VM for now.
+    copy_in_one_cached_repository auth-proxy        "$VMDIR-hub" /srv  sudo
 
     # This repository is not for a docker container.  It is for a process started
     # directly on the hub VM.
@@ -370,7 +374,7 @@ EOF
     (
 	$starting_step "Adjust ansible config files for node_list"
 	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
 [ -f nodelist ] && [ "\$(cat nodelist)" = "$node_list" ]
 EOF
 	$skip_step_if_already_done ; set -e
@@ -556,7 +560,8 @@ EOF
 set -x
 set -e
 
-sudo mkdir -p /mnt/nfs
+sudo mkdir -p /mnt/nfs/home/ubuntu
+sudo chown ubuntu:ubuntu /mnt/nfs/home/ubuntu
 sudo tar c /home/ubuntu/.ssh | ( cd /mnt/nfs && sudo tar xv )
 
 EOF
@@ -567,7 +572,7 @@ EOF
     $starting_step "Run main **Ansible script** (PART 1)"
     nodesarray=( $node_list )
     vmcount=$(( ${#nodesarray[@]} + 1 )) # nodes + just the hub
-    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
 set -x
 cd jupyterhub-deploy
 # last part of ansible log should show "failed=0" three times. e.g:
@@ -587,6 +592,24 @@ cd jupyterhub-deploy
 time ./script/deploy "-part1" | tee -a deploylog-part1.log
 
 EOF
+) ; $iferr_exit
+
+(
+    $starting_step "Build auth-proxy docker image"
+    [ -x "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" ] &&
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+sudo docker images | grep auth-proxy
+EOF
+    $skip_step_if_already_done ; set -e
+
+    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" sudo bash <<'EOF'
+set -e
+cd /srv/auth-proxy
+echo "$PATH"
+whereis docker
+docker build -t auth-proxy:latest .
+EOF
+    
 ) ; $iferr_exit
 
 (
@@ -650,7 +673,7 @@ EOF
     $starting_step "Run main **Ansible script** (PART 2)"  # mostly copy/pasted from above
     nodesarray=( $node_list )
     vmcount=$(( ${#nodesarray[@]} + 1 )) # nodes + just the hub
-    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
 set -x
 cd jupyterhub-deploy
 count="\$(tail deploylog-part2.log | grep -o "unreachable=0.*failed=0" | wc -l)"
@@ -752,5 +775,7 @@ sudo bash -c 'setsid ./background-command-processor.sh 1>>bcp.log 2>&1 </dev/nul
 EOF
     ) ; $iferr_exit
 ) ; $iferr_exit
+
+source "$ORGCODEDIR/post-build-for-auth-proxy.dstep"
 
 touch "$DATADIR/flag-inital-build-completed"

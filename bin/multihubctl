@@ -99,7 +99,7 @@ do_simpleinit()
 {
     # This is a simplified version of do_new() for single jupyterhub
     # environments running separately.  It does not require the
-    # active-hubs/00x naming convention, and it does use one nginx to
+    # active-hubs/00x naming convention, and it does not use one nginx to
     # dispatch to multiple jupyterhub environments.  Each environment
     # uses its own nginx for SSL connections.  The extra word in the
     # URL (e.g. "/master/")is not used.  The teacher name is assumed to
@@ -126,6 +126,33 @@ EOF
     echo "Restarting nginx proxy."
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_nginx_1
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_nginx_1
+
+    # for auth-proxy:
+    echo "Changing /master/ to / for the auth-proxy nginx"
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q <<EOF
+sed -i 's,master,,' /home/ubuntu/auth-proxy/php/hub-const.php
+EOF
+
+    # next part is for the auth-proxy nginx and assumes that it has been preconfigured
+    # to use /master/ as part of its URL.
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_3 bash <<'EOF4'
+sed -i "s,/master/,/," /etc/nginx/nginx.conf
+EOF4
+
+    echo "Restarting auth-proxy nginx container."
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_nginx_3
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_nginx_3
+
+    echo "Restarting auth-proxy daemons."
+    "$hubdir/jhvmdir-hub/ssh-shortcut.sh" -q <<EOF
+sudo docker exec -i root_nginx_3 bash <<EOF2
+(
+  /etc/init.d/nginx start
+  /etc/init.d/php5.6-fpm start
+) >/tmp/dstart.log 2>&1
+# The redirection is necessary otherwise init.d/nginx makes "docker exec" hang
+EOF2
+EOF
 }
 
 : ${urlbase:="niidemo.com"}
@@ -158,7 +185,7 @@ EOF3
 
     cat >>/srv/jupyterhub_config/jupyterhub_config.py <<EOF2
 # change to unix authentication:
-c.JupyterHub.authenticator_class = 'docker_oauth.DockerAuthenticator'
+c.JupyterHub.authenticator_class = 'remote_user.remote_user_auth.RemoteUserLocalAuthenticator'
 
 c.JupyterHub.base_url='$withslash/'
 
