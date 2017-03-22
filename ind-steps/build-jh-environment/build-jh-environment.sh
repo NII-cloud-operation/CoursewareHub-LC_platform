@@ -847,6 +847,24 @@ EOF
     ) ; $iferr_exit
 
     (
+	$starting_step "Make sure docker container for auth-proxy is started"
+
+	#### This step is needed when restoring snapshots
+	
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
+sudo docker ps | grep auth-proxy:latest
+EOF
+	$skip_step_if_already_done
+
+	# Note, using port 9000 so this nginx can run at the same time as the
+	# original nginx.  The port forwarded to it is xxx90. (instead of xxx43)
+
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" -q sudo bash <<EOF
+  docker start root_nginx_3
+EOF
+    ) ; $iferr_exit
+
+    (
 	$starting_step "Start daemons in the docker container for auth-proxy"
 
 	output="$( "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" -q <<EOF 2>/dev/null
