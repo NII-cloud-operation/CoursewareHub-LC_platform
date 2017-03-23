@@ -41,8 +41,6 @@ VMDIR=jhvmdir
 
     clone_remote_git https://github.com/jupyterhub/jupyterhub jh-jupyterhub
     clone_remote_git https://github.com/triggers/jupyterhub.git
-
-    clone_remote_git https://github.com/k-oyakata/auth-proxy.git
 ) ; $iferr_exit
 
 ( # not a step, just a little sanity checking
@@ -92,12 +90,25 @@ EOF
     copy_in_one_cached_repository jh-jupyterhub     "$VMDIR"     /srv  sudo
     copy_in_one_cached_repository jupyterhub        "$VMDIR"     /srv  sudo
 
-    # Building this docker directly on the hub VM for now.
-    copy_in_one_cached_repository auth-proxy        "$VMDIR-hub" /srv  sudo
-
     # This repository is not for a docker container.  It is for a process started
     # directly on the hub VM.
     copy_in_one_cached_repository restuser          "$VMDIR-hub" /srv  sudo
+
+    (
+	$starting_step "Copy auth-proxy repository into $VMDIR-hub"
+	# Building this docker directly on the hub VM for now.
+	[ -x "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -d "/srv/auth-proxy" ]
+EOF
+	$skip_step_if_already_done ; set -e
+	(
+	    # clone from our cached copy
+	    cd "$ORGCODEDIR/../.."
+	    tar c auth-proxy
+	) | "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" $sudo tar x -C /srv
+    ) ; $iferr_exit
+
 ) ; $iferr_exit
 
 (
