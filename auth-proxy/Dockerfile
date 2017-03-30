@@ -48,7 +48,7 @@ COPY resources/simplesamlphp/metadata/saml20-idp-remote.php /var/www/simplesamlp
 RUN set -x \
     && cd /var/www/simplesamlphp/cert \
     && openssl req -newkey rsa:2048 -new -x509 -nodes \
-         -out auth-proxy.crt \
+         -out auth-proxy.cer \
          -keyout auth-proxy.key \
          -subj "/C=JP/ST=Tokyo/L=Chiyoda-ku/O=NII/CN=auth-proxy"
 #COPY resources/keys/auth-proxy.cer /var/www/simplesamlphp/cert/
