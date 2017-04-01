@@ -1,0 +1,529 @@
+#!/bin/bash
+
+reportfailed()
+{
+    echo "Script failed...exiting. ($*)" 1>&2
+    exit 255
+}
+
+usage()
+{
+    cat <<EOF
+Usage:
+
+./bin/multihubctl list              ## Lists assigned JupyterHub servers
+./bin/multihubctl new {hubid}       ## Assigns new JupyterHub server
+./bin/multihubctl delete {hubid}    ## Disconnects JupyterHub server
+./bin/multihubctl restart {hubid}   ## Restarts JupyterHub server
+
+EOF
+}
+
+export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
+
+rootdir="${ORGCODEDIR%/*}"
+ahdir="$rootdir/active-hubs"
+[ -d "$ahdir" ] || mkdir "$ahdir" || reportfailed
+
+
+classid_to_hubpath()
+{
+    local hubid="$1"
+    result="$(grep -HFx "$hubid" "$ahdir"/*/hubid)"
+    [ "$result" = "" ] && reportfailed "Hub with name '$hubid' not found"
+    # result is something like: active-hubs/002/hubid:class4
+    echo "${result%/hubid*}"
+}
+
+
+do_new()
+{
+    hubid="$1"
+    teacherid="$2"
+
+    result="$(grep -Fx "$hubid" "$ahdir"/*/hubid 2>/dev/null)"
+    [ "$result" = "" ] || reportfailed "Hub with name '$hubid' already exists"
+
+    # which hub is next?
+    hubn=0
+    while true; do
+	digits3="$(( hubn + 1000 ))"
+	digits3="${digits3#1}"
+	if [ -f "$ahdir/$digits3/hubid-deleted" ] || \
+	       [ -f "$ahdir/$digits3/hubid" ]; then
+	    # already used, keep looking
+	    (( hubn++ ))
+	else
+	    # found unused one
+	    break
+	fi
+    done
+
+    [ -d "$ahdir/$digits3" ] || reportfailed 'No more cached jupyterhubs available'
+
+    if [ "$digits3" = 000 ] && [ "$hubid" != "master" ]; then
+	reportfailed "Must create master hub first"
+    fi
+    
+    echo "$hubid" >"$ahdir/$digits3/hubid"
+    hubdir="$ahdir/$digits3"
+    
+    reconfigure_one_jupyterhub "$hubdir" "$teacherid"
+    push_hub_patch "$hubdir" 1>/dev/null
+    create_directory_structure "$hubdir" "$teacherid"
+    
+    reconfigure_nginx "$ahdir/000"
+
+    echo "Restarting new JupyterHub container."
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_jupyterhub_1
+
+    # if this JupyterHubs environment is reused, there may be
+    # remaining user containers with the wrong url path
+    for vm in node1 node2; do
+	containerlist="$(
+            "$hubdir"/jhvmdir-$vm/ssh-shortcut.sh -q sudo docker ps -a -q
+        )"
+	[ "$containerlist" == "" ] && continue
+	echo "Removing existing containers on $vm."
+	"$hubdir"/jhvmdir-$vm/ssh-shortcut.sh -q sudo docker rm -f $containerlist
+    done
+
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_jupyterhub_1
+    
+    echo "Restarting nginx proxy."
+    "$ahdir/000"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_nginx_1
+    "$ahdir/000"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_nginx_1
+}
+
+do_single_hub_init()
+{
+    # This is a simplified version of do_new() for single jupyterhub
+    # environments running separately.  It does not require the
+    # active-hubs/00x naming convention, and it does not use one nginx to
+    # dispatch to multiple jupyterhub environments.  Each environment
+    # uses its own nginx for SSL connections.  The extra word in the
+    # URL (e.g. "/master/")is not used. 
+
+    hubdir="$1"  # Path to the build directory
+    teacher_mail="$2"
+
+    [ -d "$hubdir" ] || reportfailed "Hub direcotry '$hubdir' already exists"
+
+    # remove original proxy container
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker rm -f root_nginx_1 bash
+
+    # create local user id of teacher from teacher's mail address
+    teacherid=$("$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_3 bash << EOF
+php -r "require_once '/var/www/php/functions.php'; echo get_username_from_mail_address('"$mail"');"
+EOF
+    )
+ 
+    # configure jupyterhub 
+    reconfigure_one_jupyterhub "$hubdir" "$teacherid"
+    push_hub_patch "$hubdir" 1>/dev/null
+    create_directory_structure "$hubdir" "$teacherid"
+    
+    echo "Restarting new JupyterHub container."
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_jupyterhub_1
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_jupyterhub_1
+    
+    echo "Configuring auth-proxy container."
+    hubip="$(source "$hubdir/jhvmdir-hub/datadir.conf" ; echo "$VMIP")"
+    hubport=8000
+    # configure hub-const.php
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q << EOF
+sed -i "s,HUB_URL = .*,HUB_URL = $hubip:$hubport, ' /home/ubuntu/auth-proxy/php/hub-const.php
+EOF
+    # configure nginx.conf
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_3 bash << EOF
+sed -i "s,proxy_pass http:.*,proxy_pass http://$hubip:$hubport," /etc/nginx/nginx.conf
+EOF
+
+    echo "Restarting auth-proxy nginx container."
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_nginx_3
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_nginx_3
+
+    echo "Restarting auth-proxy daemons."
+    "$hubdir/jhvmdir-hub/ssh-shortcut.sh" -q << EOF
+sudo docker exec -i root_nginx_3 bash << EOF2
+(
+  /etc/init.d/nginx start
+  /etc/init.d/php5.6-fpm start
+) >/tmp/dstart.log 2>&1
+# The redirection is necessary otherwise init.d/nginx makes "docker exec" hang
+EOF2
+EOF
+
+    # Add database schema of local user
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q \
+    sudo docker exec -i root_jpydb_1 \
+    /usr/lib/postgresql/9.6/bin/psql -U postgres -d jupyterhub << EOF
+CREATE SEQUENCE local_users_id_seq START 1;
+CREATE TABLE local_users (
+    id  integer CONSTRAINT firstkey PRIMARY KEY,
+    user_name  varchar(64) NOT NULL,
+    password  varchar(128) NOT NULL,
+    mail  varchar(64) NOT NULL
+);
+EOF
+
+    # create password for teacher    
+    password=$(tr -cd [:alpha:] < /dev/urandom | head -c 10)
+
+    # register teacher's userid and password
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_3 bash << EOF
+php -r "require_once '/var/www/php/db.php'; add_local_user('"$teacher_mail"', '"$password"');"
+EOF
+
+    # notify password
+    echo $password
+}
+
+
+: ${urlbase:="niidemo.com"}
+reconfigure_one_jupyterhub()
+{
+    local hubdir="$1"
+    local teacherid="$2"
+    hubid="$(cat "$hubdir/hubid")" || reportfailed "Missing hubid"
+
+    if [ "$hubid" = "none" ]; then
+	# special case to allow a hub to exist without a hubname in the path
+	# (and provide a way to debug against a more "normal" setup)
+	withslash=""
+    else
+	withslash="/$hubid"
+    fi
+
+    # Note: adding the 30 user names below somehow makes initialization of the
+    # database timeout while jupyterhub is restarting.  The current workaround
+    # is to keep restarting jupyterhub until all entries are initialized.  Use
+    # the dumpdb command to make sure progress is being made at each restart.
+    # The var NUSERS has been added to drop down to a few user names to speed up
+    # setup during development and debugging.
+    : ${NUSERS:=30}
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_jupyterhub_1 bash << EOF
+    cat >/srv/jupyterhub_users/userlist << EOF3
+$teacherid admin
+$(head -n "$NUSERS" "$rootdir/usernames")
+EOF3
+
+    cat >>/srv/jupyterhub_config/jupyterhub_config.py << EOF2
+# change to unix authentication:
+c.JupyterHub.authenticator_class = 'remote_user.remote_user_auth.RemoteUserLocalAuthenticator'
+
+c.JupyterHub.base_url='$withslash/'
+
+# next line is not used if docker_oauth.DockerAuthenticator is used
+c.GoogleOAuthenticator.oauth_callback_url = 'https://$urlbase${withslash}/hub/oauth2callback'
+EOF2
+
+EOF
+
+    # At least once, the above failed for some reason.  Add a check to
+    # make it clear if this happens again.
+    
+    checklastline="$(
+      "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q \
+           sudo docker exec -i root_jupyterhub_1 \
+               tail -n 1 /srv/jupyterhub_config/jupyterhub_config.py
+    )"
+    if [[ "$checklastline" != */$urlbase${withslash}/* ]]; then
+	echo "Attempt to reconfigure a JupyterHub instance failed for some reason." 1>&2
+	echo "Please try running the command again." 1>&2
+	rm -f "$hubdir/hubid"
+	exit 1
+    fi
+}
+
+reconfigure_nginx()
+{
+    local hubdir="$1"
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_1 bash <<EOF
+cat >/etc/nginx/nginx.conf <<'EOF2'
+$(config_toplevel "$ahdir/"*)
+EOF2
+EOF
+}
+
+config_location_for()
+{
+    local hubdir="$1"
+    [ -f "$hubdir/hubid" ] || return  # skip unassigned jupyterhub environments
+    hubid="$(cat "$hubdir/hubid")" || reportfailed "Missing hubid"
+
+    hubport="$(
+        source "$hubdir/jhvmdir-hub/datadir.conf"
+        echo $(( VNCPORT + 83 ))
+    )" || reportfailed
+    
+    if [ "$hubid" = "none" ]; then
+	# special case to allow a hub to exist without a hubname in the path
+	# (and provide a way to debug against a more "normal" setup)
+	withslash=""
+    else
+	withslash="/$hubid"
+    fi
+
+    cat <<EOF1
+
+        location $withslash/ {
+            proxy_pass http://10.0.3.2:$hubport;
+
+EOF1
+    cat <<'EOF2'
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+            proxy_set_header X-NginX-Proxy true;
+        }
+
+EOF2
+
+    cat <<EOF3
+        location ~* $withslash/(user/[^/]*)/(api/kernels/[^/]+/channels|terminals/websocket)/? {
+            proxy_pass http://10.0.3.2:$hubport;
+
+EOF3
+
+    cat <<'EOF4'
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+            proxy_set_header X-NginX-Proxy true;
+
+            # WebSocket support
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_read_timeout 86400;
+
+        }
+EOF4
+
+}
+
+
+config_toplevel()
+{
+    cat <<'EOF1'
+# Ansible managed: /home/ubuntu/jupyterhub-deploy/roles/proxy/templates/nginx.conf.j2 modified on 2016-10-04 21:34:55 by ubuntu on main
+
+worker_processes  4;
+
+events {
+  worker_connections 1024;
+}
+
+http {
+
+	include /etc/nginx/mime.types;
+	default_type application/octet-stream;
+
+    server {
+        listen 80;
+        server_name hub;
+        rewrite        ^ https://$host$request_uri? permanent;
+    }
+
+    server {
+        listen 443;
+
+        client_max_body_size 50M;
+
+        server_name hub;
+
+        ssl on;
+        ssl_certificate /tmp/proxycert;
+        ssl_certificate_key /tmp/proxykey;
+
+        ssl_ciphers "AES128+EECDH:AES128+EDH";
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+        ssl_prefer_server_ciphers on;
+        ssl_session_cache shared:SSL:10m;
+        add_header Strict-Transport-Security "max-age=63072000; includeSubDomains";
+        add_header X-Content-Type-Options nosniff;
+        ssl_stapling on; # Requires nginx >= 1.3.7
+        ssl_stapling_verify on; # Requires nginx => 1.3.7
+        resolver_timeout 5s;
+
+        # Expose logs to "docker logs".
+        # See https://github.com/nginxinc/docker-nginx/blob/master/Dockerfile#L12-L14
+        access_log /var/log/nginx/access.log;
+        error_log /var/log/nginx/error.log;
+
+        location ~ /(user-[a-zA-Z0-9]*)/static(.*) {
+            alias /usr/local/lib/python3.4/dist-packages/notebook/static/$2;
+        }
+EOF1
+
+    for ahubdir in "$@"; do
+	config_location_for "$ahubdir"
+    done
+    
+    cat <<'EOF2'
+    }
+
+}
+EOF2
+}
+
+delete_jupyterhub()
+{
+    hubpath="$(classid_to_hubpath "$1")" || exit
+    mv "$hubpath/hubid" "$hubpath/hubid-deleted"
+
+    reconfigure_nginx "$ahdir/000"
+    echo "Restarting nginx proxy."
+    "$ahdir/000"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_nginx_1
+    "$ahdir/000"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_nginx_1
+}
+
+restart_jupyterhub()
+{
+    if [ -f "$1/hubid" ]; then  # Allow either hubpath or hubid
+	hubpath="$1"
+    else
+	hubpath="$(classid_to_hubpath "$1")" || exit
+    fi
+    "$hubpath"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_jupyterhub_1
+    "$hubpath"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_jupyterhub_1
+}
+
+dump_database()
+{
+    local hubdir="$1"
+    for table in api_tokens users proxies hubs servers; do
+	echo
+	echo "Table: $table"
+	"$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q \
+	    	 sudo docker exec -i root_jpydb_1 \
+	    	 /usr/lib/postgresql/9.6/bin/psql -U postgres -d jupyterhub <<<"select * from $table ;"
+    done
+}
+
+fetch_hub_patch()
+{
+    # fetch the latest of whatever is already in hub-patch-dir-tree
+    local hubdir="$1"
+    hppath="$rootdir/hub-patch-dir-tree"
+
+    filelist="$(cd "$hppath" && find -type f)"
+    [ "$filelist" = "" ] && reportfailed "No files in hub-patch-dir-tree"
+
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -qt sudo docker exec -i root_jupyterhub_1 bash <<EOF | ( cd "$rootdir/hub-patch-dir-tree" && tar xzv )
+set -e
+cd /
+tar cz $(echo $filelist)
+EOF
+}
+
+push_hub_patch()
+{
+    local hubdir="$1"
+    hppath="$rootdir/hub-patch-dir-tree"
+
+    filelist="$(cd "$hppath" && ls)"
+
+    (
+	echo 'cd / || exit 0 ; tar xzv'
+	cd "$rootdir/hub-patch-dir-tree" || exit
+	# the tar on the prev line will start reading from stdin, which is provided by this tar:
+	tar cz $filelist
+    ) | "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_jupyterhub_1 bash
+}
+
+create_directory_structure()
+{
+    local hubdir="$1"
+    local teacherid="$2"
+
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo bash <<EOF
+       mkdir -p /jupyter/admin/{copybook,admin_tools,tools,info}
+       chmod a+wr /jupyter/admin/{copybook,admin_tools,tools,info}
+
+       mkdir -p /jupyter/users
+       chmod a+wr /jupyter/users
+
+       if getent passwd $teacherid > /dev/null ; then
+	   echo "User ($teacherid) exists on hub KVM"
+       else
+	   echo "Creating user ($teacherid)"
+	   # the next line does not create the home directory
+	   useradd -s /bin/bash "$teacherid"
+       fi
+
+       mkdir -p "/jupyter/admin/$teacherid"
+
+       ipycfg="/jupyter/admin/$teacherid/.ipython/profile_default/ipython_config.py"
+       mkdir -p "\${ipycfg%/*}"
+       echo "c.InteractiveShellApp.matplotlib = 'inline'" >>"\$ipycfg"
+
+       # Note: probably because of NFS, sometimes programs think this
+       # this next symbolic link is a directory when normally it would
+       # be behave as the link itself.
+       [ -L "/jupyter/admin/$teacherid/admin_tools" ] || \
+            ln -s /jupyter/admin/admin_tools "/jupyter/admin/$teacherid/admin_tools"
+       chown -R "$teacherid:$teacherid" "/jupyter/admin/$teacherid"
+       chmod -R a+wr "/jupyter/admin/$teacherid"
+EOF
+
+    # update with latest version
+    tar c adapt-notebooks-for-user.sh background-command-processor.sh | \
+	"$hubdir/jhvmdir-hub/ssh-shortcut.sh" -q sudo tar xv -C /srv
+
+    # TODO: redo this
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo bash <<EOF
+killall background-command-processor.sh
+cd /srv
+bash -c 'setsid ./background-command-processor.sh 1>>bcp.log 2>&1 </dev/null &'
+EOF
+}
+
+cmd="$1"
+shift
+
+case "$cmd" in
+    new) do_sigle_hub_init "$@"
+	 ;;
+    associate-gakunin) associate_gakunin "$@"
+	 ;;
+    delete) delete_jupyterhub "$@"
+	 ;;
+    debugjhub) reconfigure_one_jupyterhub "$@"
+	 ;;
+    debugnginx) reconfigure_nginx "$@"
+		;;
+    #    buildnewjh) build_jupyterhub "$@"
+    # ((This does not work with the recently refactored code.
+    #   TODO: decide if it needs to be replaced ))
+    #	 ;;
+    restart) restart_jupyterhub "$@"
+	 ;;
+    dumpdb) dump_database "$@"
+	 ;;
+    fetch-hub-patch) fetch_hub_patch "$@"
+	 ;;
+    push-hub-patch) push_hub_patch "$@"
+	 ;;
+    list)
+	shopt -s nullglob
+	cat "$ahdir"/*/hubid
+	 ;;
+    listall)
+	cmd='head -v "$ahdir"/*/hubid*'
+	echo "$cmd"
+	eval "$cmd"
+	 ;;
+    recoverall)
+	(
+	    shopt -s nullglob
+	    set -x
+	    rm "$ahdir"/*/hubid-deleted 2>/dev/null
+	)
+	 ;;
+    *) usage
+       ;;
+esac
