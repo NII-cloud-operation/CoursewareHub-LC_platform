@@ -36,14 +36,10 @@ RUN perl -pi -e 's/expose_php = On/expose_php = Off/g' /etc/php/5.6/fpm/php.ini
 # Copy nginx.conf
 COPY resources/nginx/nginx.conf /etc/nginx/
 
-# nginx keys
-#COPY resources/keys/auth-proxy.chained.cer /etc/nginx/certs/
-#COPY resources/keys/auth-proxy.key /etc/nginx/certs/
-
 # Setup simplesamlphp
 COPY resources/simplesamlphp/config/config.php /var/www/simplesamlphp/config
 COPY resources/simplesamlphp/config/authsources.php /var/www/simplesamlphp/config
-COPY resources/simplesamlphp/metadata/saml20-idp-remote.php /var/www/simplesamlphp/metadata
+COPY resources/simplesamlphp/bin/get_idp_proxy_metadata.sh /var/www/simplesamlphp/bin
 # simplesamlphp keys
 RUN set -x \
     && cd /var/www/simplesamlphp/cert \
@@ -51,12 +47,11 @@ RUN set -x \
          -out auth-proxy.cer \
          -keyout auth-proxy.key \
          -subj "/C=JP/ST=Tokyo/L=Chiyoda-ku/O=NII/CN=auth-proxy"
-#COPY resources/keys/auth-proxy.cer /var/www/simplesamlphp/cert/
-#COPY resources/keys/auth-proxy.key /var/www/simplesamlphp/cert/
 
 # Change owner
 RUN set -x \
-    && chown -R www-data:www-data /var/www/simplesamlphp
+    && chown -R www-data:www-data /var/www/simplesamlphp \
+    && chmod a+x /var/www/simplesamlphp/bin/get_idp_proxy_metadata.sh
 
 # Boot up Nginx, and PHP5-FPM when container is started
 CMD service php5.6-fpm start && service nginx start
