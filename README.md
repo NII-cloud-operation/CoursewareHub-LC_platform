@@ -214,7 +214,7 @@ $ ./ind-steps/build-jh-environment/restore-environment-from-snapshot.sh build-fe
 ```
 
 Now all VMs and containers are running, but more setup is probably
-neccessary before the JupyterHub environment can be used.
+necessary before the JupyterHub environment can be used.
 
 ### Patching
 
@@ -242,4 +242,3 @@ $ docker-compose up -d  jupyterhub
 ```
 
 <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
-
