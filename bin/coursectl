@@ -11,10 +11,10 @@ usage()
     cat <<EOF
 Usage:
 
-./bin/multihubctl list              ## Lists assigned JupyterHub servers
-./bin/multihubctl new {hubid}       ## Assigns new JupyterHub server
-./bin/multihubctl delete {hubid}    ## Disconnects JupyterHub server
-./bin/multihubctl restart {hubid}   ## Restarts JupyterHub server
+./bin/coursectl list              ## Lists assigned JupyterHub servers
+./bin/coursectl new {hub_dir} {admin_mail_address}       ## Assigns new JupyterHub server
+./bin/coursectl delete {hub_dir}    ## Disconnects JupyterHub server
+./bin/coursectl restart {hub_dir}   ## Restarts JupyterHub server
 
 EOF
 }
@@ -22,43 +22,23 @@ EOF
 export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
 
 rootdir="${ORGCODEDIR%/*}"
-ahdir="$rootdir/active-hubs"
-[ -d "$ahdir" ] || mkdir "$ahdir" || reportfailed
 
-
-classid_to_hubpath()
+init_jupyterhub()
 {
-    local hubid="$1"
-    result="$(grep -HFx "$hubid" "$ahdir"/*/hubid)"
-    [ "$result" = "" ] && reportfailed "Hub with name '$hubid' not found"
-    # result is something like: active-hubs/002/hubid:class4
-    echo "${result%/hubid*}"
-}
-
-
-do_single_hub_init()
-{
-    # This is a simplified version of do_new() for single jupyterhub
-    # environments running separately.  It does not require the
-    # active-hubs/00x naming convention, and it does not use one nginx to
-    # dispatch to multiple jupyterhub environments.  Each environment
-    # uses its own nginx for SSL connections.  The extra word in the
-    # URL (e.g. "/master/")is not used. 
-
     hubdir="$1"  # Path to the build directory
     teacher_mail="$2"
 
-    [ -d "$hubdir" ] || reportfailed "Hub direcotry '$hubdir' already exists"
+    [ -d "$hubdir" ] || reportfailed "Hub direcotry '$hubdir' does not exist."
 
     echo "hubdir: "$hubdir
     echo "teacher_mail: "$teacher_mail
 
     # remove original proxy container
-    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker rm -f root_nginx_1 bash
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker rm -f root_nginx_1
 
     # create local user id of teacher from teacher's mail address
     teacherid=$("$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_3 bash << EOF
-php -r "require_once '/var/www/php/functions.php'; echo get_username_from_mail_address('"$mail"');"
+php -r "require_once '/var/www/php/functions.php'; echo get_username_from_mail_address('"$teacher_mail"');"
 EOF
     )
     echo "teacheid: "$teacherid 
@@ -74,10 +54,12 @@ EOF
     
     echo "Configuring auth-proxy container."
     hubip="$(source "$hubdir/jhvmdir-hub/datadir.conf" ; echo "$VMIP")"
+    dbip=$("$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker inspect --format='{{.NetworkSettings.IPAddress}}' root_jpydb_1)
     hubport=8000
     # configure hub-const.php
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q << EOF
-sed -i "s,HUB_URL = .*,HUB_URL = http://$hubip:$hubport;," /home/ubuntu/auth-proxy/php/hub-const.php
+sed -i "s,HUB_URL = .*,HUB_URL = \"http://$hubip:$hubport\";," /home/ubuntu/auth-proxy/php/hub-const.php
+sed -i "s,DB_HOST = .*,DB_HOST = \"$dbip\";," /home/ubuntu/auth-proxy/php/hub-const.php
 EOF
     # configure nginx.conf
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_3 bash << EOF
@@ -121,13 +103,14 @@ php -r "require_once '/var/www/php/db.php'; add_local_user('"$teacher_mail"', '"
 EOF
 
     # notify password
-    echo $password
+    echo "----------"
+    echo "admin password: "$password
 }
 
 
 associate_idp_proxy()
 {
-echo associate_idp_proxy
+    echo associate_idp_proxy
     # set idp-proxy metadata in auth-proxy
 #    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_3 bash << EOF
 #/var/www/nginx/simplesamlphp/bin/get_idp_proxy_metadata.sh  idp-proxy-name
@@ -135,7 +118,6 @@ echo associate_idp_proxy
     # register auth-proxy metadat in idp-proxy 
 #    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_3 bash << EOF
 #/var/www/nginx/simplesamlphp/bin/add_auth_proxy_metadata.php entityID metadataURL -> hostname/ip-address of auth-proxy 
-
 }
 
 
@@ -156,7 +138,7 @@ reconfigure_one_jupyterhub()
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_jupyterhub_1 bash << EOF
     cat >/srv/jupyterhub_users/userlist << EOF3
 $teacherid admin
-$(head -n "$NUSERS" "$rootdir/usernames")
+#$(head -n "$NUSERS" "$rootdir/usernames")
 EOF3
 
     cat >>/srv/jupyterhub_config/jupyterhub_config.py << EOF2
@@ -190,20 +172,33 @@ EOF
 
 delete_jupyterhub()
 {
-    hubpath="$(classid_to_hubpath "$1")" || exit
-    mv "$hubpath/hubid" "$hubpath/hubid-deleted"
+    hubdir="$1"
+    [ -d "$hubdir" ] || reportfailed "Hub direcotry '$hubdir' does not exist."
 
-    echo "Restarting nginx proxy."
-    "$ahdir/000"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_nginx_1
-    "$ahdir/000"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_nginx_1
+    while true; do
+        read -p 'Do you like coffee? [Y/n]' answer
+        case $answer in
+            '' | [Yy]* )
+                rm -rf $hubdir
+                break;
+                ;;
+            [Nn]* )
+                break;
+                ;;
+            * )
+              echo Please answer yes or no.
+        esac
+    done;
 }
 
 
 restart_jupyterhub()
 {
-    hubpath="$1"
-    "$hubpath"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_jupyterhub_1
-    "$hubpath"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_jupyterhub_1
+    hubdir="$1"
+    [ -d "$hubdir" ] || reportfailed "Hub direcotry '$hubdir' does not exist."
+
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_jupyterhub_1
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_jupyterhub_1
 }
 
 
@@ -305,37 +300,21 @@ cmd="$1"
 shift
 
 case "$cmd" in
-    new) do_single_hub_init "$@"
+    new) init_jupyterhub "$@"
 	 ;;
     associate-idp-proxy) associate_idp_proxy "$@"
 	 ;;
     delete) delete_jupyterhub "$@"
 	 ;;
-    debugjhub) reconfigure_one_jupyterhub "$@"
-	 ;;
     restart) restart_jupyterhub "$@"
+	 ;;
+    debugjhub) reconfigure_one_jupyterhub "$@"
 	 ;;
     dumpdb) dump_database "$@"
 	 ;;
     fetch-hub-patch) fetch_hub_patch "$@"
 	 ;;
     push-hub-patch) push_hub_patch "$@"
-	 ;;
-    list)
-	shopt -s nullglob
-	cat "$ahdir"/*/hubid
-	 ;;
-    listall)
-	cmd='head -v "$ahdir"/*/hubid*'
-	echo "$cmd"
-	eval "$cmd"
-	 ;;
-    recoverall)
-	(
-	    shopt -s nullglob
-	    set -x
-	    rm "$ahdir"/*/hubid-deleted 2>/dev/null
-	)
 	 ;;
     *) usage
        ;;
