@@ -138,7 +138,6 @@ reconfigure_one_jupyterhub()
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_jupyterhub_1 bash << EOF
     cat >/srv/jupyterhub_users/userlist << EOF3
 $teacherid admin
-#$(head -n "$NUSERS" "$rootdir/usernames")
 EOF3
 
     cat >>/srv/jupyterhub_config/jupyterhub_config.py << EOF2

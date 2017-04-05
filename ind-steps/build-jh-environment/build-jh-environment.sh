@@ -510,10 +510,10 @@ set -e
 set -x
 cd jupyterhub-deploy/
 cp users.vault.yml users.vault.yml.org
-cat >users.vault.yml <<EOF2
-jupyterhub_admins:
-- potter
-EOF2
+#cat >users.vault.yml <<EOF2
+#jupyterhub_admins:
+#- potter
+#EOF2
 ansible-vault encrypt --vault-password-file vault-password users.vault.yml
 EOF
     ) ; $iferr_exit
