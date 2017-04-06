@@ -161,7 +161,9 @@ form {
     </div>
   </form>
   <div class="form-footer">
+  <?php if (file_exists(IDP_METADATA_FILE_PATH)) {?> 
     <p><a href="/php/sp.php">学認フェデレーションへ</a></p>
+  <?php }?>
   </div>
 </div>
 </body>

@@ -13,7 +13,7 @@ const DSN = 'pgsql:dbname='. DB_NAME. ' host=' . DB_HOST. ' port=' . DB_PORT;
  */
 function add_local_user($mail_addr, $password)
 {
-    $user_info[0] = array(array('mail_addr' => $mail_addr, 'password' => $password));
+    $user_info = array(array('mail_addr' => $mail_addr, 'password' => $password));
     try {
         add_local_users($user_info);
     } catch (Exception $e) {

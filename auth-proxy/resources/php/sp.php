@@ -13,7 +13,7 @@ if (! $as->isAuthenticated()) {
 // get attributes
 $attributes = $as->getAttributes();
 $mail_address = $attributes[GF_ATTRIBUTES['mail']][0];
-$group_list = $attributes[GF_ATTRIBUTES['isMemberOf'];
+$group_list = $attributes[GF_ATTRIBUTES['isMemberOf']];
 // check authorization
 if (check_authorization($group_list)) {
     // redirect to authenticator of JupyterHub

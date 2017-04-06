@@ -37,6 +37,11 @@ function redirect_by_fed_user_session()
 {
     @session_start();
 
+    // if idp metadata file does not exist, cancel the session check. 
+    if (!file_exists(IDP_METADATA_FILE_PATH)) {
+        return;
+    }
+
     $as = new SimpleSAML_Auth_Simple('default-sp');
     if ($as->isAuthenticated()) {
         if (isset($_SESSION['username'])) {
@@ -134,6 +139,12 @@ function h($str)
     return htmlspecialchars($str, ENT_QUOTES, 'UTF-8');
 }
 
+/**
+ * Get local username form user's mail address
+ *
+ * @param string $str  mail_address
+ * @return string  local username
+ */
 function get_username_from_mail_address($mail_address)
 {
     $result = "";

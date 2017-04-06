@@ -1,5 +1,5 @@
 <?php
-const COURSE_NAME = "master";
+const COURSE_NAME = "";
 const HUB_URL = "http://192.168.33.88:8000";
 const AUTHOR_GROUP_LIST = array (
 );
