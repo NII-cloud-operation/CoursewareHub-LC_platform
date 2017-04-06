@@ -111,12 +111,15 @@ EOF
 associate_idp_proxy()
 {
     echo associate_idp_proxy
+    idp_proxy_host_name="$1"
+    auth_proxy_host_name="$2"
+
     # set idp-proxy metadata in auth-proxy
-#    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_3 bash << EOF
-#/var/www/nginx/simplesamlphp/bin/get_idp_proxy_metadata.sh  idp-proxy-name
-#EOF
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_3 bash << EOF
+/var/www/nginx/simplesamlphp/bin/get_idp_proxy_metadata.sh  $idp_proxy_host_name
+EOF
     # register auth-proxy metadat in idp-proxy 
-#    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_3 bash << EOF
+    #"$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_3 bash << EOF
 #/var/www/nginx/simplesamlphp/bin/add_auth_proxy_metadata.php entityID metadataURL -> hostname/ip-address of auth-proxy 
 }
 
