@@ -95,7 +95,7 @@ CREATE TABLE local_users (
 EOF
 
     # create password for teacher    
-    password=$(tr -cd [:alpha:] < /dev/urandom | head -c 10)
+    password=$($rootdir/bin/pwgen.sh)
 
     # register teacher's userid and password
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_3 bash << EOF
@@ -178,7 +178,7 @@ delete_jupyterhub()
     [ -d "$hubdir" ] || reportfailed "Hub direcotry '$hubdir' does not exist."
 
     while true; do
-        read -p 'Do you like coffee? [Y/n]' answer
+        read -p "Do you delete course '$hubdir'? [Y/n]" answer
         case $answer in
             '' | [Yy]* )
                 rm -rf $hubdir
