@@ -130,6 +130,21 @@ jupyter notebook --generate-config
 EOF
 	) ; $iferr_exit
 	
+	(
+	    $starting_step "Set jupyter password"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" 2>/dev/null 1>/dev/null <<EOF
+grep -q sha1 "$JCFG"
+EOF
+	    $skip_step_if_already_done; set -e
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" 2>/dev/null 1>/dev/null <<EOF
+# set default password
+saltpass="\$(echo $'from notebook.auth import passwd\nprint(passwd("${JUPYTER_PASSWORD:=stepbystep}"))' | python)"
+echo "c.NotebookApp.password = '\$saltpass'" >>"$JCFG"
+EOF
+	) ; $iferr_exit
+	
     ) ; $iferr_exit
     
     (
