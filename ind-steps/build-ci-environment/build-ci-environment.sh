@@ -212,4 +212,21 @@ EOF
 
 ) ; $iferr_exit
 
-touch "$DATADIR/flag-inital-build-completed"
+(
+    $starting_group "Set up for CI notebook"
+    (
+	$starting_step "Set ssh key pair"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -f .ssh/id_rsa ]
+EOF
+	$skip_step_if_already_done; set -e
+
+	# following instructions on https://github.com/takluyver/bash_kernel
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<'EOF'
+ssh-keygen -t rsa -N "" -f /home/ubuntu/.ssh/id_rsa
+EOF
+	
+    ) ; $iferr_exit
+
+) ; $iferr_exit
