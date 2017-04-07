@@ -215,6 +215,7 @@ EOF
 
 (
     $starting_group "Set up for CI notebook"
+
     (
 	$starting_step "Set ssh key pair"
 	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
@@ -230,4 +231,22 @@ EOF
 	
     ) ; $iferr_exit
 
+    (
+	$starting_step "Upload repository to this KVM"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -d jupyter-platform-dev/.git ]
+EOF
+	$skip_step_if_already_done; set -e
+
+	# following instructions on https://github.com/takluyver/bash_kernel
+	(
+	    cd "$ORGCODEDIR/../../.." && \
+		tar c jupyter-platform-dev/.git
+	) | "$DATADIR/$VMDIR/ssh-shortcut.sh" tar x
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<'EOF'
+cd jupyter-platform-dev/
+git reset --hard
+EOF
+    ) ; $iferr_exit
 ) ; $iferr_exit
