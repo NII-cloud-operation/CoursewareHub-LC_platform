@@ -154,7 +154,8 @@ EOF
 	    $skip_step_if_already_done; set -e
 	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 		"$DATADIR/$VMDIR/ssh-shortcut.sh" 2>/dev/null 1>/dev/null <<EOF
-echo "c.NotebookApp.ip = '*'" >>"$JCFG"
+mkdir -p /home/ubuntu/notebook           # if created, jupyter starts but hangs
+echo "c.NotebookApp.ip = '*'" >>"$JCFG"  # Allow connections from outside
 EOF
 	) ; $iferr_exit
 	
