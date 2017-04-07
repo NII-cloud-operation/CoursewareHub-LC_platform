@@ -18,7 +18,7 @@ conffiles=(
 #done
 
 ## This script assumes link to ubuntu image is already at
-## "$DATADIR/ubuntu-image-links/ubuntu-image.tar.gz"
+## the location set by kvm-bm-setup.sh-new.
 
 VMDIR=jhvmdir
 
