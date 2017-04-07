@@ -107,6 +107,21 @@ EOF
 
     ) ; $iferr_exit
 
+    (
+	$starting_step "Install bash_kernel"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -d .pyenv/versions/anaconda3-4.3.0/lib/python3.6/site-packages/bash_kernel ]
+EOF
+	$skip_step_if_already_done; set -e
+
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<'EOF'
+pip install bash_kernel
+python -m bash_kernel.install
+EOF
+    ) ; $iferr_exit
+
+
 ) ; $iferr_exit
 
 touch "$DATADIR/flag-inital-build-completed"
