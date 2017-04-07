@@ -62,7 +62,7 @@ EOF
 ) ; $iferr_exit
 
 (
-    $starting_group "Set up install jupyter in main KVM"
+    $starting_group "Install jupyter in main KVM"
     (
 	$starting_step "Set up pyenv"
 	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
@@ -110,20 +110,23 @@ EOF
     ) ; $iferr_exit
 
     (
-	$starting_step "Install bash_kernel"
-	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+	$starting_group "Install extra kernels and extensions for jupyter"
+	
+	(
+	    $starting_step "Install bash_kernel"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 [ -d .pyenv/versions/anaconda3-4.3.0/lib/python3.6/site-packages/bash_kernel ]
 EOF
-	$skip_step_if_already_done; set -e
+	    $skip_step_if_already_done; set -e
 
-	# following instructions on https://github.com/takluyver/bash_kernel
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<'EOF'
+	    # following instructions on https://github.com/takluyver/bash_kernel
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<'EOF'
 pip install bash_kernel
 python -m bash_kernel.install
 EOF
+	) ; $iferr_exit
     ) ; $iferr_exit
-
 
 ) ; $iferr_exit
 
