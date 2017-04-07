@@ -65,7 +65,7 @@ EOF
     $starting_group "Set up install jupyter in main KVM"
     (
 	$starting_step "Set up pyenv"
-	[ -x "$DATADIR/$VMDIR/shortcut.sh" ] &&
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 which pyenv
 EOF
