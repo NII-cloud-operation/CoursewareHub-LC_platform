@@ -7,11 +7,6 @@ path_to_ubuntu_image="$2"
 
 eval_iferr_exit 'path_to_ubuntu_image="$(readlink -f "$path_to_ubuntu_image")"'
 
-shift 2
-ip_array=( "$@" )
-for ip in "${ip_array[@]}"; do
-    [ "${ip//[0-9]}" = "..." ] || iferr_exit "Parameter ($ip) is not a valid IP4 address"
-done
 
 thisfile="${0##*/}"
 mainscript="${thisfile%-new}"
@@ -27,23 +22,10 @@ existing_directory_for_datadir()
 }
 existing_directory_for_datadir
 
-[ "${#ip_array[@]}" -eq 1 ] || iferr_exit "Number of IP addresses on command line does not match number of one"
+vmdirpath="$DATADIR/civmdir"
 
-vmdirlist=(
-    civmdir
-)
-
-ipindex=0
-for i in "${vmdirlist[@]}"; do
-    IP="${ip_array[ipindex++]}"
-    case "$i" in
-        civmdir)
-            imagepath="$path_to_ubuntu_image"
-            MAC=52:54:00:12:00:91
-            ;;
-    esac
-    "$ORGCODEDIR/../kvmsteps/kvmsteps.sh-new" "$DATADIR/$i" "$imagepath" OK || iferr_exit
-    cat >>"$DATADIR/$i/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for $i"
+"$ORGCODEDIR/../kvmsteps/kvmsteps.sh-new" "$vmdirpath" "$path_to_ubuntu_image" || iferr_exit
+cat >>"$vmdirpath/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for $i"
 # Not all of these are used on every VM
 export EXTRAHOSTFWDREL=""
 
@@ -55,14 +37,9 @@ EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::80-$IP:80
 EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::88-$IP:8888
 #EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::90-$IP:9000
 
-export VMIP="$IP"
+#export VMIP="$IP"
 export mcastMAC="none"  # none means boot with only the eth0 user-mode KVM network device
 export mcastPORT="none"
 EOF
-done
 
-cat  >>"$DATADIR/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for whole environment"
-$(declare -p vmdirlist)
-EOF
-
-echo "Success"
+echo "Setup of $datadir completed OK"

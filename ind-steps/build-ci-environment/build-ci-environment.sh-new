@@ -20,6 +20,10 @@ standard_datadir_setup()
 }
 standard_datadir_setup
 
+cat  >>"$DATADIR/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for whole environment"
+# datadir.conf is required, so start with an empty one
+EOF
+
 # Actually put this debugging script in the directory, not its symbolic link.
 cat >"$DATADIR/simpleinit.sh" <<EOF
 # This script is to make it easy to run jupyterhub environments outside
