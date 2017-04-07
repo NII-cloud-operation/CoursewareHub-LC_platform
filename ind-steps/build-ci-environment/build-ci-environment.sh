@@ -145,6 +145,50 @@ echo "c.NotebookApp.password = '\$saltpass'" >>"$JCFG"
 EOF
 	) ; $iferr_exit
 	
+	(
+	    $starting_step "Miscellaneous jupyter configuration"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" 2>/dev/null 1>/dev/null <<EOF
+grep -qF -e "c.NotebookApp.ip = '*'" "$JCFG"
+EOF
+	    $skip_step_if_already_done; set -e
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" 2>/dev/null 1>/dev/null <<EOF
+echo "c.NotebookApp.ip = '*'" >>"$JCFG"
+EOF
+	) ; $iferr_exit
+	
+	(
+	    $starting_step "Set up jupyter with supervisord"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" 2>/dev/null 1>/dev/null <<EOF
+[ -f /etc/supervisor/conf.d/jupyter.conf ]
+EOF
+	    $skip_step_if_already_done; set -e
+	    # ref: https://github.com/jupyterhub/jupyterhub/issues/317
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" sudo bash 2>/dev/null 1>/dev/null <<EOF
+cat >/etc/supervisor/conf.d/jupyter.conf <<EOF2
+[program:jupyter]
+user=ubuntu
+command=/home/ubuntu/.pyenv/versions/anaconda3-4.3.0/bin/jupyter notebook
+directory=/home/ubuntu
+autostart=true
+autorestart=true
+startretries=1
+exitcodes=0,2
+stopsignal=TERM
+redirect_stderr=true
+stdout_logfile=/var/log/jupyter.log
+stdout_logfile_maxbytes=1MB
+stdout_logfile_backups=10
+stdout_capture_maxbytes=1MB
+EOF2
+
+/usr/bin/supervisorctl reload
+
+EOF
+	) ; $iferr_exit
     ) ; $iferr_exit
     
     (

@@ -46,16 +46,16 @@ EOF
     ) ; $iferr_exit
 
     (
-	$starting_step "Install git"
+	$starting_step "Install git and supervisor"
 	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
-which git
+which git && which supervisorctl
 EOF
 	$skip_step_if_already_done ; set -e
 
 	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 sudo apt-get update
-sudo apt-get -y install git
+sudo apt-get -y install git supervisor
 EOF
     ) ; $iferr_exit
 
