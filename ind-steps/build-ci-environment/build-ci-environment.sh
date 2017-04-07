@@ -95,6 +95,8 @@ EOF
     ) ; $iferr_exit
 
     (
+	# Note: anaconda3-4.3.0 already installs jupyter so this step
+	# will probably always be skipped
 	$starting_step "Install jupyter"
 	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
@@ -115,6 +117,7 @@ EOF
 EOF
 	$skip_step_if_already_done; set -e
 
+	# following instructions on https://github.com/takluyver/bash_kernel
 	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<'EOF'
 pip install bash_kernel
 python -m bash_kernel.install
