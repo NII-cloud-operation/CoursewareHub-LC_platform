@@ -33,8 +33,6 @@ vmdirlist=(
     civmdir
 )
 
-randomport="$(( 5000 + ( $RANDOM % 5000 ) ))"
-
 ipindex=0
 for i in "${vmdirlist[@]}"; do
     IP="${ip_array[ipindex++]}"
@@ -58,8 +56,8 @@ EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::88-$IP:8888
 #EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::90-$IP:9000
 
 export VMIP="$IP"
-export mcastMAC="$MAC"
-export mcastPORT=$randomport
+export mcastMAC="none"  # none means boot with only the eth0 user-mode KVM network device
+export mcastPORT="none"
 EOF
 done
 
