@@ -110,6 +110,29 @@ EOF
     ) ; $iferr_exit
 
     (
+	$starting_group "Configure jupyter server"
+
+	# Refs:
+	#    https://jupyter.readthedocs.io/en/latest/projects/config.html
+	#    http://jupyter-notebook.readthedocs.io/en/latest/public_server.html
+	JCFG="/home/ubuntu/.jupyter/jupyter_notebook_config.py"
+
+	(
+	    $starting_step "Generate default configuration file"
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" 2>/dev/null 1>/dev/null <<EOF
+[ -f "$JCFG" ]									
+EOF
+	    $skip_step_if_already_done; set -e
+	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+		"$DATADIR/$VMDIR/ssh-shortcut.sh" 2>/dev/null 1>/dev/null <<EOF
+jupyter notebook --generate-config
+EOF
+	) ; $iferr_exit
+	
+    ) ; $iferr_exit
+    
+    (
 	$starting_group "Install extra kernels and extensions for jupyter"
 	
 	(
