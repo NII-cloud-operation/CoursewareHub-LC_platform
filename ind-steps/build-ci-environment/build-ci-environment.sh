@@ -154,8 +154,10 @@ EOF
 	    $skip_step_if_already_done; set -e
 	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 		"$DATADIR/$VMDIR/ssh-shortcut.sh" 2>/dev/null 1>/dev/null <<EOF
-mkdir -p /home/ubuntu/notebook           # if created, jupyter starts but hangs
 echo "c.NotebookApp.ip = '*'" >>"$JCFG"  # Allow connections from outside
+echo "c.NotebookApp.notebook_dir = 'notebooks'" >>"$JCFG"
+
+mkdir -p /home/ubuntu/notebooks
 EOF
 	) ; $iferr_exit
 	
@@ -248,5 +250,20 @@ EOF
 cd jupyter-platform-dev/
 git reset --hard
 EOF
+    ) ; $iferr_exit
+
+    (
+	$starting_step "Upload notebooks to jupyter server"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+[ "$(ls ./notebooks)" != "" ]
+EOF
+	$skip_step_if_already_done; set -e
+
+	# following instructions on https://github.com/takluyver/bash_kernel
+	(
+	    cd "$ORGCODEDIR" && \
+		tar c notebooks
+	) | "$DATADIR/$VMDIR/ssh-shortcut.sh" tar x
     ) ; $iferr_exit
 ) ; $iferr_exit
