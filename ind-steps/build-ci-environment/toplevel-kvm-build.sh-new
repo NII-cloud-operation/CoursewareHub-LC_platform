@@ -1,0 +1,24 @@
+#!/bin/bash
+
+source "$(dirname $(readlink -f "$0"))/bashsteps-bash-utils-jan2017.source" || exit
+
+new_dir="$1"
+
+# TODO: decide the best way to configure node count and the VM ip addresses
+defaultip=(192.168.33.91)
+
+: "${ipaddresses:=${defaultip[*]}}"
+
+(
+    "$ORGCODEDIR/build-ci-environment.sh-new" "$new_dir"
+    iferr_exit
+    
+    thisfile="${0##*/}"
+    mainscript="${thisfile%-new}"
+    ln -s "$ORGCODEDIR/$mainscript" "$new_dir" || iferr_exit "ln to $mainscript"
+    
+    "$ORGCODEDIR/kvm-vm-setup.sh-new" "$new_dir" ~/ubuntu-image-resources/ubuntu-14-instance-build.img-sshkeys-update-upgrade.tar.gz $ipaddresses
+) || {
+    # clean up if error
+    rm -fr "$new_dir"
+}

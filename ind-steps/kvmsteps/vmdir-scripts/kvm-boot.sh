@@ -60,6 +60,12 @@ calculate_ports
     : ${mcastPORT:="1234"}  ${mcastMAC:="52:54:00:12:00:00"}
     : ${mcastnet="-net nic,vlan=1,macaddr=$mcastMAC  -net socket,vlan=1,mcast=239.255.10.10:$mcastPORT"}
 
+    # If mcastnet is set to "", the above line will leave it that way , so
+    # export mcastnet='' can be used to boot with no second device.
+    # But this is a bit tricky (i.e ${var=value} vs ${var:=value} ), so
+    # the following allows for more explicit code.
+    [[ "$mcastnet" == *none* ]] && mcastnet=''
+    
     : ${KVMVMNAME:=} # set -u workaround
     if [ "$KVMVMNAME" == "" ]; then
 	# name the VM after that last two directory elements

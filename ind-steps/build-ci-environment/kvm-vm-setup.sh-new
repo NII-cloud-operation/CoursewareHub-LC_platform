@@ -1,0 +1,45 @@
+#!/bin/bash
+
+source "$(dirname $(readlink -f "$0"))/bashsteps-bash-utils-jan2017.source" || exit
+
+existing_dir="$1"
+path_to_ubuntu_image="$2"
+
+eval_iferr_exit 'path_to_ubuntu_image="$(readlink -f "$path_to_ubuntu_image")"'
+
+
+thisfile="${0##*/}"
+mainscript="${thisfile%-new}"
+
+existing_directory_for_datadir()
+{
+    ## If this file's name is the main script's filename + "-new", then
+    ## the following lines of code should be reusable:
+    [ "$thisfile" != "$mainscript" ] || iferr_exit 'required filename pattern not followed'
+    [ "$existing_dir" != "" ] || iferr_exit "First parameter should be the emacs build directory"
+    eval_iferr_exit 'DATADIR="$(readlink -f "$existing_dir")"'
+    ln -s "$ORGCODEDIR/$mainscript" "$existing_dir" || iferr_exit "ln to $mainscript"
+}
+existing_directory_for_datadir
+
+vmdirpath="$DATADIR/civmdir"
+
+"$ORGCODEDIR/../kvmsteps/kvmsteps.sh-new" "$vmdirpath" "$path_to_ubuntu_image" || iferr_exit
+cat >>"$vmdirpath/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for $i"
+# Not all of these are used on every VM
+export EXTRAHOSTFWDREL=""
+
+# port 22 is already assigned by kvmsteps
+EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::43-$IP:443
+EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::80-$IP:80
+#EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::81-$IP:8001
+#EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::83-$IP:8000
+EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::88-$IP:8888
+#EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::90-$IP:9000
+
+#export VMIP="$IP"
+export mcastMAC="none"  # none means boot with only the eth0 user-mode KVM network device
+export mcastPORT="none"
+EOF
+
+echo "Setup of $datadir completed OK"
