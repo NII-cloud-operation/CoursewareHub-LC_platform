@@ -39,10 +39,10 @@ function add_local_users($user_info)
 
     try {
         $dbh->beginTransaction(); 
+        $st = $dbh->prepare($insert);
         foreach ($user_info as $info) {
             $user_name = get_username_from_mail_address($info['mail_addr']);
             $hashed_password = password_hash($info['password'], CRYPT_BLOWFISH); 
-            $st = $dbh->prepare($insert);
             $rep = $st->execute(array(':user_name'=>$user_name, ':password'=>$hashed_password, ':mail'=>$info['mail_addr']));
         }
         $rep = $dbh->commit(); 
@@ -63,7 +63,7 @@ function add_local_users($user_info)
  */
 function delete_local_users($mail_addrs)
 {
-    $delete = "DELETE FROM local_users where mail = :mail_addr;";
+    $delete = "DELETE FROM local_users where user_name = :user_name;";
     try {
         $dbh = new PDO(DSN, DB_USER, DB_PASS, array(PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION));
     } catch (Exception $e) {
@@ -73,10 +73,41 @@ function delete_local_users($mail_addrs)
     $st = null;
     try {
         $dbh->beginTransaction(); 
-        foreach ($mail as $mail_addrs) {
-            $st = $dbh->prepare($delete);
-            $st->execute(array(':mail_addr' => $mail));
+        $st = $dbh->prepare($delete);
+        foreach ($mail_addrs as $mail) {
+            $user_name = get_username_from_mail_address($mail);
+            $st->execute(array(':user_name' => $user_name));
         }
+        $dbh->commit(); 
+        $st = null;
+        $dbh = null;
+    } catch (Exception $e) {
+        $st = null;
+        $dbh = null;
+        throw $e;
+    } 
+}
+
+
+/**
+ * Delete local user by ID.
+ *
+ * @param int $id id of user's record to be deleted. 
+ */
+function delete_local_user_by_id($id)
+{
+    $delete = "DELETE FROM local_users where id = :id;";
+    try {
+        $dbh = new PDO(DSN, DB_USER, DB_PASS, array(PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION));
+    } catch (Exception $e) {
+        $dbh = null;
+        throw $e;
+    } 
+    $st = null;
+    try {
+        $dbh->beginTransaction(); 
+        $st = $dbh->prepare($delete);
+        $st->execute(array(':id' => $id));
         $dbh->commit(); 
         $st = null;
         $dbh = null;
