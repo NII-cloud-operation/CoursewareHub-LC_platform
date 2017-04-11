@@ -1,0 +1,1 @@
+ssh -i ~/.ssh/local_user -q ubuntu@192.168.33.88 -q "sudo docker exec -i root_nginx_3 bash"
