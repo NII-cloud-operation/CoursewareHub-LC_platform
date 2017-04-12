@@ -4,10 +4,17 @@ source "$(dirname $(readlink -f "$0"))/bashsteps-bash-utils-jan2017.source" || e
 
 existing_dir="$1"
 path_to_ubuntu_image="$2"
+bridge_param="$3"
 
 eval_iferr_exit 'path_to_ubuntu_image="$(readlink -f "$path_to_ubuntu_image")"'
 
-shift 2
+which brctl ; iferr_exit "brctl command is not installed (perhaps try: yum install bridge-utils)"
+
+bridgeslist="$(brctl show | (read ln ;  while read f1 therest ; do echo "<<$f1>>" ; done ) )"
+
+[[ "$bridgeslist" == *'<<'$bridge_param'>>'* ]] ; iferr_exit "Bridge named ($bridge_param) not found"
+
+shift 3
 ip_array=( "$@" )
 for ip in "${ip_array[@]}"; do
     [ "${ip//[0-9]}" = "..." ] || iferr_exit "Parameter ($ip) is not a valid IP4 address"
@@ -80,8 +87,10 @@ EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::84-$IP:8888
 EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::90-$IP:9000
 
 export VMIP="$IP"
-export mcastMAC="$MAC"
-export mcastPORT=$randomport
+export mcastMAC="none"  # none means boot with only the eth0 user-mode KVM network device
+export mcastPORT="none"
+
+export bridgeNAME="$bridge_param"
 EOF
 done
 
