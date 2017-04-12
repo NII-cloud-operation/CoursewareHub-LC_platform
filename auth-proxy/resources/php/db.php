@@ -13,6 +13,10 @@ const DSN = 'pgsql:dbname='. DB_NAME. ' host=' . DB_HOST. ' port=' . DB_PORT;
  */
 function add_local_user($mail_addr, $password)
 {
+    if (empty($mail_addr) || empty($password)) {
+       // under construct:
+    }
+
     $user_info = array(array('mail_addr' => $mail_addr, 'password' => $password));
     try {
         add_local_users($user_info);
@@ -108,6 +112,38 @@ function delete_local_user_by_id($id)
         $dbh->beginTransaction(); 
         $st = $dbh->prepare($delete);
         $st->execute(array(':id' => $id));
+        $dbh->commit(); 
+        $st = null;
+        $dbh = null;
+    } catch (Exception $e) {
+        $st = null;
+        $dbh = null;
+        throw $e;
+    } 
+}
+
+
+/**
+ * Update password of local user.
+ *
+ * @param string $mail_addr user's email address to reset the password. 
+ */
+function update_local_user_password($mail_addr, $password)
+{
+    $update = "UPDATE local_users set password = :password where user_name = :user_name;";
+    try {
+        $dbh = new PDO(DSN, DB_USER, DB_PASS, array(PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION));
+    } catch (Exception $e) {
+        $dbh = null;
+        throw $e;
+    } 
+    $st = null;
+    try {
+        $dbh->beginTransaction(); 
+        $st = $dbh->prepare($update);
+        $user_name = get_username_from_mail_address($mail_addr);
+        $hashed_password = password_hash($password, CRYPT_BLOWFISH);
+        $st->execute(array(':password' => $hashed_password, ':user_name' => $user_name));
         $dbh->commit(); 
         $st = null;
         $dbh = null;
