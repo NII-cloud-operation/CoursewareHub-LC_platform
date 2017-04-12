@@ -50,7 +50,10 @@ do_one_vm()
 	    tar $TARPARAMS "$DATADIR/$VMDIR-snapshot$TARSUFFIX" "$VMDIR"
 	    echo "..finished."
 
-	    cp "$DATADIR/$VMDIR/datadir.conf.save" "$DATADIR/$VMDIR/datadir.conf"
+	    if [ "$bridgeNAME" == "" ]; then
+		# so original can be rebooted
+		cp "$DATADIR/$VMDIR/datadir.conf.save" "$DATADIR/$VMDIR/datadir.conf"
+	    fi
 	) ; $iferr_exit
     ) ; $iferr_exit
 }
