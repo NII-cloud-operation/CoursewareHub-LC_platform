@@ -90,6 +90,7 @@ export VMIP="$IP"
 export mcastMAC="none"  # none means boot with only the eth0 user-mode KVM network device
 export mcastPORT="none"
 
+export tapMAC="$MAC"
 export bridgeNAME="$bridge_param"
 EOF
 done

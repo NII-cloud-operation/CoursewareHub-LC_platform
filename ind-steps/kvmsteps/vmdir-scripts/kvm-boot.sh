@@ -65,7 +65,11 @@ calculate_ports
     # But this is a bit tricky (i.e ${var=value} vs ${var:=value} ), so
     # the following allows for more explicit code.
     [[ "$mcastnet" == *none* ]] && mcastnet=''
-    
+
+    : ${tapMAC:=''} ${bridgeNAME:=''}  # workaround because set -u is in effect
+    : ${bridgetapnet="-net nic,vlan=1,macaddr=$tapMAC  -net bridge,br=$bridgeNAME,vlan=1"}
+    [[ "$bridgeNAME" == "" ]] && bridgetapnet=''
+
     : ${KVMVMNAME:=} # set -u workaround
     if [ "$KVMVMNAME" == "" ]; then
 	# name the VM after that last two directory elements
@@ -113,6 +117,7 @@ calculate_ports
 	    -net user,net=10.0.3.0/24,vlan=0,hostfwd=tcp::$SSHPORT-:22$EXTRAHOSTFWD$hostfwdrel
 
             $mcastnet
+	    $bridgetapnet
 EOF
     }
 
