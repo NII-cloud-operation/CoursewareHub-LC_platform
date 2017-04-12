@@ -1,0 +1,92 @@
+#!/bin/bash
+
+source "$(dirname $(readlink -f "$0"))/bashsteps-bash-utils-jan2017.source" || exit
+
+existing_dir="$1"
+path_to_ubuntu_image="$2"
+
+eval_iferr_exit 'path_to_ubuntu_image="$(readlink -f "$path_to_ubuntu_image")"'
+
+shift 2
+ip_array=( "$@" )
+for ip in "${ip_array[@]}"; do
+    [ "${ip//[0-9]}" = "..." ] || iferr_exit "Parameter ($ip) is not a valid IP4 address"
+done
+
+
+thisfile="${0##*/}"
+mainscript="${thisfile%-new}"
+
+existing_directory_for_datadir()
+{
+    ## If this file's name is the main script's filename + "-new", then
+    ## the following lines of code should be reusable:
+    [ "$thisfile" != "$mainscript" ] || iferr_exit 'required filename pattern not followed'
+    [ "$existing_dir" != "" ] || iferr_exit "First parameter should be the emacs build directory"
+    [ -f "$existing_dir/datadir.conf" ] || iferr_exit "Second parameter should be existing datadir"
+    eval_iferr_exit 'DATADIR="$(readlink -f "$existing_dir")"'
+    ln -s "$ORGCODEDIR/$mainscript" "$existing_dir" || iferr_exit "ln to $mainscript"
+}
+existing_directory_for_datadir
+
+eval_iferr_exit 'source "$DATADIR/datadir.conf"'
+node_array=( $node_list )
+eval_iferr_exit 'nodecount="${#node_array[@]}"'
+
+[ "$nodecount" -gt 0 ] && [ "$nodecount" -lt 20 ] || iferr_exit "Invalid nodecount in datadir.conf"
+[ "${#ip_array[@]}" -eq $((nodecount + 2)) ] || iferr_exit "Number of IP addresses on command line does not match number of nodes plus two"
+
+vmdirlist=(
+    jhvmdir
+    jhvmdir-hub
+    $(for i in $(seq 1 $nodecount) ; do echo jhvmdir-node$i ; done)
+)
+
+node_list="$(for i in $(seq 1 $nodecount) ; do echo -n " node$i" ; done)"
+
+randomport="$(( 5000 + ( $RANDOM % 5000 ) ))"
+
+ipindex=0
+
+for i in "${vmdirlist[@]}"; do
+    IP="${ip_array[ipindex++]}"
+    case "$i" in
+	jhvmdir)
+	    imagepath="$path_to_ubuntu_image"
+	    MAC=52:54:00:12:00:99
+	    ;;
+	jhvmdir-hub)
+	    imagepath="$DATADIR/jhvmdir/ubuntu-before-nbgrader.tar.gz"
+	    MAC=52:54:00:12:00:88
+	    ;;
+	jhvmdir-node*)
+	    imagepath="$DATADIR/jhvmdir/ubuntu-before-nbgrader.tar.gz"
+	    n="${i#*-node}"
+	    nn="$(printf "%02d" "$n")"
+	    MAC=52:54:00:12:00:$nn
+	    ;;
+    esac
+    "$ORGCODEDIR/../kvmsteps/kvmsteps.sh-new" "$DATADIR/$i" "$imagepath" OK || iferr_exit
+    cat >>"$DATADIR/$i/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for $i"
+# Not all of these are used on every VM
+export EXTRAHOSTFWDREL=""
+
+# port 22 is already assigned by kvmsteps
+EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::43-$IP:443
+EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::80-$IP:80
+EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::81-$IP:8001
+EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::83-$IP:8000
+EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::84-$IP:8888
+EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::90-$IP:9000
+
+export VMIP="$IP"
+export mcastMAC="$MAC"
+export mcastPORT=$randomport
+EOF
+done
+
+cat  >>"$DATADIR/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for whole environment"
+$(declare -p vmdirlist)
+EOF
+
+echo "Success"
