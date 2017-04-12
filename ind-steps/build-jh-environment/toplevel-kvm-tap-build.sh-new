@@ -17,7 +17,7 @@ defaultip=( 192.168.33.{99,88,11,12} )
     mainscript="${thisfile%-new}"
     ln -s "$ORGCODEDIR/$mainscript" "$new_dir" || iferr_exit "ln to $mainscript"
     
-    "$ORGCODEDIR/kvm-vm-setup.sh-new" "$new_dir" ~/ubuntu-image-resources/ubuntu-14-instance-build.img-sshkeys-update-upgrade.tar.gz $ipaddresses
+    "$ORGCODEDIR/kvm-tap-vm-setup.sh-new" "$new_dir" ~/ubuntu-image-resources/ubuntu-14-instance-build.img-sshkeys-update-upgrade.tar.gz $ipaddresses
 ) || {
     # clean up if error
     rm -fr "$new_dir"
