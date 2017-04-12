@@ -23,6 +23,8 @@ vmlist=(
 TARSUFFIX=".tar"
 TARPARAMS="cSf"
 
+: ${bridgeNAME:=''} # for set -u, in case not in datadir.conf
+
 do_one_vm()
 {
     VMDIR="$1"
@@ -38,8 +40,10 @@ do_one_vm()
 	    [ -f "$DATADIR/$VMDIR-snapshot$TARSUFFIX" ]
 	    $skip_step_if_already_done;  set -e
 
-	    cp "$DATADIR/$VMDIR/datadir.conf" "$DATADIR/$VMDIR/datadir.conf.save"
-	    sed -i 's,mcastPORT=.*$,mcastPORT=set-this-before-booting,' "$DATADIR/$VMDIR/datadir.conf"
+	    if [ "$bridgeNAME" == "" ]; then
+		cp "$DATADIR/$VMDIR/datadir.conf" "$DATADIR/$VMDIR/datadir.conf.save"
+		sed -i 's,mcastPORT=.*$,mcastPORT=set-this-before-booting,' "$DATADIR/$VMDIR/datadir.conf"
+	    fi
 
 	    echo -n "Creating tar file..."
 	    cd "$DATADIR"
