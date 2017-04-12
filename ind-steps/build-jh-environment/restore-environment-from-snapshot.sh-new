@@ -13,6 +13,26 @@ new_dir="$2"
 DATADIRCONF="$snapshot_source/datadir.conf"
 source "$DATADIRCONF"
 
+if [ "$bridgeNAME" != "" ]; then
+    
+    bridge_param="$3"
+
+    [ "$bridge_param" != "" ] ; iferr_exit "Third parameter must be the name of an existing bridge"
+
+    which brctl >/dev/null 2>&1 ; iferr_exit "brctl command is not installed (perhaps try: yum install bridge-utils)"
+
+    bridgeslist="$(brctl show | (read ln ;  while read f1 therest ; do echo "<<$f1>>" ; done ) )"
+
+    pat="<<$bridge_param>>"
+    [[ "$bridgeslist" == *$pat* ]] ; iferr_exit "Bridge named ($bridge_param) not found"
+
+    bconfpath="/etc/qemu-kvm/bridge.conf"
+    grep -qw -e "allow $bridge_param"  "$bconfpath"
+    iferr_exit "Make sure 'allow $bridge_param' is in $bconfpath"
+
+    [[ "$(ip link show "$bridge_param")" == *UP* ]] ; iferr_exit "Make sure bridge ($bridge_param) is UP"
+fi
+
 [ "$node_list" != "" ] || reportfailed "node_list not defined"
 
 vmlist=(
@@ -38,6 +58,7 @@ cat >>"$new_dir/datadir.conf" <<EOF
 $(declare -p vmlist )
 
 snapshot_source="$snapshot_source"
+export bridgeNAME="$bridge_param"
 EOF
 
 ln -s "$snapshot_source" "$new_dir/snapshot_source_link"

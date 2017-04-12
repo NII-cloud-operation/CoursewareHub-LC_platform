@@ -32,6 +32,14 @@ restore_one_vm()
 	    sed -i 's,KVMBIN,KVMBINxxx,' "$VMDIR/datadir.conf"
 	    echo "..finished."
 	) ; $iferr_exit
+
+	(
+	    $starting_step "Copy new bridge name to $VMDIR/datadir.conf (only for bridge/tap machines)"
+	    [[ "$(source "$DATADIR/$VMDIR"/datadir.conf 2>/dev/null && echo "$bridgeNAME")" == "$bridgeNAME" ]]
+	    $skip_step_if_already_done; set -e
+	    echo "export bridgeNAME=\"$bridgeNAME\"" >>"$DATADIR/$VMDIR"/datadir.conf
+	)  ; $iferr_exit
+
     ) ; $iferr_exit
 }
 
@@ -40,8 +48,8 @@ for i in "${vmlist[@]}"; do
 done
 
 (
-    $starting_step "Assign mcastPORT"
-    [[ "$(cat "$DATADIR"/*/datadir.conf)" != *set-this* ]]
+    $starting_step "Assign mcastPORT (only for mcast machines)"
+    [ "$bridgeNAME" != ""  ] || [[ "$(cat "$DATADIR"/*/datadir.conf)" != *set-this* ]]
     $skip_step_if_already_done; set -e
 
     alreadyset="$(cat "$DATADIR"/*/datadir.conf | grep mcastPORT= | grep -v set-this || true)"
@@ -77,7 +85,7 @@ done
     (
 	$starting_step "Create create br0 on hub"
 	## TODO: generalize the 33.88 part
-	addr="$(source "$DATADIR/jhvmdir-hub/datadir.conf" ; echo "$VMIP")"
+	addr="$(source "$DATADIR/jhvmdir-hub/datadir.conf" 2>/dev/null && echo "$VMIP")"
 	"$DATADIR"/jhvmdir-hub/ssh-shortcut.sh <<EOF 1>/dev/null 2>&1
 ip link show br0 && [[ "\$(ifconfig br0)" == *${addr}* ]]
 EOF
