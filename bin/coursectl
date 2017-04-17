@@ -23,6 +23,10 @@ export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfa
 
 rootdir="${ORGCODEDIR%/*}"
 
+AUTH_PROXY_NAME=root_nginx_3
+
+JUPYTER_USER_ID=1001
+
 init_jupyterhub()
 {
     hubdir="$1"  # Path to the build directory
@@ -37,17 +41,31 @@ init_jupyterhub()
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker rm -f root_nginx_1
 
     # create local user id of teacher from teacher's mail address
-    teacherid=$("$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_3 bash << EOF
+    teacherid=$("$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i ${AUTH_PROXY_NAME} bash << EOF
 php -r "require_once '/var/www/php/functions.php'; echo get_username_from_mail_address('"$teacher_mail"');"
 EOF
     )
-    echo "teacheid: "$teacherid 
+    echo "teacherid: "$teacherid 
+
+    # generate ssh keys for local user operetion from teacher's Jupyter server
+    auth_proxy_ssh_key='ssh-auth-proxy'
+    ssh-keygen -t rsa -b 2048 -N "" -f /tmp/$auth_proxy_ssh_key
 
     # configure jupyterhub 
     reconfigure_one_jupyterhub "$hubdir" "$teacherid"
     push_hub_patch "$hubdir" 1>/dev/null
     create_directory_structure "$hubdir" "$teacherid"
     
+    # set ssh key for auth-proxy
+    (cd /tmp; tar c $auth_proxy_ssh_key) | \
+	"$hubdir/jhvmdir-hub/ssh-shortcut.sh" -q sudo tar xv -C /jupyter/admin/$teacherid/.ssh/
+    rm /tmp/$auth_proxy_ssh_key
+    # add ssh public key to authorized_keys
+    cat "/tmp/${auth_proxy_ssh_key}.pub" | \
+        "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q "sudo cat - >> /home/ubuntu/.ssh/authorized_keys"
+    rm /tmp/${auth_proxy_ssh_key}.pub
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q "sudo chown -R '$JUPYTER_USER_ID:$JUPYTER_USER_ID' '/jupyter/admin/$teacherid/.ssh'"
+
     echo "Restarting new JupyterHub container."
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_jupyterhub_1
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_jupyterhub_1
@@ -62,17 +80,23 @@ sed -i "s,HUB_URL = .*,HUB_URL = \"http://$hubip:$hubport\";," /home/ubuntu/auth
 sed -i "s,DB_HOST = .*,DB_HOST = \"$dbip\";," /home/ubuntu/auth-proxy/php/hub-const.php
 EOF
     # configure nginx.conf
-    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_3 bash << EOF
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i ${AUTH_PROXY_NAME} bash << EOF
 sed -i "s,proxy_pass http:.*,proxy_pass http://$hubip:$hubport;," /etc/nginx/nginx.conf
+EOF
+    # configure .auth-proxy in the admin container
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q << EOF
+echo "AUTH_PROXY_IP=$hubip" > /jupyter/admin/$teacherid/.auth-proxy
+echo "AUTH_PROXY_NAME=${AUTH_PROXY_NAME}" >> /jupyter/admin/$teacherid/.auth-proxy
+sudo chown "$JUPYTER_USER_ID:$JUPYTER_USER_ID" "/jupyter/admin/$teacherid/.auth-proxy"
 EOF
 
     echo "Restarting auth-proxy nginx container."
-    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_nginx_3
-    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_nginx_3
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop ${AUTH_PROXY_NAME}
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start ${AUTH_PROXY_NAME}
 
     echo "Restarting auth-proxy daemons."
     "$hubdir/jhvmdir-hub/ssh-shortcut.sh" -q << EOF
-sudo docker exec -i root_nginx_3 bash << EOF2
+sudo docker exec -i ${AUTH_PROXY_NAME} bash << EOF2
 (
   /etc/init.d/nginx start
   /etc/init.d/php5.6-fpm start
@@ -88,7 +112,7 @@ EOF
 CREATE SEQUENCE local_users_id_seq START 1;
 CREATE TABLE local_users (
     id  integer CONSTRAINT firstkey PRIMARY KEY,
-    user_name  varchar(64) NOT NULL,
+    user_name  varchar(64) UNIQUE NOT NULL,
     password  varchar(128) NOT NULL,
     mail  varchar(64) NOT NULL
 );
@@ -98,8 +122,8 @@ EOF
     password=$($rootdir/bin/pwgen.sh)
 
     # register teacher's userid and password
-    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_3 bash << EOF
-php -r "require_once '/var/www/php/db.php'; add_local_user('"$teacher_mail"', '"$password"');"
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i ${AUTH_PROXY_NAME} bash << EOF
+php -r "require_once '/var/www/php/db.php'; add_local_user('$teacher_mail', '$password');"
 EOF
 
     # notify password
@@ -115,7 +139,7 @@ associate_idp_proxy()
     auth_proxy_host_name="$2"
 
     # set idp-proxy metadata in auth-proxy
-    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_3 bash << EOF
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i ${AUTH_PROXY_NAME} bash << EOF
 /var/www/nginx/simplesamlphp/bin/get_idp_proxy_metadata.sh  $idp_proxy_host_name
 EOF
     # register auth-proxy metadat in idp-proxy 
@@ -124,20 +148,12 @@ EOF
 }
 
 
-: ${urlbase:="niidemo.com"}
 reconfigure_one_jupyterhub()
 {
     local hubdir="$1"
     local teacherid="$2"
     withslash=""
 
-    # Note: adding the 30 user names below somehow makes initialization of the
-    # database timeout while jupyterhub is restarting.  The current workaround
-    # is to keep restarting jupyterhub until all entries are initialized.  Use
-    # the dumpdb command to make sure progress is being made at each restart.
-    # The var NUSERS has been added to drop down to a few user names to speed up
-    # setup during development and debugging.
-    : ${NUSERS:=30}
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_jupyterhub_1 bash << EOF
     cat >/srv/jupyterhub_users/userlist << EOF3
 $teacherid admin
@@ -150,25 +166,24 @@ c.JupyterHub.authenticator_class = 'remote_user.remote_user_auth.RemoteUserLocal
 c.JupyterHub.base_url='$withslash/'
 
 # next line is not used if docker_oauth.DockerAuthenticator is used
-c.GoogleOAuthenticator.oauth_callback_url = 'https://$urlbase${withslash}/hub/oauth2callback'
+#c.GoogleOAuthenticator.oauth_callback_url = 'https://$urlbase${withslash}/hub/oauth2callback'
 EOF2
 
 EOF
 
     # At least once, the above failed for some reason.  Add a check to
     # make it clear if this happens again.
-    
-    checklastline="$(
-      "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q \
-           sudo docker exec -i root_jupyterhub_1 \
-               tail -n 1 /srv/jupyterhub_config/jupyterhub_config.py
-    )"
-    if [[ "$checklastline" != */$urlbase${withslash}/* ]]; then
-	echo "Attempt to reconfigure a JupyterHub instance failed for some reason." 1>&2
-	echo "Please try running the command again." 1>&2
-	rm -f "$hubdir/hubid"
-	exit 1
-    fi
+#    checklastline="$(
+#      "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q \
+#           sudo docker exec -i root_jupyterhub_1 \
+#               tail -n 1 /srv/jupyterhub_config/jupyterhub_config.py
+#    )"
+#    if [[ "$checklastline" != */$urlbase${withslash}/* ]]; then
+#	echo "Attempt to reconfigure a JupyterHub instance failed for some reason." 1>&2
+#	echo "Please try running the command again." 1>&2
+#	rm -f "$hubdir/hubid"
+#	exit 1
+#    fi
 }
 
 
@@ -254,6 +269,7 @@ create_directory_structure()
 {
     local hubdir="$1"
     local teacherid="$2"
+    local auth_proxy_ssh_private_key="$3"
 
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo bash <<EOF
        mkdir -p /jupyter/admin/{copybook,admin_tools,tools,info}
@@ -271,6 +287,7 @@ create_directory_structure()
        fi
 
        mkdir -p "/jupyter/admin/$teacherid"
+       mkdir -p "/jupyter/admin/$teacherid/.ssh"
 
        ipycfg="/jupyter/admin/$teacherid/.ipython/profile_default/ipython_config.py"
        mkdir -p "\${ipycfg%/*}"
@@ -284,7 +301,6 @@ create_directory_structure()
        chown -R "$teacherid:$teacherid" "/jupyter/admin/$teacherid"
        chmod -R a+wr "/jupyter/admin/$teacherid"
 EOF
-
     # update with latest version
     tar c adapt-notebooks-for-user.sh background-command-processor.sh | \
 	"$hubdir/jhvmdir-hub/ssh-shortcut.sh" -q sudo tar xv -C /srv

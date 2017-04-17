@@ -159,3 +159,18 @@ function get_username_from_mail_address($mail_address)
 
     return $result;
 }
+
+
+function generate_password($length = 10)
+{
+    $exclude = "/[1I0O\"\'\(\)\^~\\\`\{\}_\?<>]/";
+
+    while(true) {
+        $password = exec("pwgen -1ys $length");
+        if (preg_match($exclude, $password)) {
+            continue;
+        }  
+        break;
+    }
+    return $password;
+}
