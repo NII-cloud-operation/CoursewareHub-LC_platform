@@ -1,1 +1,3 @@
-ssh -i ~/.ssh/local_user -q ubuntu@192.168.33.88 -q "sudo docker exec -i root_nginx_3 bash"
+#!/bin/bash
+source ~/.auth-proxy
+ssh -i ~/.ssh/ssh-auth-proxy -o "StrictHostKeyChecking=no" -q ubuntu@${AUTH_PROXY_IP} -q "sudo docker exec -i ${AUTH_PROXY_NAME} bash"
