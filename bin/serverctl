@@ -24,18 +24,19 @@ ahdir="$rootdir/active-hubs"
 
 DDCONFFILE="datadir.conf"
 
-
-[ -d "$ahdir" ] || mkdir "$ahdir" || reportfailed
-
 node_list="node1 node2"  # This should be overwritten by the value in the main datadir.conf
 
 classid_to_hubpath()
 {
     local hubid="$1"
-    result="$(grep -HFx "$hubid" "$ahdir"/*/hubid)"
-    [ "$result" = "" ] && reportfailed "Hub with name '$hubid' not found"
-    # result is something like: active-hubs/002/hubid:class4
-    echo "${result%/hubid*}"
+    if [[ ! "$hubid" =~ ^[0-9]{3}$ ]] ; then
+        echo $hubid;
+    else
+        result="$(grep -HFx "$hubid" "$ahdir"/*/hubid)"
+        [ "$result" = "" ] && reportfailed "Hub with name '$hubid' not found"
+        # result is something like: active-hubs/002/hubid:class4
+        echo "${result%/hubid*}"
+    fi
 }
 
 get_container_names()
