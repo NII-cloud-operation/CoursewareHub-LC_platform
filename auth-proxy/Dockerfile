@@ -6,7 +6,8 @@ RUN set -x \
     && apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 4F4EA0AAE5267A6C \
     #&& apt-key adv --recv-keys --keyserver keyserver.ubuntu.com \
     && apt-get update \
-    && apt-get -y --force-yes install software-properties-common
+    && apt-get -y --force-yes install software-properties-common \
+    && apt-get -y --force-yes install pwgen
 RUN set -x \
     && add-apt-repository ppa:nginx/stable \
     && add-apt-repository ppa:ondrej/php \
