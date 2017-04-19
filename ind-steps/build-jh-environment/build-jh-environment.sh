@@ -690,7 +690,26 @@ cd jupyterhub-deploy
 count="\$(tail deploylog-part2.log | grep -o "unreachable=0.*failed=0" | wc -l)"
 [ "\$count" -eq "$vmcount" ]
 EOF
+    ansibleOK="$?"
+    [ "$ansibleOK" = "0" ] &&
+	[ -x "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" ] &&
+	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+# has docker run been done by docker compose?
+# i.e. container exists, even if stopped
+sudo docker ps -a | grep root_jupyterhub_1
+EOF
+    nothingReset="$?"
+    
+    [ "$ansibleOK" = "0" ] && [ "$nothingReset" = "0" ]
     $skip_step_if_already_done
+    
+    # docker-compose refuses to run if it finds a container it does not like.
+    # docker-compose does not like the root_nginx_3 container because it is
+    # "without label". So if this Ansible is being run because of a reset/rebuild
+    # operation, the current workaround is that root_nginx_3 must be removed first.
+    # root_nginx_3 will be recreated in a later step.  TODO: find a better way to deal with this.
+    "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" sudo docker rm -f root_nginx_3 -q || :
+    
     "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -x
 set -e
