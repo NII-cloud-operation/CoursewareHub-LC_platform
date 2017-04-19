@@ -159,7 +159,9 @@ EOF
 	"$DATADIR"/jhvmdir-hub/ssh-shortcut.sh sudo docker start root_nginx_1
     ) ; $iferr_exit
 
-    (
+    (  # TODO: this step has been copied to post-build-for-auth-proxy.dstep
+	# and this copy can probably be removed.
+	
 	$starting_step "Make sure root_jupyterhub_1 container is running"
 	# This step is a workaround. It should be running by now, but
 	# sometimes it is not, not sure why.
