@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 reportfailed()
 {
     echo "Script failed...exiting. ($*)" 1>&2
@@ -27,12 +28,14 @@ AUTH_PROXY_NAME=root_nginx_3
 
 JUPYTER_USER_ID=1001
 
-init_jupyterhub()
-{
-    hubdir="$1"  # Path to the build directory
-    teacher_mail="$2"
 
-    [ -d "$hubdir" ] || reportfailed "Hub direcotry '$hubdir' does not exist."
+function init_jupyterhub()
+{
+    local hubdir="$1"  # Path to the build directory
+    local teacher_mail="$2"
+
+    [ -d "$hubdir" ] || reportfailed "Hub directory '$hubdir' does not exist."
+    [ -z "$teacher_mail" ] && reportfailed "Administrator's email address does not specfied."
 
     echo "hubdir: "$hubdir
     echo "teacher_mail: "$teacher_mail
@@ -44,7 +47,7 @@ init_jupyterhub()
     teacherid=$("$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i ${AUTH_PROXY_NAME} bash << EOF
 php -r "require_once '/var/www/php/functions.php'; echo get_username_from_mail_address('"$teacher_mail"');"
 EOF
-    )
+)
     echo "teacherid: "$teacherid 
 
     # generate ssh keys for local user operetion from teacher's Jupyter server
@@ -132,11 +135,11 @@ EOF
 }
 
 
-associate_idp_proxy()
+function associate_idp_proxy()
 {
     echo associate_idp_proxy
-    idp_proxy_host_name="$1"
-    auth_proxy_host_name="$2"
+    local idp_proxy_host_name="$1"
+    local auth_proxy_host_name="$2"
 
     # set idp-proxy metadata in auth-proxy
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i ${AUTH_PROXY_NAME} bash << EOF
@@ -148,7 +151,7 @@ EOF
 }
 
 
-reconfigure_one_jupyterhub()
+function reconfigure_one_jupyterhub()
 {
     local hubdir="$1"
     local teacherid="$2"
@@ -187,10 +190,11 @@ EOF
 }
 
 
-delete_jupyterhub()
+function delete_jupyterhub()
 {
-    hubdir="$1"
-    [ -d "$hubdir" ] || reportfailed "Hub direcotry '$hubdir' does not exist."
+    local hubdir="$1"
+
+    [ -d "$hubdir" ] || reportfailed "Hub directory '$hubdir' does not exist."
 
     while true; do
         read -p "Do you delete course '$hubdir'? [Y/n]" answer
@@ -209,17 +213,52 @@ delete_jupyterhub()
 }
 
 
-restart_jupyterhub()
+function restart_jupyterhub()
 {
-    hubdir="$1"
-    [ -d "$hubdir" ] || reportfailed "Hub direcotry '$hubdir' does not exist."
+    local hubdir="$1"
+
+    [ -d "$hubdir" ] || reportfailed "Hub directory '$hubdir' does not exist."
 
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_jupyterhub_1
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_jupyterhub_1
 }
 
 
-dump_database()
+function change_password()
+{
+    local hubdir="$1"
+    local email="$2"
+    local new_password="$3"
+
+    if [ -z "$hubdir" ] || [ -z "$email" ] || [ -z "$new_password" ] ; then
+        reportfailed "too few arguments."
+    fi
+    [ -d "$hubdir" ] || reportfailed "Hub directory '$hubdir' does not exist."
+
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i ${AUTH_PROXY_NAME} bash << EOF
+php /var/www/php/change-local-user-password.php $email $new_password
+EOF
+}
+
+
+function reset_password()
+{
+    local hubdir="$1"
+    local email="$2"
+
+    if [ -z "$hubdir" ] || [ -z "$email" ] ; then
+        reportfailed "too few arguments."
+    fi
+    [ -d "$hubdir" ] || reportfailed "Hub directory '$hubdir' does not exist."
+
+
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i ${AUTH_PROXY_NAME} bash << EOF
+php /var/www/php/reset-local-user-password.php $email
+EOF
+}
+
+
+function dump_database()
 {
     local hubdir="$1"
     for table in api_tokens users proxies hubs servers; do
@@ -232,7 +271,7 @@ dump_database()
 }
 
 
-fetch_hub_patch()
+function fetch_hub_patch()
 {
     # fetch the latest of whatever is already in hub-patch-dir-tree
     local hubdir="$1"
@@ -249,7 +288,7 @@ EOF
 }
 
 
-push_hub_patch()
+function push_hub_patch()
 {
     local hubdir="$1"
     hppath="$rootdir/hub-patch-dir-tree"
@@ -265,7 +304,7 @@ push_hub_patch()
 }
 
 
-create_directory_structure()
+function create_directory_structure()
 {
     local hubdir="$1"
     local teacherid="$2"
@@ -313,27 +352,31 @@ bash -c 'setsid ./background-command-processor.sh 1>>bcp.log 2>&1 </dev/null &'
 EOF
 }
 
-
+#----- main -----
 cmd="$1"
 shift
 
 case "$cmd" in
     new) init_jupyterhub "$@"
-	 ;;
+        ;;
     associate-idp-proxy) associate_idp_proxy "$@"
-	 ;;
+        ;;
     delete) delete_jupyterhub "$@"
-	 ;;
+        ;;
     restart) restart_jupyterhub "$@"
-	 ;;
+        ;;
+    change-password) change_password "$@"
+        ;;
+    reset-password) reset_password "$@"
+        ;;
     debugjhub) reconfigure_one_jupyterhub "$@"
-	 ;;
+        ;;
     dumpdb) dump_database "$@"
-	 ;;
+        ;;
     fetch-hub-patch) fetch_hub_patch "$@"
-	 ;;
+        ;;
     push-hub-patch) push_hub_patch "$@"
-	 ;;
+        ;;
     *) usage
-       ;;
+        ;;
 esac
