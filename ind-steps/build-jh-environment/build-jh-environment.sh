@@ -142,7 +142,7 @@ EOF
 	    # clone from our cached copy
 	    cd "$ORGCODEDIR/../.."
 	    tar c auth-proxy
-	) | "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" $sudo tar x -C /srv
+	) | "$DATADIR/$VMDIR-hub/ssh-shortcut.sh" sudo tar x -C /srv
     ) ; $iferr_exit
 
 ) ; $iferr_exit
