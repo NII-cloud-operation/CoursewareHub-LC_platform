@@ -11,7 +11,7 @@ source "$DATADIR/datadir.conf"
 
 # TODO: figure out the above bash bug/oddity
 
-"$ORGCODEDIR/reset-jupyterhub-image.sh" "$DATADIR" wrapped
+"$LINKCODEDIR/reset-jupyterhub-image-distribution.sh" wrapped
 
 (
     $starting_step "Delete JupyterHub snapshot and source git repository"
