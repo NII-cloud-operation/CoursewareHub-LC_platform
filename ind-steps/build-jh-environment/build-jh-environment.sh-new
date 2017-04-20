@@ -37,6 +37,11 @@ echo none >"\$(dirname "\$0")/hubid"
 EOF
 chmod +x "$DATADIR/simpleinit.sh" 
 
+# make all of the reset scripts callable through the build directory
+for i in "$ORGCODEDIR/reset-scripts"/reset*.sh ; do
+    ln -s "$i" "$DATADIR"
+done
+
 echo "Success"
 echo "Note, the VM directories still need to be created inside .../${DATADIR##*/}"
 
