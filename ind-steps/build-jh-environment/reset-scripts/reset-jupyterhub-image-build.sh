@@ -14,7 +14,23 @@ source "$DATADIR/datadir.conf"
 "$LINKCODEDIR/reset-jupyterhub-image-distribution.sh" wrapped
 
 (
-    $starting_step "Delete JupyterHub snapshot and source git repository"
+    $starting_step "Delete JupyterHub docker images on jhvmidr"
+    "$DATADIR"/jhvmdir/ssh-shortcut.sh sudo bash <<'EOF' 1>/dev/null 2>&1
+out="$(docker images)"
+[[ "$out" == *triggers/jupyterhub* ]] && exit 1
+[[ "$out" == *jupyter/jupyterhub* ]] && exit 1
+exit 0
+EOF
+    $skip_step_if_already_done; set -e
+    "$DATADIR"/jhvmdir/ssh-shortcut.sh sudo bash <<EOF
+set -e
+docker rmi triggers/jupyterhub
+docker rmi jupyter/jupyterhub
+EOF
+) ; $iferr_exit
+
+(
+    $starting_step "Delete JupyterHub snapshot and source git repository on jhvmidr"
     "$DATADIR"/jhvmdir/ssh-shortcut.sh sudo bash <<EOF 1>/dev/null 2>&1
 [ -f jupyterhub.tar ] && exit 1
 [ -d /srv/jh-jupyterhub ]  && exit 1
@@ -23,6 +39,7 @@ exit 0
 EOF
     $skip_step_if_already_done; set -e
     "$DATADIR"/jhvmdir/ssh-shortcut.sh sudo bash <<EOF
+set -e
 rm -fr jupyterhub.tar
 rm -fr /srv/jh-jupyterhub
 rm -fr /srv/jupyterhub
