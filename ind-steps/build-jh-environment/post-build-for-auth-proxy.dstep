@@ -73,6 +73,23 @@ EOF
     ) ; $iferr_exit
 
     (
+	$starting_step "Make sure root_jupyterhub_1 container is running"
+	# This step was just a workaround. It should be running by now, but
+	# sometimes it is not, not sure why.
+	# Now it is also used when the jupyterhub container is reset.
+	"$DATADIR"/jhvmdir-hub/ssh-shortcut.sh <<'EOF' 1>/dev/null 2>&1
+dout="$(sudo docker ps | grep root_jupyterhub_1)"
+set -x
+exec 2>/tmp/why
+[[ "$dout" == *Up* ]]
+EOF
+	$skip_step_if_already_done; set -e
+
+	"$DATADIR"/jhvmdir-hub/ssh-shortcut.sh sudo docker stop root_jupyterhub_1
+	"$DATADIR"/jhvmdir-hub/ssh-shortcut.sh sudo docker start root_jupyterhub_1
+    ) ; $iferr_exit
+
+    (
 	$starting_step "Make sure docker container for auth-proxy is started"
 
 	#### This step is needed when restoring snapshots
