@@ -64,7 +64,7 @@ EOF
 	local repo_name="$1"
 	local vmdir="$2"
 	local targetdir="$3"
-	local sudo="$4"
+	local sudo_opt="$4"
 	(
 	    $starting_step "Copy $repo_name repository into $vmdir"
 	    [ -x "$DATADIR/$vmdir/ssh-shortcut.sh" ] &&
@@ -76,13 +76,13 @@ EOF
 		# clone from our cached copy
 		cd "$ORGCODEDIR/repo-cache"
 		tar c "$repo_name"
-	    ) | "$DATADIR/$vmdir/ssh-shortcut.sh" $sudo tar x -C "$targetdir"
+	    ) | "$DATADIR/$vmdir/ssh-shortcut.sh" $sudo_opt tar x -C "$targetdir"
 	) ; $iferr_exit
 
 	# now run the step below to set the commit
 	commitvarname="setcommit_${repo_name//-/_}" # e.g.: setcommit_jh_jupyterhub
 	commitid="$(eval echo \$$commitvarname)"
-	checkout_commitid "$repo_name" "$vmdir" "$targetdir" "$sudo" "$commitid"
+	checkout_commitid "$repo_name" "$vmdir" "$targetdir" "$sudo_opt" "$commitid"
     }
 
     checkout_commitid()
@@ -90,7 +90,7 @@ EOF
 	local repo_name="$1"
 	local vmdir="$2"
 	local targetdir="$3"
-	local sudo="$4"
+	local sudo_opt="$4"
 	local commitid="$5"
 	(
 	    $starting_step "Checkout commit ${commitid:0:9} for $repo_name"
@@ -99,7 +99,7 @@ EOF
 		    "$DATADIR/$vmdir/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
 set -ex
 cd "$targetdir/$repo_name"
-now_at="\$($sudo git rev-parse HEAD)" 
+now_at="\$($sudo_opt git rev-parse HEAD)" 
 [[ "$commitid" == \${now_at:0:7}* ]]  # commit_id must be at least 7 characters long
 EOF
 	    }
@@ -108,8 +108,8 @@ EOF
 		"$DATADIR/$vmdir/ssh-shortcut.sh" <<EOF # 2>/dev/null 1>/dev/null
 set -ex
 cd "$targetdir/$repo_name"
-$sudo git reset --hard
-$sudo git checkout "$commitid"
+$sudo_opt git reset --hard
+$sudo_opt git checkout "$commitid"
 EOF
 	) ; $iferr_exit
     }
