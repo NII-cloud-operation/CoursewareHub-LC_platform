@@ -63,6 +63,13 @@ EOF
 
 ln -s "$snapshot_source" "$new_dir/snapshot_source_link"
 
+# Copy over all links from snapshot_source
+# This is useful for the reset-* scripts and the toplevel* scripts for
+# rebuilding part of the environment.
+for i in "$snapshot_source"/* ; do
+    [ -L "$i" ] && ! [ -f "$new_dir${i##*/}" ] && cp -a "$i" "$new_dir"
+done
+
 ln -s "$(readlink -f "$ORGCODEDIR/restore-environment-from-snapshot.sh")" "$new_dir/"
 cp "$(readlink -f "$snapshot_source/simpleinit.sh")" "$new_dir/"
 
