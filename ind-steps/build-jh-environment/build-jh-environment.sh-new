@@ -26,6 +26,22 @@ node_list="$(for i in $(seq 1 $nodecount) ; do echo -n " node$i" ; done)"
 
 cat  >>"$DATADIR/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for whole environment"
 node_list="${node_list# }"
+
+# Defaults commit to use for each build repository.  Can be set to
+# "unchanged" to use the commit currently checkout in the repo-cache
+# directory, which for fresh clones will normally be the lastest in
+# the master branch. (- characters must be changed to _ in the repo name)
+# (commit ids must include at least the first 7 hex digits)
+
+setcommit_jh_jupyterhub="6078b8d9e5576cd14eb2d76d8efbe83685f72beb"
+# TODO: debug why later jupyterhub commits break the system
+
+setcommit_dockerspawner="unchanged"
+setcommit_docker_stacks="unchanged"
+setcommit_jupyterhub="unchanged"
+setcommit_jupyterhub_deploy="unchanged"
+setcommit_restuser="unchanged"
+setcommit_systemuser="unchanged"
 EOF
 
 # Actually put this debugging script in the directory, not its symbolic link.

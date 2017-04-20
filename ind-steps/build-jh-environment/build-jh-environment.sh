@@ -61,10 +61,10 @@ EOF
 
     copy_in_one_cached_repository()
     {
-	repo_name="$1"
-	vmdir="$2"
-	targetdir="$3"
-	sudo="$4"
+	local repo_name="$1"
+	local vmdir="$2"
+	local targetdir="$3"
+	local sudo="$4"
 	(
 	    $starting_step "Copy $repo_name repository into $vmdir"
 	    [ -x "$DATADIR/$vmdir/ssh-shortcut.sh" ] &&
@@ -78,6 +78,40 @@ EOF
 		tar c "$repo_name"
 	    ) | "$DATADIR/$vmdir/ssh-shortcut.sh" $sudo tar x -C "$targetdir"
 	) ; $iferr_exit
+
+	# now run the step below to set the commit
+	commitvarname="setcommit_${repo_name//-/_}" # e.g.: setcommit_jh_jupyterhub
+	commitid="$(eval echo \$$commitvarname)"
+	checkout_commitid "$repo_name" "$vmdir" "$targetdir" "$sudo" "$commitid"
+    }
+
+    checkout_commitid()
+    {
+	local repo_name="$1"
+	local vmdir="$2"
+	local targetdir="$3"
+	local sudo="$4"
+	local commitid="$5"
+	(
+	    $starting_step "Checkout commit ${commitid:0:9} for $repo_name"
+	    [ "$commitid" = "unchanged" ] || {
+		[ -x "$DATADIR/$vmdir/ssh-shortcut.sh" ] &&
+		    "$DATADIR/$vmdir/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+set -ex
+cd "$targetdir/$repo_name"
+now_at="\$($sudo git rev-parse HEAD)" 
+[[ "$commitid" == \${now_at:0:7}* ]]  # commit_id must be at least 7 characters long
+EOF
+	    }
+	    $skip_step_if_already_done ; set -e
+	    [ -x "$DATADIR/$vmdir/ssh-shortcut.sh" ] &&
+		"$DATADIR/$vmdir/ssh-shortcut.sh" <<EOF # 2>/dev/null 1>/dev/null
+set -ex
+cd "$targetdir/$repo_name"
+$sudo git reset --hard
+$sudo git checkout "$commitid"
+EOF
+	) ; $iferr_exit
     }
 
     copy_in_one_cached_repository jupyterhub-deploy "$VMDIR"     /home/ubuntu ""
@@ -88,6 +122,8 @@ EOF
     copy_in_one_cached_repository dockerspawner     "$VMDIR"     /srv  sudo
 
     copy_in_one_cached_repository jh-jupyterhub     "$VMDIR"     /srv  sudo
+#    checkout_commitid jh-jupyterhub     "$VMDIR"     /srv  sudo "$setcommit_jh_jupyterhub"
+    
     copy_in_one_cached_repository jupyterhub        "$VMDIR"     /srv  sudo
 
     # This repository is not for a docker container.  It is for a process started
