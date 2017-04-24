@@ -24,7 +24,7 @@ RUN set -x \
     && ln -sf /dev/stderr /var/log/nginx/error.log \
     # Install simplesamlphp
     && cd /var/www \
-    && curl -Lo /var/www/downloaded-simplesamlphp.tar.gz https://simplesamlphp.org/download?latest \
+    && curl -Lo /var/www/downloaded-simplesamlphp.tar.gz https://github.com/simplesamlphp/simplesamlphp/releases/download/v1.14.12/simplesamlphp-1.14.12.tar.gz \
     && tar xvfz downloaded-simplesamlphp.tar.gz \
     && mv $( ls | grep simplesaml | grep -v *tar.gz ) simplesamlphp \
     && rm /var/www/downloaded-simplesamlphp.tar.gz 
