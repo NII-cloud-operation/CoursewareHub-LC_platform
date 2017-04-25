@@ -77,7 +77,7 @@ done
 
 for layer in $layerlist_lower ; do
     (
-	$starting_group "Remove images for $layer (skipped unless environment variable DOALL is on command line)"
+	$starting_group "Remove images for $layer (skipped unless environment variable DOALL is not null)"
 	[ "$DOALL" = "" ]
 	$skip_group_if_unnecessary
 	remove_layer "$layer"
@@ -93,7 +93,7 @@ done
 
 for repo in $repolist_lower ; do
     (
-	$starting_group "Remove repository for $repo (skipped unless environment variable DOALL is on command line)"
+	$starting_group "Remove repository for $repo (skipped unless environment variable DOALL is not null)"
 	[ "$DOALL" = "" ]
 	$skip_group_if_unnecessary
 	remove_repo "$repo"
