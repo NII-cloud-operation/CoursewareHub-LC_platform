@@ -28,6 +28,7 @@ AUTH_PROXY_NAME=root_nginx_3
 
 JUPYTER_USER_ID=1001
 
+SSH_IDP_PROXY_KEY=~/.ssh/ssh-idp-proxy    
 
 function init_jupyterhub()
 {
@@ -135,21 +136,58 @@ EOF
 }
 
 
-function associate_idp_proxy()
+function enable_sso()
 {
-    echo associate_idp_proxy
-    local idp_proxy_host_name="$1"
-    local auth_proxy_host_name="$2"
+    echo enalbe_sso
+    local hubdir="$1"
+    local idp_proxy_host="$2"
+    local entity_id="$3"
+    local auth_proxy_metadata_url="$4"
+
+    # check parameters
+    if [ -z "$hubdir" ] || [ -z "$idp_proxy_host" ] || [ -z "$entity_id" ] || [ -z "$auth_proxy_metadata_url" ] ; then
+        reportfailed "too few arguments."
+    fi
+
+    # check ssh private key
+    [ ! -e "$SSH_IDP_PROXY_KEY" ] || reportfailed "idp-proxy ssh key '$ssh_key' does not exist."
 
     # set idp-proxy metadata in auth-proxy
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i ${AUTH_PROXY_NAME} bash << EOF
-/var/www/nginx/simplesamlphp/bin/get_idp_proxy_metadata.sh  $idp_proxy_host_name
+/var/www/simplesamlphp/bin/get_idp_proxy_metadata.sh $idp_proxy_host
 EOF
+
     # register auth-proxy metadat in idp-proxy 
-    #"$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_3 bash << EOF
-#/var/www/nginx/simplesamlphp/bin/add_auth_proxy_metadata.php entityID metadataURL -> hostname/ip-address of auth-proxy 
+    ssh -i $SSH_IDP_PROXY_KEY -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" idpproxy@${idp_proxy_host} -q sudo docker exec -i idp-proxy2 bash << EOF
+/var/www/simplesamlphp/bin/add_auth_proxy_metadata.php $entity_id $auth_proxy_metadata_url
+EOF
 }
 
+function disable_sso()
+{
+    echo disalbe_sso
+    local hubdir="$1"
+    local idp_proxy_host="$2"
+    local entity_id="$3"
+
+    # check parameters
+    if [ -z "$hubdir" ] || [ -z "$idp_proxy_host" ] || [ -z "$entity_id" ] ; then
+        reportfailed "too few arguments."
+    fi
+
+    # check ssh private key
+    [ ! -e "$SSH_IDP_PROXY_KEY" ] || reportfailed "idp-proxy ssh key '$ssh_key' does not exist."
+    
+    # remove idp-proxy metadata in auth-proxy
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i ${AUTH_PROXY_NAME} bash << EOF
+/var/www/simplesamlphp/bin/remove_idp_proxy_metadata.sh $idp_proxy_host
+EOF
+
+    # remove auth-proxy metadat in idp-proxy 
+    ssh -i $SSH_IDP_PROXY_KEY -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" idpproxy@${idp_proxy_host} -q sudo docker exec -i idp-proxy2 bash << EOF
+/var/www/simplesamlphp/bin/remove_auth_proxy_metadata.php $entity_id
+EOF
+}
 
 function reconfigure_one_jupyterhub()
 {
@@ -359,7 +397,9 @@ shift
 case "$cmd" in
     new) init_jupyterhub "$@"
         ;;
-    associate-idp-proxy) associate_idp_proxy "$@"
+    enable-sso) enable_sso "$@"
+        ;;
+    disable-sso) disable_sso "$@"
         ;;
     delete) delete_jupyterhub "$@"
         ;;

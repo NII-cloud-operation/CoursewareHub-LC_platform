@@ -669,7 +669,7 @@ $config = array(
      */
     'metadata.sources' => array(
         array('type' => 'flatfile'),
-        array('type' => 'xml', 'file' => 'metadata/idp-proxy.xml'),
+        #IDP_PROXY_XML#,
     ),
 
 
