@@ -3,11 +3,13 @@
 require_once __DIR__ . '/functions.php';
 @session_start();
 
-// セッション用Cookieの破棄
-setcookie(session_name(), '', 1);
-// セッションファイルの破棄
+// remove cookies
+setcookie(session_name(), '', time() - 1800, '/');
+setcookie('jupyter-hub-token', '', time() - 1800, '/');
+setcookie('_xsrf', '', time() - 1800, '/');
+// destroy session
 session_destroy();
-// ログアウト完了後に /login.php に遷移
+// logout federation authentication
 logout_fed();
-
-header('Location: /php/login.php');
+// redirect to login
+header('Location: /login');
