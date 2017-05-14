@@ -52,8 +52,8 @@ EOF
     echo "teacherid: "$teacherid 
 
     # generate ssh keys for local user operetion from teacher's Jupyter server
-    auth_proxy_ssh_key='ssh-auth-proxy'
-    ssh-keygen -t rsa -b 2048 -N "" -f /tmp/$auth_proxy_ssh_key
+    hub_ssh_key='ssh-hub'
+    ssh-keygen -t rsa -b 2048 -N "" -f /tmp/$hub_ssh_key
 
     # configure jupyterhub 
     reconfigure_one_jupyterhub "$hubdir" "$teacherid"
@@ -61,13 +61,13 @@ EOF
     create_directory_structure "$hubdir" "$teacherid"
     
     # set ssh key for auth-proxy
-    (cd /tmp; tar c $auth_proxy_ssh_key) | \
+    (cd /tmp; tar c $hub_ssh_key) | \
 	"$hubdir/jhvmdir-hub/ssh-shortcut.sh" -q sudo tar xv -C /jupyter/admin/$teacherid/.ssh/
-    rm /tmp/$auth_proxy_ssh_key
+    rm /tmp/$hub_ssh_key
     # add ssh public key to authorized_keys
-    cat "/tmp/${auth_proxy_ssh_key}.pub" | \
+    cat "/tmp/${hub_ssh_key}.pub" | \
         "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q "sudo cat - >> /home/ubuntu/.ssh/authorized_keys"
-    rm /tmp/${auth_proxy_ssh_key}.pub
+    rm /tmp/${hub_ssh_key}.pub
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q "sudo chown -R '$JUPYTER_USER_ID:$JUPYTER_USER_ID' '/jupyter/admin/$teacherid/.ssh'"
 
     echo "Restarting new JupyterHub container."
@@ -87,11 +87,24 @@ EOF
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i ${AUTH_PROXY_NAME} bash << EOF
 sed -i "s,proxy_pass http:.*,proxy_pass http://$hubip:$hubport;," /etc/nginx/nginx.conf
 EOF
-    # configure .auth-proxy in the admin container
+    # configure .hub-config in the admin container
+    echo "Configuring .hub-config."
+    node_list="$(source "$hubdir/datadir.conf"; echo "$node_list")"
+    array=""
+    for node in $node_list; do
+        ip=$(source "$hubdir/jhvmdir-${node}/datadir.conf"; echo "$VMIP")
+        item="\"$node $ip"\"
+        array+=$item" "
+    done
+    hub_config_name='.hub-config' 
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q << EOF
-echo "AUTH_PROXY_IP=$hubip" > /jupyter/admin/$teacherid/.auth-proxy
-echo "AUTH_PROXY_NAME=${AUTH_PROXY_NAME}" >> /jupyter/admin/$teacherid/.auth-proxy
-sudo chown "$JUPYTER_USER_ID:$JUPYTER_USER_ID" "/jupyter/admin/$teacherid/.auth-proxy"
+echo "HUB_IP=$hubip" > /jupyter/admin/$teacherid/$hub_config_name
+echo "AUTH_PROXY_IP=$hubip" > /jupyter/admin/$teacherid/$hub_config_name
+echo "AUTH_PROXY_NAME=${AUTH_PROXY_NAME}" >> /jupyter/admin/$teacherid/$hub_config_name
+echo 'NODES=(' >> /jupyter/admin/$teacherid/$hub_config_name
+echo '$array' >> /jupyter/admin/$teacherid/$hub_config_name
+echo ')' >> /jupyter/admin/$teacherid/$hub_config_name
+sudo chown "$JUPYTER_USER_ID:$JUPYTER_USER_ID" "/jupyter/admin/$teacherid/$hub_config_name"
 EOF
 
     echo "Restarting auth-proxy nginx container."
