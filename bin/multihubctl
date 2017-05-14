@@ -524,8 +524,8 @@ create_directory_structure()
     local teacherid="$2"
 
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo bash <<EOF
-       mkdir -p /jupyter/admin/{copybook,admin_tools,tools,info}
-       chmod a+wr /jupyter/admin/{copybook,admin_tools,tools,info}
+       mkdir -p /jupyter/admin/{textbook,admin_tools,tools,info}
+       chmod a+wr /jupyter/admin/{textbook,admin_tools,tools,info}
 
        mkdir -p /jupyter/users
        chmod a+wr /jupyter/users

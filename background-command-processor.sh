@@ -135,7 +135,7 @@ students-home-dir-hack()
 	[ "$userid" = "potter" ] && continue
 	[ "$userid" = "ubuntu" ] && continue
 	[ -f "/jupyter/admin/$userid" ] && continue
-	for link in copybook tools info; do
+	for link in textbook tools info; do
 	    if ! [ -h "$udir/$link" ]; then
 		ln -s "/jupyter/admin/$link" "$udir/$link" 2>/dev/null
 		chown -h "$userid:$userid" "$udir/$link" 2>/dev/null

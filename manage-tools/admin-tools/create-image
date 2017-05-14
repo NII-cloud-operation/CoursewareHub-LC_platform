@@ -1,9 +1,9 @@
 #!/bin/bash
 
-#set -x
+SCRIPT_DIR=$(cd $(dirname $0); pwd)
 
 source ~/.hub-config
-source ./functions
+source $SCRIPT_DIR/functions
 
 usage()
 {
@@ -63,7 +63,7 @@ thenode_ip=$2
 
 ## get the virtual size for giving % progress output:
 echo -n "Starting by getting the image size..."
-output=$(./ssh-node "$thenode_ip" -q sudo docker ps -s -f name="$servername")
+output=$($SCRIPT_DIR/ssh-node "$thenode_ip" -q sudo docker ps -s -f name="$servername")
 echo ".done"
 [ "$(wc -l <<<"$output")" == 2 ] || echo "Warning: problem finding image sizes" 1>&2
 ## output is something like "..........(virtual 4.598 GB)"
@@ -78,12 +78,12 @@ bytes="$(humanreadable_to_bytes "${tmp1%)*}")"
 ## image. )
 
 echo "Making new commit with name $unique_image_name..."
-./ssh-node "$thenode_ip" -q sudo docker commit "$servername" "$unique_image_name" \
+$SCRIPT_DIR/ssh-node "$thenode_ip" -q sudo docker commit "$servername" "$unique_image_name" \
    || reportfailed "Commit of $servername"
 echo "..Finished commit."
 
 echo "Starting save image. Please wait for several minutes..."
-./ssh-node "$thenode_ip" -q sudo docker save "$unique_image_name" >"$imagefile.inprogress" &
+$SCRIPT_DIR/ssh-node "$thenode_ip" -q sudo docker save "$unique_image_name" >"$imagefile.inprogress" &
 pid="$!"
     
 echo "0 / $bytes  (0%)"
