@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#set -x
+SCRIPT_DIR=$(cd $(dirname $0); pwd)
 
 source ~/.hub-config
 
@@ -42,7 +42,7 @@ function image_upload()
     ## split the pipeline so we can get the pid of cat
     exec 8< <(exec cat "$imagefile")
     catpid="$!"
-    ./ssh-node $thenode_ip -q sudo docker load <&8 &
+    $SCRIPT_DIR/ssh-node $thenode_ip -q sudo docker load <&8 &
     pid="$!"
 
     while [ -d "/proc/$pid" ]; do
@@ -73,10 +73,10 @@ for item in "${NODES[@]}"; do
 done
 
 echo "Set the new image which Docker Spawner uses ..." 
-./ssh-node "$HUB_IP" -q sudo docker exec -i root_jupyterhub_1 bash << EOF
+$SCRIPT_DIR/ssh-node "$HUB_IP" -q sudo docker exec -i root_jupyterhub_1 bash << EOF
 sed -i "s,c.DockerSpawner.container_image = .*,c.DockerSpawner.container_image = '$repository'," /srv/jupyterhub_config/jupyterhub_config.py 
 EOF
 
 echo "Restarting JupyterHub configured to new image ..."
-./ssh-node $HUB_IP -q sudo docker restart root_jupyterhub_1 &
+$SCRPT_DIR/ssh-node $HUB_IP -q sudo docker restart root_jupyterhub_1 &
 echo "done."
