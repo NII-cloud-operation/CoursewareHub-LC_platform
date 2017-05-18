@@ -160,7 +160,21 @@ students-home-dir-hack()
 	# simple unix commands.  Do this every time so teacher can also
 	# copy out new files that the student might put in.
 	# TODO: avoid this, using groups, perhaps.
-	chmod -R a+wr "$udir"
+	(
+	    # put in exception to skip ssh related things that should not be world readable/writable
+	    if cd "$udir"; then
+		shopt -s nullglob
+		shopt -s dotglob
+		for p in * ; do
+		    [ "$p" = .ssh ] && continue
+		    [[ "$p" = *key* ]] && continue
+		    chmod -R a+wr "$p"
+		done
+	    fi
+	)
+	# the directory itself needs to be writable or else the jupyter server container does not launch
+	# Note: no "-R" here
+	chmod a+wr "$udir"
     done
 }
 
