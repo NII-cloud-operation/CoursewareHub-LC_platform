@@ -161,11 +161,13 @@ students-home-dir-hack()
 	# copy out new files that the student might put in.
 	# TODO: avoid this, using groups, perhaps.
 	(
-	    # put in exception to skip ssh related things that should not be world readable/writable
+	    # Put in exception to skip ssh related things that should not be world readable/writable
+	    # and also skip symbol links.
 	    if cd "$udir"; then
 		shopt -s nullglob
 		shopt -s dotglob
 		for p in * ; do
+		    [ -L "$p" ] && continue
 		    [ "$p" = .ssh ] && continue
 		    [[ "$p" = *key* ]] && continue
 		    chmod -R a+wr "$p"
