@@ -26,6 +26,8 @@ cd "$vmdir"
 
 vmname="${vmdir##*/}"
 
+rm -fr "$vmdir"/"$vmname"
+
 ptar="$vmname-proxy.tar.gz"
 
 [ -f "$ptar" ] && reportfailed "$ptar already exists"
@@ -55,10 +57,13 @@ reportfailed()
 ssh $USER@$iphere 'cd "$vmdir" ; bash'
 EOF
 
-for s in kvm-boot.sh kvm-kill.sh kvm-shutdown-via-ssh.sh ; do
+for s in kvm-boot.sh kvm-kill.sh kvm-shutdown-via-ssh.sh kvm-expand-fresh-image.sh; do
     cat >"$s" <<EOF
 #!/bin/bash
-ssh $USER@$iphere '"$vmdir/$s"' "\$@"
+ssh $USER@$iphere <<EOF2
+\$(set +u ; \$initialize_hooks_for_remote_proxy)
+'$vmdir/$s' \$@
+EOF2
 EOF
 done
 
