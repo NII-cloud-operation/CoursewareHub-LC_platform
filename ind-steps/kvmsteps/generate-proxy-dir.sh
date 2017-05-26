@@ -76,6 +76,8 @@ done
 
 chmod +x *.sh
 
+cp ../datadir.conf .
+
 cd ..
 
 tar czvf "$ptar" "$vmname"
