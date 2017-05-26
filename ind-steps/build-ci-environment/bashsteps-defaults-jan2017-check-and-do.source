@@ -249,7 +249,24 @@ bashctrl-main()
 	    : # all hooks have been set up by wrapper scripts
 	    ;;
 	*)
-	    reportfailed "No command chosen. Choose from (do, check, verifycode1)."
+	    # If all of these are defined, assume a wrapper script has
+	    # already set up the environment, so it should be possible
+	    # to start this script with no command.  If not, output an
+	    # error message giving the commands for specifying how to
+	    # set up the hooks, which would be helpful for users who
+	    # would like to run the script without any wrapper script.
+	    symblist=(
+		prev_cmd_failed
+		starting_step
+		starting_group
+		skip_step_if_already_done
+		skip_group_if_unnecessary
+	    )
+	    for symb in "${symblist[@]}"; do
+		if eval "[ \"\${$symb:=}\" = '' ]"; then
+		    reportfailed "No command chosen. Choose from (do, check, verifycode1)."
+		fi
+	    done
 	    ;;
     esac
     setup_post_step_error_vars

@@ -64,7 +64,9 @@ setup_datadir()
 check_requirements()
 {
     # check that DATADIR was initialized for the calling script
-    [ -L "$DATADIR/$SCRIPTNAME" ] || iferr_exit "\$DATADIR ($DATADIR) not initialized for script ($SCRIPTNAME)"
+    [ "$guestscript" = "true" ] || \
+	[ -L "$DATADIR/$SCRIPTNAME" ] || \
+	iferr_exit "\$DATADIR ($DATADIR) not initialized for script ($SCRIPTNAME).  Append guest to command if OK."
 }
 
 setup_do_framework()
@@ -130,12 +132,15 @@ setup_check_framework()
 	step_title=""
 	exit 0 # exit the process for the step, but keep going
     }
+    export -f skip_step_for_check
+
     skip_group_for_check()
     {
 	echo ; echo "** CHECKING GROUP: $step_title"
 	step_title=""
     }
     export -f skip_group_for_check
+
     : ${skip_step_if_already_done:=skip_step_for_check}
     : ${skip_group_if_unnecessary:=skip_group_for_check}
     setup_do_framework
@@ -156,6 +161,8 @@ setup_verify_code1()  # check prev_cmd_failed or iferr_exit follow all calls to 
     export -f skip_xx_for_verify_code1
     : ${skip_step_if_already_done:=skip_xx_for_verify_code1}
     : ${skip_group_if_unnecessary:=skip_xx_for_verify_code1}
+    export skip_step_if_already_done
+    export skip_group_if_unnecessary
 
     iferr_for_verify_code1()
     {
@@ -170,6 +177,7 @@ setup_verify_code1()  # check prev_cmd_failed or iferr_exit follow all calls to 
     }
     export -f just_output_step_label
     : ${starting_step:=just_output_step_label}
+    export starting_step
     
     just_output_group_label()
     {
@@ -177,6 +185,7 @@ setup_verify_code1()  # check prev_cmd_failed or iferr_exit follow all calls to 
     }
     export -f just_output_group_label
     : ${starting_group:=just_output_group_label}
+    export starting_group
 
     verify_code1_cleanup()
     {
@@ -188,17 +197,44 @@ setup_verify_code1()  # check prev_cmd_failed or iferr_exit follow all calls to 
     trap "verify_code1_cleanup" EXIT
 }
 
+setcmd()
+{
+    if [ "$thecmd" = "" ]; then
+	thecmd="$1"
+    else
+	just_exit "Multiple commands given ($thecmd and $1)"
+    fi
+}
+
 parse_parameters()
 {
-    thecmd="$(set +u ; echo "$1")"
+    thecmd=""
+    guestscript=""
+    for	p in "$@"; do
+	case "$p" in
+	    [d]o | dosteps | check | checksteps)
+		setcmd "$p" ;;
+	    verifycode1) 
+		setcmd "$p" ;;
+	    wrapped) 
+		setcmd "$p" ;;
+	    nosetu)
+		set +u # for wrapper scripts that get confused by set -u
+		;;
+	    guest) # see check_requirements()
+		guestscript="true"
+		;;
+	    *)  just_exit "Unexpected parameter ($p)" ;;
+	esac
+    done
 }
 
 bashctrl-main()
 {
     do_set_dash_u_and_workarounds
     setup_datadir "$@" # why is "$@" necessary here?
-    check_requirements
     parse_parameters "${params[@]:1}" # :1 to skip over setu-workaround
+    check_requirements
     case "$thecmd" in
 	[d]o | dosteps)
 	    setup_do_framework
@@ -212,11 +248,25 @@ bashctrl-main()
 	wrapped)
 	    : # all hooks have been set up by wrapper scripts
 	    ;;
-	nosetu)
-	    set +u # for wrapper scripts that get confused by set -u
-	    ;;
 	*)
-	    reportfailed "No command chosen. Choose from (do, check, verifycode1)."
+	    # If all of these are defined, assume a wrapper script has
+	    # already set up the environment, so it should be possible
+	    # to start this script with no command.  If not, output an
+	    # error message giving the commands for specifying how to
+	    # set up the hooks, which would be helpful for users who
+	    # would like to run the script without any wrapper script.
+	    symblist=(
+		prev_cmd_failed
+		starting_step
+		starting_group
+		skip_step_if_already_done
+		skip_group_if_unnecessary
+	    )
+	    for symb in "${symblist[@]}"; do
+		if eval "[ \"\${$symb:=}\" = '' ]"; then
+		    reportfailed "No command chosen. Choose from (do, check, verifycode1)."
+		fi
+	    done
 	    ;;
     esac
     setup_post_step_error_vars
