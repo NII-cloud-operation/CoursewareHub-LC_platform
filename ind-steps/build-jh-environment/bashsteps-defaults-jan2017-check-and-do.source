@@ -298,6 +298,9 @@ export_funtions_for_remote="
  ${export_funtions_for_remote:=}
 "
 
+export export_variables_for_remote
+export export_funtions_for_remote
+
 # Note:  The old wrapper script still works.  For example:
 # /path/to/bashsteps/bashctrl.sh ./simple-test.sh indent path/adatadir nosetu status org-mode >aa.org
 # Update: It now works again quite normally with just:
