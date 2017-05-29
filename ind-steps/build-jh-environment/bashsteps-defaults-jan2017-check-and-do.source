@@ -278,7 +278,7 @@ bashctrl-main "$@"
 
 initialize_hooks_for_remote_proxy=initialize_hooks_for_remote_proxy_f
 export initialize_hooks_for_remote_proxy
-echo date >>/tmp/yyy
+
 initialize_hooks_for_remote_proxy_f()
 {
     vlist=(
