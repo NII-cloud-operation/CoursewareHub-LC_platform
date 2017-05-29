@@ -64,10 +64,10 @@ initialize_hooks_for_remote_proxy()
     for v in ${export_variables_for_remote:=} ; do
 	fname="$(eval echo \$$v)"
 	echo export "$v='$fname'"
-	declare -f "$fname" && echo export -f "$fname"
+	declare -f "$fname" 2>/dev/null && echo export -f "$fname"
     done
     for fname in ${export_funtions_for_remote:=} ; do
-	declare -f "$fname" && echo export -f "$fname"
+	declare -f "$fname" 2>/dev/null && echo export -f "$fname"
     done
 }
 
