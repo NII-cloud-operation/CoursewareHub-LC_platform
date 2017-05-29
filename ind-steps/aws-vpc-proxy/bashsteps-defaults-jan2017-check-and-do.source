@@ -36,6 +36,8 @@ setup_post_step_error_vars()
     export prev_cmd_failed="iferr_exit"
     prev_cmd_failed() { iferr_exit ; }
     export -f prev_cmd_failed
+    export -f iferr_exit
+    export -f iferr_continue
 }
 
 # need to test because "set -u" is in effect
@@ -273,6 +275,30 @@ bashctrl-main()
 }
 
 bashctrl-main "$@"
+
+initialize_hooks_for_remote_proxy=initialize_hooks_for_remote_proxy_f
+export initialize_hooks_for_remote_proxy
+
+initialize_hooks_for_remote_proxy_f()
+{
+    vlist=(
+	starting_group
+	starting_step
+	skip_step_if_already_done
+	skip_group_if_unnecessary
+	prev_cmd_failed
+	iferr_exit
+	iferr_continue
+    )
+    for v in "${vlist[@]}"; do
+	fname="$(eval echo \$$v)"
+	echo export "$v='$fname'"
+	declare -f "$fname"
+	echo export -f "$fname"
+    done
+    echo "$starting_step" >/tmp/abcd
+}
+export -f initialize_hooks_for_remote_proxy_f
 
 # Note:  The old wrapper script still works.  For example:
 # /media/sda2/dev/work-dev/bashsteps/bashctrl.sh ./simple-test.sh indent path/adatadir nosetu status org-mode >aa.org
