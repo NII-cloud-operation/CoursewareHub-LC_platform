@@ -106,7 +106,7 @@ echo '<?php'
 echo "require_once __DIR__ . '/db.php';"
 
 echo '$user_info = array('
-for i in `seq 1 50`
+for i in `seq 1 60`
 do
 password=$(./pwgen.sh)
 echo "array('mail_addr'=>'${users[$i]}@ecloud.nii.ac.jp', 'password'=>'$password'),"
