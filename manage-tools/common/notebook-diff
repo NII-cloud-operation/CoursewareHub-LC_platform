@@ -1,24 +1,33 @@
 #!/bin/bash
+#set -x
 
 JQ='jq .cells[].source'
 
-function is_text () {
-  if [[ $(file $1) =~ ^.*text$ ]]; then
+function is_notebook () {
+  if [[ "$1" =~ ^.*\.ipynb$ ]]; then
     echo 1
   else
     echo "" 
   fi
 }
 
-function compare_file () {
+function compare_notebook () {
   local from=$1 to=$2
 
   diff -w -B -y --suppress-common-lines  <(cat ${from} | $JQ | sed -e 's/^\[//' -e 's/^\]//' -e 's/^ *"//' -e 's/\\n",$//' -e 's/"$//') <(cat ${to} | $JQ | sed -e 's/^\[//' -e 's/^\]//' -e 's/^ *"//' -e 's/\\n",$//' -e 's/"$//')
 }
 
 function compare_binary () {
-  file1=$(md5sum $1)
-  file2=$(md5sum $2)
+  [ -e "$1" ] || {
+    echo ""
+    return
+  }
+  [ -e "$2" ] || {
+    echo  ""
+    return
+  }
+  file1=$(md5sum $1 | awk '{print $1}')
+  file2=$(md5sum $2 | awk '{print $1}')
   if [ "$file1" != "$file2" ]; then
     echo $file1
     echo $file2
@@ -32,14 +41,14 @@ function compare_dir () {
     for nb in $( ls "$from" ); do
       src="$from/$nb"
       dst="$to/$nb"
-      if [ ! -e "$dst" ]; then
+      if [[ -e "$src" && ! -e "$dst" ]]; then
         echo "'$src' was added."
         if [ -d "$src" ]; then
           compare_dir $src $dst
         fi
       elif [[ -f "$src" || -L "$src" ]]; then
-        if [[ $(is_text $src) && $(is_text $dst) ]]; then
-          rep=$( (compare_file $src $dst) )
+        if [[ $(is_notebook $src) = "1" && $(is_notebook $dst) = "1" ]]; then
+          rep=$( (compare_notebook $src $dst) )
         else
           rep=$( (compare_binary $src $dst) )
         fi
@@ -51,18 +60,18 @@ function compare_dir () {
       fi
     done
   }
-  [ -e "$to" ] && {
-    for nb in $( ls "$to" ); do
-      if [[ "$nb" = "textbook" || "$nb" = "info" || "$nb" = "private_info" || "$nb" = "tools" ]]; then
-        continue
-      fi
-      src="$from/$nb"
-      dst="$to/$nb"
-      if [ ! -e "$src" ]; then
-        echo "'$src' was deleted."
-      fi
-    done
-  }
+  #[ -e "$to" ] && {
+  #  for nb in $( ls "$to" ); do
+  #    if [[ "$nb" = "textbook" || "$nb" = "info" || "$nb" = "private_info" || "$nb" = "tools" ]]; then
+  #      continue
+  #    fi
+  #    src="$from/$nb"
+  #    dst="$to/$nb"
+  #    if [ ! -e "$src" ]; then
+  #      echo "'$src' was deleted."
+  #    fi
+  #  done
+  #}
 }
 
 if [ ! -e "$1" ]; then
@@ -85,8 +94,8 @@ elif [ -d "$1" ] && [ -d "$2" ] ; then
   compare_dir $1 $2
 else
   # Compare the files
-  if [[ $(is_text $src) && $(is_text $dst) ]]; then
-    compare_file $1 $2
+  if [[ $(is_notebook $src) = "1" && $(is_notebook $dst) = "1" ]]; then
+    compar_notebook $1 $2
   else
     compare_binary $1 $2
   fi
