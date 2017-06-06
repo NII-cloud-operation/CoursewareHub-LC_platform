@@ -43,7 +43,7 @@ $config = array(
      * Note: The messages are logged with the DEBUG log level, so you also need to set
      * the 'logging.level' option to LOG_DEBUG.
      */
-    'debug' => true,
+    'debug' => false,
 
     /*
      * When showerrors is enabled, all error messages and stack traces will be output

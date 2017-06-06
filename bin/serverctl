@@ -11,8 +11,46 @@ usage()
     cat <<EOF
 Usage:
 
-./bin/serverctl list {hubid}                       ## List servers
-./bin/serverctl allow-sudo {hubid} {server_name}   ## Give sudo powers
+## List Jupyter servers
+serverctl list COURSE_DIR
+  COURSE_DIR: directory of the course environtment.
+
+## Give sudo powers to the Jupyter server
+serverctl allow-sudo COURSE_DIR SERVER_NAME
+  COURSE_DIR: directory of the course environtment.
+  SERVER_NAME: noame of Jupyter server to allow sudo.
+
+## Start Jupyter server 
+serverctl start COURSE_DIR SERVER_NAME
+  COURSE_DIR: directory of the course environtment.
+  SERVER_NAME: name of Jupyter server to start.
+
+## Stop Jupyter server
+serverctl stop COURSE_DIR SERVER_NAME
+  COURSE_DIR: directory of the course environtment.
+  SERVER_NAME: name of Jupyter server to stop.
+
+## Create Jupyter server image and save archive file.
+serverctl image-create COURSE_DIR SERVER_NAME IMAGE_NAME [IMAGE_DIR]
+  COURSE_DIR: directory of the course environtment.
+  SERVER_NAME: name of Jupyter server to stop.
+  IMAGE_NAME: name of image. it becomes an archive file name.
+  IMAGE_DIR: path of archive file directory. if omit it, current diretory.
+
+## Distribute Jupyter server image 
+serverctl image-distribute COURSE_DIR IMAGE_NAME [IMAGE_DIR]
+  COURSE_DIR: directory of the course environtment.
+  IMAGE_NAME: name of image. it becomes an archive file name.
+  IMAGE_DIR: path of archive file directory. if omit it, current diretory.
+
+## Set image to use for start of Jupyter server
+serverctl image-set COURSE_DIR IMAGE_NAME
+  COURSE_DIR: directory of the course environtment.
+  IMAGE_NAME: name of image. it becomes an archive file name.
+
+## List Jupyter server images
+serverctl image-list COURSE_DIR
+  COURSE_DIR: directory of the course environtment.
 
 EOF
 }
@@ -49,8 +87,13 @@ get_container_names()
     done
 }
 
-do_list()
+function do_list()
 {
+    ## check parameters
+    if [ "$#" -ne 1 ]; then 
+        reportfailed "Too few arguments"
+    fi
+
     local hubpath ; hubpath="$(classid_to_hubpath "$1")" || exit
     source "$hubpath/$DDCONFFILE" || reportfailed "missing $DDCONFFILE"
 
@@ -72,10 +115,16 @@ find_node_for_container()
     reportfailed "container not found or not running"
 }
 
-do_allow_sudo()
+function do_allow_sudo()
 {
     local classid="$1"
     local servername="$2"
+
+    ## check parameters
+    if [ "$#" -ne 2 ]; then 
+        reportfailed "Too few arguments"
+    fi
+
     local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
     source "$hubpath/$DDCONFFILE" || reportfailed "missing $DDCONFFILE"
     local thenode ; thenode="$(find_node_for_container "$classid" "$servername")" || exit
@@ -92,11 +141,17 @@ fi
 EOF
 }
 
-do_simple_docker_cmd() # implements both start and stop
+function do_simple_docker_cmd() # implements both start and stop
 {
     local classid="$1"
     local servername="$2"
     local dcmd="$3"
+
+    ## check parameters
+    if [ "$#" -ne 3 ]; then 
+        reportfailed "Too few arguments"
+    fi
+
     local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
     source "$hubpath/$DDCONFFILE" || reportfailed "missing $DDCONFFILE"
     local thenode ; thenode="$(find_node_for_container "$classid" "$servername")" || exit
@@ -122,21 +177,25 @@ humanreadable_to_bytes()
     echo $((s))
 }
 
-do_image_create()
+function do_image_create()
 {
     local classid="$1"
     local servername="$2"
-    local imagename="${3%.tar}.tar"
+    local imagename="${3%.tar}"
+    local imagefile_dir="${4-./}"
 
     ## Do tests that can be done quickly first, so user can fix simple problems faster:
-    [ "$imagename" == ".tar" ] && reportfailed "The fourth parameter must be a file name to save the image into"
-    [ -f "$imagename" ] && reportfailed "The imagefile ($imagename) already exists"
+    if [[ "$#" -lt 3 || "$#" -gt 4 ]]; then    
+        reportfailed "Too few arguments"
+    fi
+    imagefile_path=${imagefile_dir}/${imagename}.tar
+    [ -f "$imagefile_path" ] && reportfailed "The imagefile ($imagefile_path) already exists"
 
-    touch "$imagename" || reportfailed "Unable to open $imagename for writing"
-    rm -f "$imagename"
+    touch "$imagefile_path" || reportfailed "Unable to open $imagefile_path for writing"
+    rm -f "$imagefile_path"
 
-    rm -f "$imagename.inprogress"
-    touch "$imagename.inprogress" || reportfailed "Unable to open temporary $imagename for writing"
+    rm -f "$imagefile_path.inprogress"
+    touch "$imagefile_path.inprogress" || reportfailed "Unable to open temporary $imagefile_path for writing"
 
     ## These tests have some delay
     local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
@@ -160,37 +219,35 @@ do_image_create()
     # and therefore commit is necessary to create an up-to-date
     # image. )
     
-    unique_image_name="server-container-$(date "+%y%m%d-%H%M%S")"
+    unique_image_name="${imagename}-$(date "+%y%m%d-%H%M%S")"
     echo "Making new commit with name $unique_image_name..."
     "$hubpath"/jhvmdir-${thenode}/ssh-shortcut.sh -q \
 	      sudo docker commit "$servername" "$unique_image_name" \
 	      || reportfailed "Commit of $servername"
     echo "..Finished commit."
 
-    "$hubpath"/jhvmdir-${thenode}/ssh-shortcut.sh -q sudo docker save "$unique_image_name" >"$imagename.inprogress" &
+    "$hubpath"/jhvmdir-${thenode}/ssh-shortcut.sh -q sudo docker save "$unique_image_name" >"$imagefile_path.inprogress" &
     pid="$!"
     
     while [ -d "/proc/$pid" ]; do
-	read perms links owner group size theres <<<"$(ls -l "$imagename.inprogress")"
+	read perms links owner group size theres <<<"$(ls -l "$imagefile_path.inprogress")"
 	echo "$size / $bytes  ($((size * 100 / bytes ))%)"
 	sleep 10
     done
     wait "$pid"
     [ "$?" = "0" ] || reportfailed "docker export"
-    mv "$imagename.inprogress" "$imagename" || reportfailed "Final renaming to $imagename"
-    echo "$unique_image_name" >"$imagename.uniquename"
+    mv "$imagefile_path.inprogress" "$imagefile_path" || reportfailed "Final renaming to $imagefile_path"
+    echo "done."
 }
 
 do_image_upload()
 {
     local classid="$1"
-    local targetimage="$2"
-    local imagename="${3%.tar}.tar"
-    local thenode="$4"
+    local imagefile_path="$2"
+    local thenode="$3"
 
     ## Do tests that can be done quickly first, so user can fix simple problems faster:
-    [ "$imagename" == ".tar" ] && reportfailed "The fourth parameter must be a file name to save the image into"
-    [ -f "$imagename" ] || reportfailed "The imagefile ($imagename) not found"
+    [ -f "$imagefile_path" ] || reportfailed "The imagefile ($imagefile_path) not found"
 
     ## These have some delay
     local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
@@ -206,12 +263,12 @@ do_image_upload()
 
     echo "Starting docker load for $thenode..."
     ## split the pipeline so we can get the pid of cat
-    exec 8< <(exec cat "$imagename")
+    exec 8< <(exec cat "$imagefile_path")
     catpid="$!"
     "$hubpath"/jhvmdir-${thenode}/ssh-shortcut.sh -q sudo docker load <&8 &
     pid="$!"
 
-    read perms links owner group size theres <<<"$(ls -l "$imagename")"
+    read perms links owner group size theres <<<"$(ls -l "$imagefile_path")"
     while [ -d "/proc/$pid" ]; do
 	if info="$(cat /proc/"$catpid"/fdinfo/3)"; then  # TODO: remove the "fd=3" assumption
 	    read label position <<<"$info"
@@ -228,31 +285,31 @@ do_image_upload()
     echo
 }
 
-do_image_distribute()
+function do_image_distribute()
 {
     local classid="$1"
-    local imagename="${2%.tar}.tar"
+    local imagename="${2%.tar}"
+    local image_dir="${3-./}"
 
     ## Do tests that can be done quickly first, so user can fix simple problems faster:
-    [ "$imagename" == ".tar" ] && reportfailed "The fourth parameter must be a file name to save the image into"
-    [ -f "$imagename" ] || reportfailed "The imagefile ($imagename) not found"
-    [ -f "$imagename.uniquename" ] || reportfailed "The info file ($imagename.uniquename) not found"
+    if [[ "$#" -lt 2 || "$#" -gt 3 ]]; then 
+        reportfailed "Too few arguments"
+    fi
+    [ -f "$imagefile_path" ] || reportfailed "The imagefile ($imagefile_path) not found"
 
     ## These have some delay
     local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
     source "$hubpath/$DDCONFFILE" || reportfailed "missing $DDCONFFILE"
 
-    # make a unique name based on the time
-    local targetimage; targetimage="$(cat "$imagename.uniquename")" || reportfailed
-
+    # distrebute to each node
     for n in $node_list; do
 	echo "Uploading image to node ($n)"
-	do_image_upload  "$classid"  "$targetimage" "$imagename" "$n"
+	do_image_upload  "$classid" "$imagefile_path" "$n"
     done
 
     "$hubpath"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_jupyterhub_1 bash <<EOF
     cat >>/srv/jupyterhub_config/jupyterhub_config.py <<EOF2
-c.DockerSpawner.container_image = '$targetimage'
+c.DockerSpawner.container_image = '$imagename'
 EOF2
 EOF
 
@@ -262,32 +319,40 @@ EOF
     echo "..done."
 }
 
-do_image_set()
+function do_image_set()
 {
     local classid="$1"
-    local dockerimagename="$2"
+    local imagename="$2"
 
+    ## check parameters
+    if [ "$#" -ne 2 ]; then 
+        reportfailed "Too few arguments"
+    fi
     ## These have some delay
     local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
     source "$hubpath/$DDCONFFILE" || reportfailed "missing $DDCONFFILE"
 
     "$hubpath"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_jupyterhub_1 bash <<EOF
     cat >>/srv/jupyterhub_config/jupyterhub_config.py <<EOF2
-c.DockerSpawner.container_image = '$dockerimagename'
+c.DockerSpawner.container_image = '$magename'
 EOF2
 EOF
 
-    echo "Note: no error checking done on ($dockerimagename).  Be careful."
+    echo "Note: no error checking done on ($imagename).  Be careful."
     echo "Restarting JupyterHub configured to new image..."
     "$hubpath"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_jupyterhub_1
     "$hubpath"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_jupyterhub_1
     echo "..done."
 }
 
-do_image_list()
+function do_image_list()
 {
     local classid="$1"
     
+    ## check parameters
+    if [ "$#" -ne 1 ]; then 
+        reportfailed "Too few arguments"
+    fi
     ## These have some delay
     local hubpath ; hubpath="$(classid_to_hubpath "$classid")" || exit
     source "$hubpath/$DDCONFFILE" || reportfailed "missing $DDCONFFILE"
