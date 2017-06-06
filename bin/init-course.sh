@@ -73,7 +73,7 @@ EOF
     )
     (
         $starting_step "Create directory structure"
-	"$hubdir/jhvmdir-hub/ssh-shortcut.sh" -q sudo [ -e "/srv/background-command-processor.sh" ]
+	"$hubdir/jhvmdir-hub/ssh-shortcut.sh" -q sudo [ -e "/jupyter/admin/$teacherid" ]
         $skip_step_if_already_done
 
         create_directory_structure "$hubdir" "$teacherid"
@@ -161,19 +161,27 @@ EOF
             item="\"$node $ip"\"
             array+=$item" "
         done
-        "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q cat /jupyter/admin/$teacherid/$hub_config_name | grep -q "$array"
+        "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo bash << EOF | grep -q "$array"
+set -e
+[ -e /jupyter/admin/$teacherid/$hub_config_name ]
+cat /jupyter/admin/$teacherid/$hub_config_name
+EOF
         $skip_step_if_already_done
 
-        "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q << EOF
+        "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo bash << EOF
 echo "HUB_IP=$hubip" > /jupyter/admin/$teacherid/$hub_config_name
-echo "AUTH_PROXY_IP=$hubip" > /jupyter/admin/$teacherid/$hub_config_name
+echo "AUTH_PROXY_IP=$hubip" >> /jupyter/admin/$teacherid/$hub_config_name
 echo "AUTH_PROXY_NAME=${AUTH_PROXY_NAME}" >> /jupyter/admin/$teacherid/$hub_config_name
 echo 'NODES=(' >> /jupyter/admin/$teacherid/$hub_config_name
 echo '$array' >> /jupyter/admin/$teacherid/$hub_config_name
 echo ')' >> /jupyter/admin/$teacherid/$hub_config_name
-sudo chown "$JUPYTER_USER_ID:$JUPYTER_USER_ID" "/jupyter/admin/$teacherid/$hub_config_name"
+chown "$JUPYTER_USER_ID:$JUPYTER_USER_ID" "/jupyter/admin/$teacherid/$hub_config_name"
 EOF
     )
+
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo bash << EOF
+chmod 755 /jupyter/admin/{textbook,admin_tools,tools,info}
+EOF
 
     # Add database schema of local user
     (
@@ -216,6 +224,7 @@ EOF
         # notify password
         echo "----------"
         echo "admin password: "$password
+        echo "----------"
     )
 
     echo "Done."
@@ -267,11 +276,10 @@ function create_directory_structure()
 {
     local hubdir="$1"
     local teacherid="$2"
-    local auth_proxy_ssh_private_key="$3"
 
     "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo bash <<EOF
        mkdir -p /jupyter/admin/{textbook,admin_tools,tools,info}
-       chmod a+wr /jupyter/admin/{textbook,admin_tools,tools,info}
+       chmod a+rw /jupyter/admin/{textbook,admin_tools,tools,info}
 
        mkdir -p /jupyter/users
        chmod a+wr /jupyter/users
@@ -296,8 +304,8 @@ function create_directory_structure()
        # be behave as the link itself.
        [ -L "/jupyter/admin/$teacherid/admin_tools" ] || \
             ln -s /jupyter/admin/admin_tools "/jupyter/admin/$teacherid/admin_tools"
-       chown -R "$teacherid:$teacherid" "/jupyter/admin/$teacherid"
-       chmod -R a+wr "/jupyter/admin/$teacherid"
+       chown -R "$JUPYTER_USER_ID:$JUPYTER_USER_ID" "/jupyter/admin/$teacherid"
+       chmod -R a+rw "/jupyter/admin/$teacherid"
 EOF
     # update with latest version
     tar c adapt-notebooks-for-user.sh background-command-processor.sh | \

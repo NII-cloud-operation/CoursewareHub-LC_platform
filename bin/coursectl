@@ -55,12 +55,22 @@ rootdir="${ORGCODEDIR%/*}"
 
 AUTH_PROXY_NAME=root_nginx_3
 
-function init_jupyterhub()
+function generate_course()
+{
+    local builddir="$1"
+    local hubdir="$2"
+    local bridge="$3"
+
+    $rootdir/ind-steps/build-jh-environment/restore-environment-from-snapshot.sh-new $builddir $hubdir $bridge
+    $rootdir/ind-steps/build-jh-environment/restore-environment-from-snapshot.sh $hubdir do
+}
+
+function init_course()
 {
     local hubdir="$1"  # Path to the build directory
     local teacher_mail="$2"
 
-    TEACHER_MAIL="$2" $rootdir/bin/init-course.sh $hubdir do guest
+    TEACHER_MAIL="$teacher_mail" $rootdir/bin/init-course.sh $hubdir do guest
 }
 
 function enable_sso()
@@ -69,7 +79,7 @@ function enable_sso()
     local idp_proxy_host="$2"
 
     # check parameters
-    if [ -z "$hubdir" ] || [ -z "$idp_proxy_host" ] || [ -z "$entity_id" ] || [ -z "$auth_proxy_metadata_url" ] ; then
+    if [ -z "$hubdir" ] || [ -z "$idp_proxy_host" ] ; then
         reportfailed "too few arguments."
     fi
 
@@ -85,7 +95,7 @@ function disable_sso()
     local idp_proxy_host="$2"
 
     # check parameters
-    if [ -z "$hubdir" ] || [ -z "$idp_proxy_host" ] || [ -z "$entity_id" ] ; then
+    if [ -z "$hubdir" ] || [ -z "$idp_proxy_host" ] ; then
         reportfailed "too few arguments."
     fi
 
@@ -182,7 +192,7 @@ cmd="$1"
 shift
 
 case "$cmd" in
-    new) init_jupyterhub "$@"
+    new) init_course "$@"
         ;;
     enable-sso) enable_sso "$@"
         ;;
@@ -195,6 +205,8 @@ case "$cmd" in
     change-password) change_password "$@"
         ;;
     reset-password) reset_password "$@"
+        ;;
+    deploy) generate_course "$@"
         ;;
     dumpdb) dump_database "$@"
         ;;
