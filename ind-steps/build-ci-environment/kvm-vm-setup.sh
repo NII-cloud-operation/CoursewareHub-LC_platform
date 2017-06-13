@@ -72,4 +72,33 @@ echo 127.0.0.1 $hn | sudo tee -a /etc/hosts
 sudo hostname $hn
 EOF
     ) ; $iferr_exit
+
+    (
+	$starting_step "Install mailutils"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+which mail
+EOF
+	$skip_step_if_already_done ; set -e
+
+	# https://stackoverflow.com/questions/15469343/installing-mailutils-using-apt-get-without-user-intervention
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+sudo debconf-set-selections <<< "postfix postfix/mailname string axsh.net"
+sudo debconf-set-selections <<< "postfix postfix/main_mailer_type string 'Internet Site'"
+sudo apt-get install -y mailutils
+EOF
+    ) ; $iferr_exit
+
+    (
+	$starting_step "Install sendmail"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+which which sendmail
+EOF
+	$skip_step_if_already_done ; set -e
+
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+sudo apt-get install -y sendmail
+EOF
+    ) ; $iferr_exit
 ) ; $iferr_exit
