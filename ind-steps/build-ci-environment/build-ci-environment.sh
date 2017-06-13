@@ -255,7 +255,7 @@ EOF
     (
 	$starting_step "Upload notebooks to jupyter server"
 	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh"  2>/dev/null 1>/dev/null <<'EOF'
 [ "$(ls ./notebooks)" != "" ]
 EOF
 	$skip_step_if_already_done; set -e
