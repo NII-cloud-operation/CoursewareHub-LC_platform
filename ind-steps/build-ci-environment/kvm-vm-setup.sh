@@ -59,17 +59,23 @@ sudo apt-get -y install git supervisor
 EOF
     ) ; $iferr_exit
 
+    # Having something from *.{net,com,...} here seems to make outgoing mail work better.
+    # And seems that command "host civm.axsh.net", for example, should return "mail is handled by"
+    # in the output.  If so, sending mail from the VM becomes demoable.
+    # TODO: Research the proper way to configure hostname/sendmail for various target
+    # environments.
+    : ${vmhostname:=civm.axsh.net}
+
     (
 	$starting_step "Change hostname VM $VMDIR"
 	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null >/dev/null
 [[ "\$(hostname)" != *ubuntu* ]]
 EOF
 	$skip_step_if_already_done
-	hn=civm
 	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
-echo $hn | sudo tee /etc/hostname
-echo 127.0.0.1 $hn | sudo tee -a /etc/hosts
-sudo hostname $hn
+echo $vmhostname | sudo tee /etc/hostname
+echo 127.0.0.1 $vmhostname | sudo tee -a /etc/hosts
+sudo hostname $vmhostname
 EOF
     ) ; $iferr_exit
 
@@ -83,7 +89,7 @@ EOF
 
 	# https://stackoverflow.com/questions/15469343/installing-mailutils-using-apt-get-without-user-intervention
 	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
-sudo debconf-set-selections <<< "postfix postfix/mailname string axsh.net"
+sudo debconf-set-selections <<< "postfix postfix/mailname string $vmhostname"
 sudo debconf-set-selections <<< "postfix postfix/main_mailer_type string 'Internet Site'"
 sudo apt-get install -y mailutils
 EOF
