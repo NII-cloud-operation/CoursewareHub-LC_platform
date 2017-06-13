@@ -29,8 +29,8 @@ VMDIR=jhvmdir
     }
 
 
-    clone_remote_git https://github.com/triggers/jupyterhub-deploy.git
-    clone_remote_git https://github.com/triggers/systemuser.git
+    clone_remote_git https://github.com/axsh/jupyterhub-deploy.git
+    clone_remote_git https://github.com/axsh/systemuser.git
     clone_remote_git https://github.com/minrk/restuser.git
 
     # next is for 3 docker files: scipy-notebook/Dockerfile, minimal-notebook/Dockerfile, and base-notebook/Dockerfile
@@ -40,7 +40,7 @@ VMDIR=jhvmdir
     clone_remote_git https://github.com/jupyterhub/dockerspawner
 
     clone_remote_git https://github.com/jupyterhub/jupyterhub jh-jupyterhub
-    clone_remote_git https://github.com/triggers/jupyterhub.git
+    clone_remote_git https://github.com/axsh/jupyterhub.git
 ) ; $iferr_exit
 
 ( # not a step, just a little sanity checking
