@@ -46,18 +46,25 @@ EOF
     ) ; $iferr_exit
 
     (
-	$starting_step "Install git and supervisor"
+	$starting_step "Install git, jq and supervisor"
 	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
-which git && which supervisorctl
+which git && which jq && which supervisorctl
 EOF
 	$skip_step_if_already_done ; set -e
 
 	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 sudo apt-get update
-sudo apt-get -y install git supervisor
+sudo apt-get -y install git jq supervisor
 EOF
     ) ; $iferr_exit
+
+    # Having something from *.{net,com,...} here seems to make outgoing mail work better.
+    # And seems that command "host civm.axsh.net", for example, should return "mail is handled by"
+    # in the output.  If so, sending mail from the VM becomes demoable.
+    # TODO: Research the proper way to configure hostname/sendmail for various target
+    # environments.
+    : ${vmhostname:=civm.axsh.net}
 
     (
 	$starting_step "Change hostname VM $VMDIR"
@@ -65,11 +72,39 @@ EOF
 [[ "\$(hostname)" != *ubuntu* ]]
 EOF
 	$skip_step_if_already_done
-	hn=civm
 	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
-echo $hn | sudo tee /etc/hostname
-echo 127.0.0.1 $hn | sudo tee -a /etc/hosts
-sudo hostname $hn
+echo $vmhostname | sudo tee /etc/hostname
+echo 127.0.0.1 $vmhostname | sudo tee -a /etc/hosts
+sudo hostname $vmhostname
+EOF
+    ) ; $iferr_exit
+
+    (
+	$starting_step "Install mailutils"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+which mail
+EOF
+	$skip_step_if_already_done ; set -e
+
+	# https://stackoverflow.com/questions/15469343/installing-mailutils-using-apt-get-without-user-intervention
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+sudo debconf-set-selections <<< "postfix postfix/mailname string $vmhostname"
+sudo debconf-set-selections <<< "postfix postfix/main_mailer_type string 'Internet Site'"
+sudo apt-get install -y mailutils
+EOF
+    ) ; $iferr_exit
+
+    (
+	$starting_step "Install sendmail"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+which which sendmail
+EOF
+	$skip_step_if_already_done ; set -e
+
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+sudo apt-get install -y sendmail
 EOF
     ) ; $iferr_exit
 ) ; $iferr_exit
