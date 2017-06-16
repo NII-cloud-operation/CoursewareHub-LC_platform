@@ -1,5 +1,14 @@
 #!/bin/bash
 
+check_dep() {
+  local dep="$1"
+
+  command -v "${dep}" >/dev/null 2>&1
+  if [[ "$?" != "0" ]]; then
+    echo "Missing dependency: ${dep}"
+    exit 1
+  fi
+}
 
 reportfailed()
 {
@@ -54,6 +63,9 @@ coursectl reset-password COURSE_DIR USER_EMAIL
 
 EOF
 }
+
+# Before doing anything -- is mkpasswd available?
+check_dep "mkpasswd"
 
 export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
 
