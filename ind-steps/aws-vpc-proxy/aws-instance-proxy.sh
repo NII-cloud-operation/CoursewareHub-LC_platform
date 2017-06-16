@@ -50,7 +50,10 @@ EOF
     awsout="${awsout//$remove}"
     read instanceid therest <<<"${awsout#*InstanceId:}"  # parse line w/ "   InstanceId: i-0618d5b53b486ba8d "
     echo "instanceid=\"$instanceid\"" >> "$DATADIR/datadir.conf"
-    
+
+    ## This was added, as sometimes it takes a while for an instance to start
+    aws ec2 wait instance-running --instance-ids "${instanceid}"
+
     read VMIP therest <<<"${awsout#*PrivateIpAddress:}"  # parse line w/ "   PrivateIpAddress: 192.168.11.20 "
     eval_iferr_exit '[ "${VMIP//[^.]}" = "..." ]' # sanity checking for 3 dots
     echo "VMIP=\"$VMIP\"" >> "$DATADIR/datadir.conf"
