@@ -57,11 +57,28 @@ reportfailed()
 ssh $USER@$iphere 'cd "$vmdir" ; bash'
 EOF
 
+# declare up here and use declare below to avoid
+# so many escaped dollar signs in the code
+initialize_hooks_for_remote_proxy()
+{
+    for v in ${export_variables_for_remote:=} ; do
+	fname="$(eval echo \$$v)"
+	echo export "$v='$fname'"
+	declare -f "$fname" 2>/dev/null && echo export -f "$fname"
+    done
+    for fname in ${export_funtions_for_remote:=} ; do
+	declare -f "$fname" 2>/dev/null && echo export -f "$fname"
+    done
+}
+
 for s in kvm-boot.sh kvm-kill.sh kvm-shutdown-via-ssh.sh kvm-expand-fresh-image.sh; do
     cat >"$s" <<EOF
 #!/bin/bash
-ssh $USER@$iphere <<EOF2
-\$(set +u ; \$initialize_hooks_for_remote_proxy)
+
+$(declare -f initialize_hooks_for_remote_proxy)
+
+ssh $USER@$iphere -q <<EOF2
+\$(initialize_hooks_for_remote_proxy)
 '$vmdir/$s' \$@
 EOF2
 EOF
