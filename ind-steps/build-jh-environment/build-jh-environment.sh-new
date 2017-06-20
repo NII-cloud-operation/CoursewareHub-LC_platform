@@ -37,7 +37,7 @@ setcommit_jh_jupyterhub="6078b8d9e5576cd14eb2d76d8efbe83685f72beb"
 # TODO: debug why later jupyterhub commits break the system
 
 setcommit_dockerspawner="unchanged"
-setcommit_docker_stacks="unchanged"
+setcommit_docker_stacks="eb70bcf1a2927f259472dca911a4b12e0529ac46"  # TODO: temp fix
 setcommit_jupyterhub="unchanged"
 setcommit_jupyterhub_deploy="unchanged"
 setcommit_restuser="unchanged"
