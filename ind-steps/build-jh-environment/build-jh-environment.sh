@@ -440,8 +440,10 @@ EOF
   echo "[jupyterhub_nfs]"
   echo "hub"
   echo ""
-  echo "[proxy]"
-  echo "hub"
+  echo "## Not deploying root_nginx_1 container.  It is now completely replaced by"
+  echo "## root_nginx_3 which is deployed by bashscripts.  So commenting out the next two lines:"
+  echo "# [proxy]"
+  echo "# hub"
   echo ""
   echo "[nfs_clients]"
   for n in $node_list; do
