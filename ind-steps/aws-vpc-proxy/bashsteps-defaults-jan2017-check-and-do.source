@@ -276,12 +276,15 @@ bashctrl-main()
 
 bashctrl-main "$@"
 
-initialize_hooks_for_remote_proxy=initialize_hooks_for_remote_proxy_f
-export initialize_hooks_for_remote_proxy
 
-initialize_hooks_for_remote_proxy_f()
-{
-    vlist=(
+# If one bashsteps script tries to call another remotely,
+# it should do its best to make sure these functions and
+# variables are copied to the remote environment.
+# If a variable's value is a function name, that function
+# should also be automatically copied.
+
+export_variables_for_remote="
+ ${export_variables_for_remote:=}
 	starting_group
 	starting_step
 	skip_step_if_already_done
@@ -289,17 +292,18 @@ initialize_hooks_for_remote_proxy_f()
 	prev_cmd_failed
 	iferr_exit
 	iferr_continue
-    )
-    for v in "${vlist[@]}"; do
-	fname="$(eval echo \$$v)"
-	echo export "$v='$fname'"
-	declare -f "$fname"
-	echo export -f "$fname"
-    done
-    echo "$starting_step" >/tmp/abcd
-}
-export -f initialize_hooks_for_remote_proxy_f
+"
+
+export_funtions_for_remote="
+ ${export_funtions_for_remote:=}
+"
+
+export export_variables_for_remote
+export export_funtions_for_remote
 
 # Note:  The old wrapper script still works.  For example:
-# /media/sda2/dev/work-dev/bashsteps/bashctrl.sh ./simple-test.sh indent path/adatadir nosetu status org-mode >aa.org
-
+# /path/to/bashsteps/bashctrl.sh ./simple-test.sh indent path/adatadir nosetu status org-mode >aa.org
+# Update: It now works again quite normally with just:
+# /path/to/bashsteps/bashctrl.sh ./simple-test.sh indent path/adatadir status org-mode >aa.org
+# or even:
+# /path/to/bashsteps/bashctrl.sh path/adatadir/simple-test.sh indent check org-mode >aa.org
