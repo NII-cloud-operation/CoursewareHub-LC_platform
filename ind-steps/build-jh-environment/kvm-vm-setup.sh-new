@@ -7,7 +7,10 @@ path_to_ubuntu_image="$2"
 
 eval_iferr_exit 'path_to_ubuntu_image="$(readlink -f "$path_to_ubuntu_image")"'
 
-shift 2
+# The next parameter required, but may be an empty string to signify to build a "main" JupyterHub environmnet.
+main_build_dir="$3"
+
+shift 3
 ip_array=( "$@" )
 for ip in "${ip_array[@]}"; do
     [ "${ip//[0-9]}" = "..." ] || iferr_exit "Parameter ($ip) is not a valid IP4 address"
@@ -34,7 +37,18 @@ eval_iferr_exit 'source "$DATADIR/datadir.conf"'
 [ "$nodecount" -gt 0 ] && [ "$nodecount" -lt 20 ] || iferr_exit "Invalid nodecount in datadir.conf"
 [ "${#ip_array[@]}" -eq $((nodecount + 2)) ] || iferr_exit "Number of IP addresses on command line does not match number of nodes plus two"
 
-randomport="$(( 5000 + ( $RANDOM % 5000 ) ))"
+# Deal with the details that depend on whether this is a "main" jupterhub environment
+# with it's own jhvmdir VM, or a "subordinate" jupterhub environment that uses an
+# already existing  jhvmdir VM.
+if [ "$mainbuilddir" = "" ]; then
+    # It will be a "main" jupterhub environment
+    randomport="$(( 5000 + ( $RANDOM % 5000 ) ))"
+    mcport="$randomport"
+    ansible_path="/home/ubuntu/jupyterhub-deploy"  # the path inside the jhvmdir VM
+else
+    # It will be a "subordinate" jupterhub environment
+    : # TODO: make sure there are no obvious problems with the parameters
+fi
 
 ipindex=0
 
@@ -56,8 +70,13 @@ for i in $vmdir_list; do
 	    MAC=52:54:00:12:00:$nn
 	    ;;
     esac
-    "$ORGCODEDIR/../kvmsteps/kvmsteps.sh-new" "$DATADIR/$i" "$imagepath" OK || iferr_exit
-    cat >>"$DATADIR/$i/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for $i"
+    if [ "$i" = "jhvmdir" ] && [ "$mainbuilddir" != "" ]; then
+	: # TODO: link to the main environment
+    else
+	# Make one of the build directories of the VMs (including jhvmdir if
+	# this is a "main" jupterhub environment.)
+	"$ORGCODEDIR/../kvmsteps/kvmsteps.sh-new" "$DATADIR/$i" "$imagepath" OK || iferr_exit
+	cat >>"$DATADIR/$i/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for $i"
 # Not all of these are used on every VM
 export EXTRAHOSTFWDREL=""
 
@@ -71,8 +90,13 @@ EXTRAHOSTFWDREL=\$EXTRAHOSTFWDREL,hostfwd=tcp::90-$IP:9000
 
 export VMIP="$IP"
 export mcastMAC="$MAC"
-export mcastPORT=$randomport
+export mcastPORT="$mcport"
 EOF
+    fi
 done
+
+cat  >>"$DATADIR/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for whole environment"
+ansible_path="$ansible_path"
+EOF
 
 echo "Success"

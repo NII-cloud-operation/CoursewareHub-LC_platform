@@ -9,6 +9,8 @@ defaultip=( 192.168.33.{99,88,11,12} )
 : "${nodecount:=2}"
 : "${ipaddresses:=${defaultip[*]}}"
 
+: "${mainbuilddir:=}"  # default to empty string, which means to build a "main" jupyterhub environmnet
+
 # catch this early, otherwise the cleanup below will delete the existing dir
 [ -d "$new_dir" ] && just_exit "$new_dir already exists"
 
@@ -20,7 +22,7 @@ defaultip=( 192.168.33.{99,88,11,12} )
     mainscript="${thisfile%-new}"
     ln -s "$ORGCODEDIR/$mainscript" "$new_dir" || iferr_exit "ln to $mainscript"
     
-    "$ORGCODEDIR/kvm-vm-setup.sh-new" "$new_dir" ~/ubuntu-image-resources/ubuntu-14-instance-build.img-sshkeys-update-upgrade.tar.gz $ipaddresses
+    "$ORGCODEDIR/kvm-vm-setup.sh-new" "$new_dir" ~/ubuntu-image-resources/ubuntu-14-instance-build.img-sshkeys-update-upgrade.tar.gz "$mainbuilddir" $ipaddresses
 ) || {
     # clean up if error
     rm -fr "$new_dir"
