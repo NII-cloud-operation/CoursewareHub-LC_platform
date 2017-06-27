@@ -424,7 +424,7 @@ EOF
 	$starting_step "Adjust ansible config files for node_list"
 	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
-[ -f nodelist ] && [ "\$(cat nodelist)" = "$node_list" ]
+[ -f "$ansible_path/nodelist" ] && [ "\$(cat "$ansible_path/nodelist")" = "$node_list" ]
 EOF
 	$skip_step_if_already_done ; set -e
 
@@ -497,7 +497,7 @@ echo ------ jupyterhub-deploy/script/assemble_certs ---------
 diff  "$ansible_path/jupyterhub-deploy/script/assemble_certs.bak" "$ansible_path/jupyterhub-deploy/script/assemble_certs" || :
 
 # Flag that step has been done:
-echo "$node_list" >nodelist
+echo "$node_list" >"$ansible_path/nodelist"
 EOF
     ) ; $iferr_exit
 
