@@ -73,6 +73,7 @@ EOF
 [ -d "$targetdir/$repo_name" ]
 EOF
 	    $skip_step_if_already_done ; set -e
+	    "$DATADIR/$vmdir/ssh-shortcut.sh" mkdir -p "$targetdir"
 	    (
 		# clone from our cached copy
 		cd "$ORGCODEDIR/repo-cache"
