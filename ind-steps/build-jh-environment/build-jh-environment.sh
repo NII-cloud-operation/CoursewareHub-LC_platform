@@ -586,7 +586,7 @@ EOF
 	$starting_step "Run ./script/assemble_certs (from the jupyterhub-deploy repository)"
 	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
 cd jupyterhub-deploy
-[ -f ./host_vars/node2 ]
+[ -f ./host_vars/hub ]
 EOF
 	$skip_step_if_already_done
 	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
