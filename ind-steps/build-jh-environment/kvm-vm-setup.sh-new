@@ -44,7 +44,7 @@ if [ "$mainbuilddir" = "" ]; then
     # It will be a "main" jupterhub environment
     randomport="$(( 5000 + ( $RANDOM % 5000 ) ))"
     mcport="$randomport"
-    ansible_path="/home/ubuntu/jupyterhub-deploy"  # the path inside the jhvmdir VM
+    ansible_path="/home/ubuntu"  # put the "main" environment jupyterhub-deploy in the jhvmdir home dir
 else
     # It will be a "subordinate" jupterhub environment
     # So use the same mcast port as the "main" jupterhub environment.
