@@ -42,8 +42,6 @@ vmdirlist=(
     $(for i in $(seq 1 $nodecount) ; do echo jhvmdir-node$i ; done)
 )
 
-node_list="$(for i in $(seq 1 $nodecount) ; do echo -n " node$i" ; done)"
-
 randomport="$(( 5000 + ( $RANDOM % 5000 ) ))"
 
 ipindex=0

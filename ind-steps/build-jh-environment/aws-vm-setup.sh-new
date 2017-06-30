@@ -31,8 +31,6 @@ vmdirlist=(
     $(for i in $(seq 1 $nodecount) ; do echo jhvmdir-node$i ; done)
 )
 
-node_list="$(for i in $(seq 1 $nodecount) ; do echo -n " node$i" ; done)"
-
 vpcname="${DATADIR##*/}"
 
 "$ORGCODEDIR/../aws-vpc-proxy/aws-vpc-proxy.sh-new" "$DATADIR/vpcproxy" "$vpcname"
