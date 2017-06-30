@@ -9,6 +9,9 @@ defaultip=( 192.168.33.{99,88,11,12} )
 : "${nodecount:=2}"
 : "${ipaddresses:=${defaultip[*]}}"
 
+# catch this early, otherwise the cleanup below will delete the existing dir
+[ -d "$new_dir" ] && just_exit "$new_dir already exists"
+
 (
     "$ORGCODEDIR/build-jh-environment.sh-new" "$new_dir"
     iferr_exit
