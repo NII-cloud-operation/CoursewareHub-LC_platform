@@ -158,7 +158,7 @@ EOF
 ) ; $iferr_exit
 
 (
-    $starting_group "Boot three VMs"
+    $starting_group "Boot all VMs"
 
     boot-one-vm()
     {

@@ -36,17 +36,11 @@ eval_iferr_exit 'nodecount="${#node_array[@]}"'
 [ "$nodecount" -gt 0 ] && [ "$nodecount" -lt 20 ] || iferr_exit "Invalid nodecount in datadir.conf"
 [ "${#ip_array[@]}" -eq $((nodecount + 2)) ] || iferr_exit "Number of IP addresses on command line does not match number of nodes plus two"
 
-vmdirlist=(
-    jhvmdir
-    jhvmdir-hub
-    $(for i in $(seq 1 $nodecount) ; do echo jhvmdir-node$i ; done)
-)
-
 randomport="$(( 5000 + ( $RANDOM % 5000 ) ))"
 
 ipindex=0
 
-for i in "${vmdirlist[@]}"; do
+for i in "$vmdirlist"; do
     IP="${ip_array[ipindex++]}"
     case "$i" in
 	jhvmdir)
@@ -82,9 +76,5 @@ export mcastMAC="$MAC"
 export mcastPORT=$randomport
 EOF
 done
-
-cat  >>"$DATADIR/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for whole environment"
-$(declare -p vmdirlist)
-EOF
 
 echo "Success"
