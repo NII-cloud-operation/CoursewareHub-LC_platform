@@ -36,9 +36,25 @@ eval_iferr_exit 'source "$DATADIR/datadir.conf"'
 [ "$nodecount" -gt 0 ] && [ "$nodecount" -lt 20 ] || iferr_exit "Invalid nodecount in datadir.conf"
 [ "${#ip_array[@]}" -eq $((nodecount + 2)) ] || iferr_exit "Number of IP addresses on command line does not match number of nodes plus two"
 
+output_used_ips() # only called for subenvironments
+{
+    [ -d "$DATADIR/mainenvironment/subenvironments" ] || return 0
+    (
+	shopt -s nullglob
+	for e in "$DATADIR/mainenvironment" "$DATADIR/mainenvironment/subenvironments"/*; do
+	    for c in "$e"/jhvmdir*/datadir.conf; do
+		VMIP=""
+		source "$c"
+		[ "$VMIP" != "" ] && echo "$VMIP"
+	    done
+	done
+    )
+}
+
 # Deal with the details that depend on whether this is a "main" jupterhub environment
 # with it's own jhvmdir VM, or a "subordinate" jupterhub environment that uses an
 # already existing  jhvmdir VM.
+
 if [ "$mainbuilddir" = "" ]; then
     # It will be a "main" jupterhub environment
     randomport="$(( 5000 + ( $RANDOM % 5000 ) ))"
@@ -48,14 +64,21 @@ else
     # It will be a "subordinate" jupterhub environment
     # So use the same mcast port as the "main" jupterhub environment.
     mcport="$(source "$mainbuilddir/jhvmdir/datadir.conf" ; echo "$mcastPORT")"
-    # And put things in a directory named after the build directory.
+
+    # And put ansible playbooks in a directory named after the build directory.
     lasttoken="${DATADIR##*/}"
     ansible_path="/home/ubuntu/subs/$lasttoken"  # the path inside the jhvmdir VM
-    : # TODO: make sure there are no obvious problems with the parameters
+
+    # Do a quick check for duplicate IP addresses
+    usedip="$(output_used_ips)"
+    for ip in "${ip_array[@]:1}"; do  # ":1" skips the first IP address for the main ansible VM
+	for u in $usedip; do
+	    [ "$ip" = "$u" ] && just_exit "IP address ($ip) already in use."
+	done
+    done
 fi
 
 ipindex=0
-
 for i in $vmdir_list; do
     IP="${ip_array[ipindex++]}"
     # Assuming all VMs are on the same /24 subnet, the last octet
