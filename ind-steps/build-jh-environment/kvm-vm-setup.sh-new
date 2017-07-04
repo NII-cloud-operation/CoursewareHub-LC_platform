@@ -2,20 +2,19 @@
 
 source "$(dirname $(readlink -f "$0"))/bashsteps-bash-utils-jan2017.source" || exit
 
+# nodecount, vmdir_list, and mainbuilddir should now
+# have values that were already set in datadir.conf
+
 existing_dir="$1"
 path_to_ubuntu_image="$2"
 
 eval_iferr_exit 'path_to_ubuntu_image="$(readlink -f "$path_to_ubuntu_image")"'
-
-# The next parameter required, but may be an empty string to signify to build a "main" JupyterHub environmnet.
-main_build_dir="$3"
 
 shift 3
 ip_array=( "$@" )
 for ip in "${ip_array[@]}"; do
     [ "${ip//[0-9]}" = "..." ] || iferr_exit "Parameter ($ip) is not a valid IP4 address"
 done
-
 
 thisfile="${0##*/}"
 mainscript="${thisfile%-new}"
@@ -63,6 +62,7 @@ for i in $vmdir_list; do
     # is enough to make the MAC addresses unique
     lastoctet="${IP##*.}"
     inhex="$(printf "%02x" "$lastoctet")"
+
     case "$i" in
 	jhvmdir)
 	    # these settings are ignored for "subordinate" jupterhub environments
@@ -80,6 +80,7 @@ for i in $vmdir_list; do
 	    MAC=52:54:00:12:$inhex:$nn
 	    ;;
     esac
+
     if [ "$i" = "jhvmdir" ] && [ "$mainbuilddir" != "" ]; then
 	ln -s "$mainbuilddir/jhvmdir" "$DATADIR/$i"
     else
