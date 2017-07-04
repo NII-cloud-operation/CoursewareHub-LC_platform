@@ -38,7 +38,7 @@ randomport="$(( 5000 + ( $RANDOM % 5000 ) ))"
 
 ipindex=0
 
-for i in "$vmdir_list"; do
+for i in $vmdir_list; do
     IP="${ip_array[ipindex++]}"
     case "$i" in
 	jhvmdir)

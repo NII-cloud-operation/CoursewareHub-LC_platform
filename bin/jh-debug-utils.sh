@@ -145,7 +145,7 @@ info_from_inside_a_kvm()
 do_netconnections()
 {
     cmdline=''
-    for vm in "$vmdir_list"; do
+    for vm in $vmdir_list; do
 	cmdline="$cmdline <(info_from_inside_a_kvm '$vm')"
     done
     [ "$cmdline" != '' ] && eval cat "$cmdline"

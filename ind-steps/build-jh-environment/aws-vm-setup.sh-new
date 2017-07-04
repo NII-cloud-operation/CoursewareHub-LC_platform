@@ -28,7 +28,7 @@ vpcname="${DATADIR##*/}"
 
 "$ORGCODEDIR/../aws-vpc-proxy/aws-vpc-proxy.sh-new" "$DATADIR/vpcproxy" "$vpcname"
 
-for i in "$vmdir_list"; do
+for i in $vmdir_list; do
     "$ORGCODEDIR/../aws-vpc-proxy/aws-instance-proxy.sh-new" "$DATADIR/$i" "$DATADIR/vpcproxy" || iferr_exit
     ln -s vpc-datadir/sshkey "$DATADIR/$i/sshkey"
     cat >>"$DATADIR/$i/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for $i"
