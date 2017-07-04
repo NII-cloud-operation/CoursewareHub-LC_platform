@@ -12,9 +12,6 @@ eval_iferr_exit 'path_to_ubuntu_image="$(readlink -f "$path_to_ubuntu_image")"'
 
 shift 3
 ip_array=( "$@" )
-for ip in "${ip_array[@]}"; do
-    [ "${ip//[0-9]}" = "..." ] || iferr_exit "Parameter ($ip) is not a valid IP4 address"
-done
 
 thisfile="${0##*/}"
 mainscript="${thisfile%-new}"
@@ -34,9 +31,10 @@ existing_directory_for_datadir
 eval_iferr_exit 'source "$DATADIR/datadir.conf"'
 
 [ "$nodecount" -gt 0 ] && [ "$nodecount" -lt 20 ] || iferr_exit "Invalid nodecount in datadir.conf"
-[ "${#ip_array[@]}" -eq $((nodecount + 2)) ] || iferr_exit "Number of IP addresses on command line does not match number of nodes plus two"
 
-output_used_ips() # only called for subenvironments
+# used for generating unique new IP addresses and checking for duplicate
+# IP addresses for subenvironments
+output_used_ips()
 {
     [ -d "$DATADIR/mainenvironment/subenvironments" ] || return 0
     (
@@ -51,11 +49,41 @@ output_used_ips() # only called for subenvironments
     )
 }
 
+# enough checking to catch careless typos or missing parameters
+check_ip_validity()
+{
+    for ip in "${ip_array[@]}"; do
+	[ "${ip//[0-9]}" = "..." ] || iferr_exit "Parameter ($ip) is not a valid IP4 address"
+    done
+    [ "${#ip_array[@]}" -eq $((nodecount + 2)) ] || iferr_exit "Number of IP addresses on command line does not match number of nodes plus two"
+}
+
+
+# Just increments the last octet to generate new addresses.  Mainly for debugging.
+generate_ip_addresses()
+{
+
+    first_3_octets="$(output_used_ips | while read ln ; do echo "${ln%.*}"; done | sort -u)"
+    [ "$(wc -l <<<"$first_3_octets")" = "1" ] || \
+	just_exit 'auto IP selection cannot be used if existing IP are not on same /24 network'
+    biggest="$(output_used_ips | while read ln ; do echo "${ln##*.}"; done | sort -n | tail -n 1)"
+    (
+	source "$mainbuilddir/jhvmdir/datadir.conf"
+	echo "$VMIP" # reuse from main environment's ansible VM
+    )
+    [ $(( nodecount + 1 + biggest )) -lt 255 ] || just_exit "No more IP addresses left for automatic generation"
+    for (( i=0 ; i< nodecount + 1 ; i++ )); do  # one for each node plus one for the hub
+	(( biggest++ ))
+	echo "$first_3_octets"."$biggest"
+    done
+}
+
 # Deal with the details that depend on whether this is a "main" jupterhub environment
 # with it's own jhvmdir VM, or a "subordinate" jupterhub environment that uses an
 # already existing  jhvmdir VM.
 
 if [ "$mainbuilddir" = "" ]; then
+    check_ip_validity
     # It will be a "main" jupterhub environment
     randomport="$(( 5000 + ( $RANDOM % 5000 ) ))"
     mcport="$randomport"
@@ -69,13 +97,20 @@ else
     lasttoken="${DATADIR##*/}"
     ansible_path="/home/ubuntu/subs/$lasttoken"  # the path inside the jhvmdir VM
 
-    # Do a quick check for duplicate IP addresses
-    usedip="$(output_used_ips)"
-    for ip in "${ip_array[@]:1}"; do  # ":1" skips the first IP address for the main ansible VM
-	for u in $usedip; do
-	    [ "$ip" = "$u" ] && just_exit "IP address ($ip) already in use."
+    if [ "${ip_array[0]}" = "auto" ]; then
+	# auto generation
+	ip_array=( $(generate_ip_addresses) ) || exit
+    else
+	# pass in by parameter
+	check_ip_validity
+	# Do a quick check for duplicate IP addresses
+	usedip="$(output_used_ips)"
+	for ip in "${ip_array[@]:1}"; do  # ":1" skips the first IP address for the main ansible VM
+	    for u in $usedip; do
+		[ "$ip" = "$u" ] && just_exit "IP address ($ip) already in use."
+	    done
 	done
-    done
+    fi
 fi
 
 ipindex=0
