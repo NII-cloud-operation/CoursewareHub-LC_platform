@@ -23,9 +23,14 @@ standard_datadir_setup()
 standard_datadir_setup
 
 node_list="$(for i in $(seq 1 $nodecount) ; do echo -n " node$i" ; done)"
+node_list="${node_list# }"
+vmdir_list="$(for i in $(seq 1 $nodecount) ; do echo -n " jhvmdir-node$i" ; done)"
+vmdir_list="jhvmdir jhvmdir-hub $vmdir_list"
 
 cat  >>"$DATADIR/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for whole environment"
-node_list="${node_list# }"
+node_list="$node_list"
+vmdir_list="$vmdir_list"
+nodecount="$nodecount"
 
 # Defaults commit to use for each build repository.  Can be set to
 # "unchanged" to use the commit currently checkout in the repo-cache

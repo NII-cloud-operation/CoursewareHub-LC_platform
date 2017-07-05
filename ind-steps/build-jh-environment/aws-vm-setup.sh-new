@@ -20,32 +20,19 @@ existing_directory_for_datadir()
 existing_directory_for_datadir
 
 eval_iferr_exit 'source "$DATADIR/datadir.conf"'
-node_array=( $node_list )
-eval_iferr_exit 'nodecount="${#node_array[@]}"'
 
 [ "$nodecount" -gt 0 ] && [ "$nodecount" -lt 20 ] || iferr_exit "Invalid nodecount in datadir.conf"
 
-vmdirlist=(
-    jhvmdir
-    jhvmdir-hub
-    $(for i in $(seq 1 $nodecount) ; do echo jhvmdir-node$i ; done)
-)
-
-node_list="$(for i in $(seq 1 $nodecount) ; do echo -n " node$i" ; done)"
 
 vpcname="${DATADIR##*/}"
 
 "$ORGCODEDIR/../aws-vpc-proxy/aws-vpc-proxy.sh-new" "$DATADIR/vpcproxy" "$vpcname"
 
-for i in "${vmdirlist[@]}"; do
+for i in $vmdir_list; do
     "$ORGCODEDIR/../aws-vpc-proxy/aws-instance-proxy.sh-new" "$DATADIR/$i" "$DATADIR/vpcproxy" || iferr_exit
     ln -s vpc-datadir/sshkey "$DATADIR/$i/sshkey"
     cat >>"$DATADIR/$i/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for $i"
 EOF
 done
-
-cat  >>"$DATADIR/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for whole environment"
-$(declare -p vmdirlist)
-EOF
 
 echo "Success"

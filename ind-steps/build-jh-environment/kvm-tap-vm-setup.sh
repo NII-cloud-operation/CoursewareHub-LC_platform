@@ -2,21 +2,6 @@
 
 source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.source" || exit
 
-# These are expected to exist before running the first time:
-conffiles=(
-    datadir-jh.conf
-    datadir-jh-hub.conf
-    $(
-	for i in $node_list; do
-	    echo datadir-jh-$i.conf
-	done
-    )
-)
-
-#for i in "${conffiles[@]}"; do
-#    [ -f "$DATADIR/$i" ] || reportfailed "$i is required"
-#done
-
 ## This script assumes link to ubuntu image is already at
 ## the location set by kvm-bm-setup.sh-new.
 
@@ -173,7 +158,7 @@ EOF
 ) ; $iferr_exit
 
 (
-    $starting_group "Boot three VMs"
+    $starting_group "Boot all VMs"
 
     boot-one-vm()
     {

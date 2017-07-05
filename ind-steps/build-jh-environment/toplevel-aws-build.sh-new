@@ -6,6 +6,9 @@ new_dir="$1"
 
 : "${nodecount:=2}"
 
+# catch this early, otherwise the cleanup below will delete the existing dir
+[ -d "$new_dir" ] && just_exit "$new_dir already exists"
+
 (
     "$ORGCODEDIR/build-jh-environment.sh-new" "$new_dir"
     iferr_exit
