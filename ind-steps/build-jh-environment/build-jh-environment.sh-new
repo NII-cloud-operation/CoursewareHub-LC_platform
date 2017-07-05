@@ -4,7 +4,7 @@ source "$(dirname $(readlink -f "$0"))/bashsteps-bash-utils-jan2017.source" || e
 
 new_dir="$1"
 
-: "${nodecount:=2}"
+: "${nodecount:=2}" "${mainbuilddir:=}"
 
 thisfile="${0##*/}"
 mainscript="${thisfile%-new}"
@@ -27,10 +27,26 @@ node_list="${node_list# }"
 vmdir_list="$(for i in $(seq 1 $nodecount) ; do echo -n " jhvmdir-node$i" ; done)"
 vmdir_list="jhvmdir jhvmdir-hub $vmdir_list"
 
+if [ "$mainbuilddir" != "" ]; then
+    # put in links and back links from here to the main build dir, which will
+    # be used for IP address conflicts, and maybe other things.
+    { [ -d "${mainbuilddir%/}/jhvmdir" ] && \
+	  ! [ -L "$mainbuilddir/jhvmdir" ]
+    } || just_exit 'The zvar $mainbuilddir does not point to a main envirnoment'
+    eval_iferr_exit 'mainbuilddir="$(readlink -f "$mainbuilddir")"'
+
+    mkdir -p "$mainbuilddir/subenvironments"
+    datadirname="${DATADIR##*/}"
+    rm -f "$mainbuilddir/subenvironments/$datadirname"
+    ln -s "$DATADIR" "$mainbuilddir/subenvironments/$datadirname"
+    ln -s "$mainbuilddir" "$DATADIR/mainenvironment"
+fi
+
 cat  >>"$DATADIR/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for whole environment"
 node_list="$node_list"
 vmdir_list="$vmdir_list"
 nodecount="$nodecount"
+mainbuilddir="$mainbuilddir" # empty if this is the main build
 
 # Defaults commit to use for each build repository.  Can be set to
 # "unchanged" to use the commit currently checkout in the repo-cache

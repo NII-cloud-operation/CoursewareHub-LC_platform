@@ -3,6 +3,7 @@
 source "$(dirname $(readlink -f "$0"))/bashsteps-defaults-jan2017-check-and-do.source" || exit
 
 VMDIR=jhvmdir
+: ${ansible_path:=/home/ubuntu} # should be put in datadir.conf by one of the *-new scripts
 
 
 (
@@ -72,6 +73,7 @@ EOF
 [ -d "$targetdir/$repo_name" ]
 EOF
 	    $skip_step_if_already_done ; set -e
+	    "$DATADIR/$vmdir/ssh-shortcut.sh" mkdir -p "$targetdir"
 	    (
 		# clone from our cached copy
 		cd "$ORGCODEDIR/repo-cache"
@@ -114,7 +116,7 @@ EOF
 	) ; $iferr_exit
     }
 
-    copy_in_one_cached_repository jupyterhub-deploy "$VMDIR"     /home/ubuntu ""
+    copy_in_one_cached_repository jupyterhub-deploy "$VMDIR"     "$ansible_path" ""
     copy_in_one_cached_repository jupyterhub        "$VMDIR-hub" /srv  sudo  # TODO: is this dup still needed here
     copy_in_one_cached_repository systemuser        "$VMDIR"     /srv  sudo
 
@@ -362,24 +364,24 @@ EOF
     $starting_group "Make TLS/SSL certificates with docker"
 
     # following the guide at: https://github.com/compmodels/jupyterhub-deploy/blob/master/INSTALL.md
-    KEYMASTER="docker run --rm -v /home/ubuntu/jupyterhub-deploy/certificates/:/certificates/ cloudpipe/keymaster"
+    KEYMASTER="docker run --rm -v $ansible_path/jupyterhub-deploy/certificates/:/certificates/ cloudpipe/keymaster"
 
     (
 	$starting_step "Gather random data from host, set vault-password"
 	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
-[ -f jupyterhub-deploy/certificates/password ]
+[ -f "$ansible_path/jupyterhub-deploy/certificates/password" ]
 EOF
 	$skip_step_if_already_done ; set -e
 
 	# The access to /dev/random must be done on the host because
 	# it hangs in KVM
 	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
-mkdir -p jupyterhub-deploy/certificates
+mkdir -p "$ansible_path/jupyterhub-deploy/certificates"
 
-echo ubuntu >/home/ubuntu/jupyterhub-deploy/vault-password
+echo ubuntu >"$ansible_path/jupyterhub-deploy/vault-password"
 
-cat >jupyterhub-deploy/certificates/password <<EOF2
+cat >"$ansible_path/jupyterhub-deploy/certificates/password" <<EOF2
 $(cat /dev/random | head -c 128 | base64)
 EOF2
 
@@ -394,7 +396,7 @@ EOF
 	    $starting_step "Generate a keypair for a server $1"
 	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
-[ -f /home/ubuntu/jupyterhub-deploy/certificates/$1-key.pem ]
+[ -f "$ansible_path/jupyterhub-deploy/certificates/$1-key.pem" ]
 EOF
 	    $skip_step_if_already_done ; set -e
 	    
@@ -403,7 +405,7 @@ EOF
 	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 set -x
-cd jupyterhub-deploy/certificates
+cd "$ansible_path/jupyterhub-deploy/certificates"
 ${KEYMASTER} signed-keypair -n $1 -h $1.website.com -p both -s IP:$2
 EOF
 	) ; $iferr_exit
@@ -422,7 +424,7 @@ EOF
 	$starting_step "Adjust ansible config files for node_list"
 	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
-[ -f nodelist ] && [ "\$(cat nodelist)" = "$node_list" ]
+[ -f "$ansible_path/nodelist" ] && [ "\$(cat "$ansible_path/nodelist")" = "$node_list" ]
 EOF
 	$skip_step_if_already_done ; set -e
 
@@ -454,19 +456,19 @@ EOF
 	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 # TODO: improve this temporary fix...maybe putting in ansible vault or using 
 #       hub's servicenet_ip.
-tmppath=/home/ubuntu/jupyterhub-deploy/roles/proxy/defaults/main.yml
+tmppath="$ansible_path/jupyterhub-deploy/roles/proxy/defaults/main.yml"
 sed -i 's,192.168.11.88,$(source "$DATADIR/$VMDIR-hub/datadir.conf" ; echo "$VMIP"),' \$tmppath
 
 node_list="$node_list"
 
-[ -f jupyterhub-deploy/inventory.bak ] || cp jupyterhub-deploy/inventory jupyterhub-deploy/inventory.bak 
+[ -f "$ansible_path/jupyterhub-deploy/inventory.bak" ] || cp "$ansible_path/jupyterhub-deploy/inventory" "$ansible_path/jupyterhub-deploy/inventory.bak"
 
 # write out a complete inventory file constructed on deploy VM
-cat >jupyterhub-deploy/inventory <<EOFinv
+cat >"$ansible_path/jupyterhub-deploy/inventory" <<EOFinv
 $invfile
 EOFinv
 
-[ -f jupyterhub-deploy/script/assemble_certs.bak ] || cp jupyterhub-deploy/script/assemble_certs jupyterhub-deploy/script/assemble_certs.bak
+[ -f "$ansible_path/jupyterhub-deploy/script/assemble_certs.bak" ] || cp "$ansible_path/jupyterhub-deploy/script/assemble_certs" "$ansible_path/jupyterhub-deploy/script/assemble_certs.bak"
 
 while IFS='' read -r ln ; do
    case "\$ln" in
@@ -486,16 +488,16 @@ while IFS='' read -r ln ; do
      *) echo "\$ln"
         ;;
    esac
-done <jupyterhub-deploy/script/assemble_certs.bak  >jupyterhub-deploy/script/assemble_certs
+done <"$ansible_path/jupyterhub-deploy/script/assemble_certs.bak"  >"$ansible_path/jupyterhub-deploy/script/assemble_certs"
 
 # Debugging output:
 echo ------ jupyterhub-deploy/inventory ------------
-diff jupyterhub-deploy/inventory.bak jupyterhub-deploy/inventory || :
+diff "$ansible_path/jupyterhub-deploy/inventory.bak" "$ansible_path/jupyterhub-deploy/inventory" || :
 echo ------ jupyterhub-deploy/script/assemble_certs ---------
-diff  jupyterhub-deploy/script/assemble_certs.bak jupyterhub-deploy/script/assemble_certs || :
+diff  "$ansible_path/jupyterhub-deploy/script/assemble_certs.bak" "$ansible_path/jupyterhub-deploy/script/assemble_certs" || :
 
 # Flag that step has been done:
-echo "$node_list" >nodelist
+echo "$node_list" >"$ansible_path/nodelist"
 EOF
     ) ; $iferr_exit
 
@@ -504,7 +506,7 @@ EOF
 	$starting_step "Set secrets.vault"
 	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
-[ -f /home/ubuntu/jupyterhub-deploy/secrets.vault.yml.org ]
+[ -f "$ansible_path/jupyterhub-deploy/secrets.vault.yml.org" ]
 EOF
 	$skip_step_if_already_done ; set -e
 	
@@ -513,7 +515,7 @@ EOF
 	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 set -x
-cd jupyterhub-deploy/
+cd "$ansible_path/jupyterhub-deploy/"
 cp secrets.vault.yml secrets.vault.yml.org
 
 # not sure yet how to set this:
@@ -537,7 +539,7 @@ EOF
 	$starting_step "Set users.vault"
 	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
-[ -f /home/ubuntu/jupyterhub-deploy/users.vault.yml.org ]
+[ -f "$ansible_path/jupyterhub-deploy/users.vault.yml.org" ]
 EOF
 	$skip_step_if_already_done ; set -e
 	
@@ -546,7 +548,7 @@ EOF
 	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 set -x
-cd jupyterhub-deploy/
+cd "$ansible_path/jupyterhub-deploy/"
 cp users.vault.yml users.vault.yml.org
 cat >users.vault.yml <<EOF2
 jupyterhub_admins:
@@ -585,7 +587,7 @@ EOF
     (
 	$starting_step "Run ./script/assemble_certs (from the jupyterhub-deploy repository)"
 	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
-cd jupyterhub-deploy
+cd "$ansible_path/jupyterhub-deploy/"
 [ -f ./host_vars/hub ]
 EOF
 	$skip_step_if_already_done
@@ -593,7 +595,7 @@ EOF
 set -x
 set -e
 
-cd jupyterhub-deploy
+cd "$ansible_path/jupyterhub-deploy/"
 ./script/assemble_certs 
 
 EOF
@@ -623,7 +625,7 @@ EOF
     vmcount=$(( ${#nodesarray[@]} + 1 )) # nodes + just the hub
     "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
 set -x
-cd jupyterhub-deploy
+cd "$ansible_path/jupyterhub-deploy/"
 # last part of ansible log should show "failed=0" three times. e.g:
 #   PLAY RECAP *********************************************************************
 #   hub                        : ok=97   changed=84   unreachable=0    failed=0   
@@ -637,7 +639,7 @@ EOF
 set -x
 set -e
 
-cd jupyterhub-deploy
+cd "$ansible_path/jupyterhub-deploy/"
 time ./script/deploy "-part1" | tee -a deploylog-part1.log
 
 EOF
@@ -724,7 +726,7 @@ EOF
     vmcount=$(( ${#nodesarray[@]} + 1 )) # nodes + just the hub
     "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
 set -x
-cd jupyterhub-deploy
+cd "$ansible_path/jupyterhub-deploy/"
 count="\$(tail deploylog-part2.log | grep -o "unreachable=0.*failed=0" | wc -l)"
 [ "\$count" -eq "$vmcount" ]
 EOF
@@ -752,7 +754,7 @@ EOF
 set -x
 set -e
 
-cd jupyterhub-deploy
+cd "$ansible_path/jupyterhub-deploy/"
 time ./script/deploy "-part2" | tee -a deploylog-part2.log
 
 EOF
@@ -781,11 +783,11 @@ set -e
 # For now, just reusing the self-signed cert used for the hub.
 
 sudo tee /tmp/proxycert <<EOF2
-$("$DATADIR/$VMDIR/ssh-shortcut.sh" cat jupyterhub-deploy/certificates/hub-cert.pem)
+$("$DATADIR/$VMDIR/ssh-shortcut.sh" cat "$ansible_path/jupyterhub-deploy/certificates/hub-cert.pem")
 EOF2
 
 sudo tee /tmp/proxykey <<EOF3
-$("$DATADIR/$VMDIR/ssh-shortcut.sh" cat jupyterhub-deploy/certificates/hub-key.pem)
+$("$DATADIR/$VMDIR/ssh-shortcut.sh" cat "$ansible_path/jupyterhub-deploy/certificates/hub-key.pem")
 EOF3
 
 EOF
