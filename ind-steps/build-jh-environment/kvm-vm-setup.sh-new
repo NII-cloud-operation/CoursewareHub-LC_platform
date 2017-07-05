@@ -10,7 +10,7 @@ path_to_ubuntu_image="$2"
 
 eval_iferr_exit 'path_to_ubuntu_image="$(readlink -f "$path_to_ubuntu_image")"'
 
-shift 3
+shift 2
 ip_array=( "$@" )
 
 thisfile="${0##*/}"

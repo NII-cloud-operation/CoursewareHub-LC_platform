@@ -11,6 +11,12 @@ defaultip=( 192.168.33.{99,88,11,12} )
 
 : "${mainbuilddir:=}"  # default to empty string, which means to build a "main" jupyterhub environmnet
 
+# mainbuilddir is put in datadir.conf by
+# build-jh-environment.sh-new. It is used by
+# build-jh-environment.sh-new and various other *vm-setup.sh-new
+# scripts to set up reuse of the main ansible VM (and the docker
+# images inside) of another jupyterhub environment.
+
 # catch this early, otherwise the cleanup below will delete the existing dir
 [ -d "$new_dir" ] && just_exit "$new_dir already exists"
 
@@ -24,7 +30,7 @@ defaultip=( 192.168.33.{99,88,11,12} )
     ln -s "$ORGCODEDIR/$mainscript" "$new_dir" || iferr_exit "ln to $mainscript"
 
     # (2) Then put in the VM directories, which in this case are for KVM, using mcast networking
-    "$ORGCODEDIR/kvm-vm-setup.sh-new" "$new_dir" ~/ubuntu-image-resources/ubuntu-14-instance-build.img-sshkeys-update-upgrade.tar.gz "$mainbuilddir" $ipaddresses
+    "$ORGCODEDIR/kvm-vm-setup.sh-new" "$new_dir" ~/ubuntu-image-resources/ubuntu-14-instance-build.img-sshkeys-update-upgrade.tar.gz $ipaddresses
 ) || {
     # clean up if error
     rm -fr "$new_dir"
