@@ -33,7 +33,11 @@ defaultip=( 192.168.33.{99,88,11,12} )
     ln -s "$ORGCODEDIR/$mainscript" "$new_dir" || iferr_exit "ln to $mainscript"
 
     # (2) Then put in the VM directories, which in this case are for KVM, using mcast networking
-    "$ORGCODEDIR/kvm-tap-vm-setup.sh-new" "$new_dir" ~/ubuntu-image-resources/ubuntu-14-instance-build.img-sshkeys-update-upgrade.tar.gz "$bridge_param" $ipaddresses
+    "$ORGCODEDIR/kvm-tap-vm-setup.sh-new" \
+	"$new_dir" \
+	~/ubuntu-image-resources/ubuntu-14-instance-build.img-sshkeys-update-upgrade.tar.gz \
+	"$bridge_param" $ipaddresses
+    iferr_exit
 
     # this variable at the top level will be referenced when creating and restoring snapshots
     echo "export bridgeNAME=\"$bridge_param\"" >>"$new_dir/datadir.conf"
