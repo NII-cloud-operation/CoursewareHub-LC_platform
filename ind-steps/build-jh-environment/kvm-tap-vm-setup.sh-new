@@ -2,6 +2,9 @@
 
 source "$(dirname $(readlink -f "$0"))/bashsteps-bash-utils-jan2017.source" || exit
 
+# nodecount, vmdir_list, and mainbuilddir should now
+# have values that were already set in datadir.conf
+
 existing_dir="$1"
 path_to_ubuntu_image="$2"
 bridge_param="$3"
@@ -23,10 +26,6 @@ iferr_exit "Make sure 'allow $bridge_param' is in $bconfpath"
 [[ "$(ip link show "$bridge_param")" == *UP* ]] ; iferr_exit "Make sure bridge ($bridge_param) is UP"
 
 ip_array=( "$@" )
-for ip in "${ip_array[@]}"; do
-    [ "${ip//[0-9]}" = "..." ] || iferr_exit "Parameter ($ip) is not a valid IP4 address"
-done
-
 
 thisfile="${0##*/}"
 mainscript="${thisfile%-new}"
@@ -46,32 +45,121 @@ existing_directory_for_datadir
 eval_iferr_exit 'source "$DATADIR/datadir.conf"'
 
 [ "$nodecount" -gt 0 ] && [ "$nodecount" -lt 20 ] || iferr_exit "Invalid nodecount in datadir.conf"
-[ "${#ip_array[@]}" -eq $((nodecount + 2)) ] || iferr_exit "Number of IP addresses on command line does not match number of nodes plus two"
 
-randomport="$(( 5000 + ( $RANDOM % 5000 ) ))"
+# used for generating unique new IP addresses and checking for duplicate
+# IP addresses for subenvironments
+output_used_ips()
+{
+    [ -d "$DATADIR/mainenvironment/subenvironments" ] || return 0
+    (
+	shopt -s nullglob
+	for e in "$DATADIR/mainenvironment" "$DATADIR/mainenvironment/subenvironments"/*; do
+	    for c in "$e"/jhvmdir*/datadir.conf; do
+		VMIP=""
+		source "$c"
+		[ "$VMIP" != "" ] && echo "$VMIP"
+	    done
+	done
+    )
+}
+
+# enough checking to catch careless typos or missing parameters
+check_ip_validity()
+{
+    for ip in "${ip_array[@]}"; do
+	[ "${ip//[0-9]}" = "..." ] || iferr_exit "Parameter ($ip) is not a valid IP4 address"
+    done
+    [ "${#ip_array[@]}" -eq $((nodecount + 2)) ] || iferr_exit "Number of IP addresses on command line does not match number of nodes plus two"
+}
+
+
+# Just increments the last octet to generate new addresses.  Mainly for debugging.
+generate_ip_addresses()
+{
+
+    first_3_octets="$(output_used_ips | while read ln ; do echo "${ln%.*}"; done | sort -u)"
+    [ "$(wc -l <<<"$first_3_octets")" = "1" ] || \
+	just_exit 'auto IP selection cannot be used if existing IP are not on same /24 network'
+    biggest="$(output_used_ips | while read ln ; do echo "${ln##*.}"; done | sort -n | tail -n 1)"
+    (
+	source "$mainbuilddir/jhvmdir/datadir.conf"
+	echo "$VMIP" # reuse from main environment's ansible VM
+    )
+    [ $(( nodecount + 1 + biggest )) -lt 255 ] || just_exit "No more IP addresses left for automatic generation"
+    for (( i=0 ; i< nodecount + 1 ; i++ )); do  # one for each node plus one for the hub
+	(( biggest++ ))
+	echo "$first_3_octets"."$biggest"
+    done
+}
+
+# Deal with the details that depend on whether this is a "main" jupterhub environment
+# with it's own jhvmdir VM, or a "subordinate" jupterhub environment that uses an
+# already existing  jhvmdir VM.
+
+if [ "$mainbuilddir" = "" ]; then
+    check_ip_validity
+    # It will be a "main" jupterhub environment
+    randomport="$(( 5000 + ( $RANDOM % 5000 ) ))"
+    mcport="$randomport"
+    ansible_path="/home/ubuntu"  # put the "main" environment jupyterhub-deploy in the jhvmdir home dir
+else
+    # It will be a "subordinate" jupterhub environment
+    # So use the same mcast port as the "main" jupterhub environment.
+    mcport="$(source "$mainbuilddir/jhvmdir/datadir.conf" ; echo "$mcastPORT")"
+
+    # And put ansible playbooks in a directory named after the build directory.
+    lasttoken="${DATADIR##*/}"
+    ansible_path="/home/ubuntu/subs/$lasttoken"  # the path inside the jhvmdir VM
+
+    if [ "${ip_array[0]}" = "auto" ]; then
+	# auto generation
+	ip_array=( $(generate_ip_addresses) ) || exit
+    else
+	# pass in by parameter
+	check_ip_validity
+	# Do a quick check for duplicate IP addresses
+	usedip="$(output_used_ips)"
+	for ip in "${ip_array[@]:1}"; do  # ":1" skips the first IP address for the main ansible VM
+	    for u in $usedip; do
+		[ "$ip" = "$u" ] && just_exit "IP address ($ip) already in use."
+	    done
+	done
+    fi
+fi
 
 ipindex=0
-
 for i in $vmdir_list; do
     IP="${ip_array[ipindex++]}"
+    # Assuming all VMs are on the same /24 subnet, the last octet
+    # is enough to make the MAC addresses unique
+    lastoctet="${IP##*.}"
+    inhex="$(printf "%02x" "$lastoctet")"
+
     case "$i" in
 	jhvmdir)
+	    # these settings are ignored for "subordinate" jupterhub environments
 	    imagepath="$path_to_ubuntu_image"
-	    MAC=52:54:00:12:00:99
+	    MAC=52:54:00:12:$inhex:99
 	    ;;
 	jhvmdir-hub)
 	    imagepath="$DATADIR/jhvmdir/ubuntu-before-nbgrader.tar.gz"
-	    MAC=52:54:00:12:00:88
+	    MAC=52:54:00:12:$inhex:88
 	    ;;
 	jhvmdir-node*)
 	    imagepath="$DATADIR/jhvmdir/ubuntu-before-nbgrader.tar.gz"
 	    n="${i#*-node}"
 	    nn="$(printf "%02d" "$n")"
-	    MAC=52:54:00:12:00:$nn
+	    MAC=52:54:00:12:$inhex:$nn
 	    ;;
     esac
-    "$ORGCODEDIR/../kvmsteps/kvmsteps.sh-new" "$DATADIR/$i" "$imagepath" OK || iferr_exit
-    cat >>"$DATADIR/$i/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for $i"
+
+    if [ "$i" = "jhvmdir" ] && [ "$mainbuilddir" != "" ]; then
+	ln -s "$mainbuilddir/jhvmdir" "$DATADIR/$i"
+    else
+	# Make one of the build directories of the VMs (including jhvmdir if
+	# this is a "main" jupterhub environment.)
+	"$ORGCODEDIR/../kvmsteps/kvmsteps.sh-new" "$DATADIR/$i" "$imagepath" OK || iferr_exit
+	cat >>"$DATADIR/$i/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for $i"
 # Not all of these are used on every VM
 export EXTRAHOSTFWDREL=""
 
@@ -90,6 +178,11 @@ export mcastPORT="none"
 export tapMAC="$MAC"
 export bridgeNAME="$bridge_param"
 EOF
+    fi
 done
+
+cat  >>"$DATADIR/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for whole environment"
+ansible_path="$ansible_path"
+EOF
 
 echo "Success"
