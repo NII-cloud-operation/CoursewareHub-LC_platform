@@ -22,7 +22,15 @@ cp "$ORGCODEDIR"/bashsteps-bash-utils-jan2017.source "$new_dir"
 ln -s "$(readlink -f $vpcdd)" "$new_dir/vpc-datadir"
 
 cat  >"$new_dir/datadir.conf" <<EOF || reportfailed "datadir.conf init failed"
-# stuff like disksize will be set here
+
+# for region ap-northeast-1
+# aws_ami_id="ami-5dd8b73a"
+# aws_snapshot_id="snap-089b2f07be211d887"
+
+# for region us-east-1
+aws_ami_id="ami-ad4b33bb"
+aws_snapshot_id="snap-034fbd1f9b1b9b306"
+
 EOF
 
 echo "Success"
