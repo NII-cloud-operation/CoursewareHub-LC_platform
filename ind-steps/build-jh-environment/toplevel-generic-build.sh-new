@@ -54,6 +54,9 @@ EOF
     ) || iferr_exit "Error while creating $instdir"
 }
 
+# catch this early, otherwise the cleanup below will delete the existing dir
+[ -d "$new_dir" ] && just_exit "$new_dir already exists"
+
 (
     "$ORGCODEDIR/build-jh-environment.sh-new" "$new_dir"
     iferr_exit

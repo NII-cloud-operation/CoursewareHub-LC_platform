@@ -2,6 +2,9 @@
 
 source "$(dirname $(readlink -f "$0"))/bashsteps-bash-utils-jan2017.source" || exit
 
+# nodecount, vmdir_list, and mainbuilddir should now
+# have values that were already set in datadir.conf
+
 existing_dir="$1"
 
 thisfile="${0##*/}"
@@ -20,32 +23,34 @@ existing_directory_for_datadir()
 existing_directory_for_datadir
 
 eval_iferr_exit 'source "$DATADIR/datadir.conf"'
-node_array=( $node_list )
-eval_iferr_exit 'nodecount="${#node_array[@]}"'
 
 [ "$nodecount" -gt 0 ] && [ "$nodecount" -lt 20 ] || iferr_exit "Invalid nodecount in datadir.conf"
 
-vmdirlist=(
-    jhvmdir
-    jhvmdir-hub
-    $(for i in $(seq 1 $nodecount) ; do echo jhvmdir-node$i ; done)
-)
 
-node_list="$(for i in $(seq 1 $nodecount) ; do echo -n " node$i" ; done)"
+if [ "$mainbuilddir" != "" ]; then
+    ln -s "$mainbuilddir/vpcproxy" "$DATADIR/vpcproxy"
+    # And put ansible playbooks in a directory named after the build directory.
+    lasttoken="${DATADIR##*/}"
+    ansible_path="/home/ubuntu/subs/$lasttoken"  # the path inside the jhvmdir VM
+else
+    vpcname="${DATADIR##*/}"
+    "$ORGCODEDIR/../aws-vpc-proxy/aws-vpc-proxy.sh-new" "$DATADIR/vpcproxy" "$vpcname"
+    ansible_path="/home/ubuntu"  # put the "main" environment jupyterhub-deploy in the jhvmdir home dir
+fi
 
-vpcname="${DATADIR##*/}"
-
-"$ORGCODEDIR/../aws-vpc-proxy/aws-vpc-proxy.sh-new" "$DATADIR/vpcproxy" "$vpcname"
-
-for i in "${vmdirlist[@]}"; do
-    "$ORGCODEDIR/../aws-vpc-proxy/aws-instance-proxy.sh-new" "$DATADIR/$i" "$DATADIR/vpcproxy" || iferr_exit
-    ln -s vpc-datadir/sshkey "$DATADIR/$i/sshkey"
-    cat >>"$DATADIR/$i/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for $i"
+for i in $vmdir_list; do
+    if [ "$i" = "jhvmdir" ] && [ "$mainbuilddir" != "" ]; then
+	ln -s "$mainbuilddir/jhvmdir" "$DATADIR/$i" || iferr_exit "Could not link to main jhvmdir"
+    else
+	"$ORGCODEDIR/../aws-vpc-proxy/aws-instance-proxy.sh-new" "$DATADIR/$i" "$DATADIR/vpcproxy" || iferr_exit
+	ln -s vpc-datadir/sshkey "$DATADIR/$i/sshkey"
+	cat >>"$DATADIR/$i/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for $i"
 EOF
+    fi
 done
 
 cat  >>"$DATADIR/datadir.conf" <<EOF || iferr_exit "datadir.conf init failed for whole environment"
-$(declare -p vmdirlist)
+ansible_path="$ansible_path"
 EOF
 
 echo "Success"
