@@ -393,10 +393,13 @@ EOF
     do-one-keypair()
     {
 	(
-	    $starting_step "Generate a keypair for a server $1"
-	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    server_name="$1"
+	    private_IP="$2"
+	    $starting_step "Generate a keypair for server $server_name"
+	    [ "$private_IP" != "not.set.yet" ] &&
+		[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
-[ -f "$ansible_path/jupyterhub-deploy/certificates/$1-key.pem" ]
+[ -f "$ansible_path/jupyterhub-deploy/certificates/${server_name}-key.pem" ]
 EOF
 	    $skip_step_if_already_done ; set -e
 	    
@@ -406,10 +409,11 @@ EOF
 set -e
 set -x
 cd "$ansible_path/jupyterhub-deploy/certificates"
-${KEYMASTER} signed-keypair -n $1 -h $1.website.com -p both -s IP:$2
+${KEYMASTER} signed-keypair -n ${server_name} -h ${server_name}.website.com -p both -s IP:${private_IP}
 EOF
 	) ; $iferr_exit
     }
+    VMIP="not.set.yet" # for when the bashstep "checks" are run before any VMs are created
     hubip="$(source "$DATADIR/$VMDIR-hub/datadir.conf" ; echo "$VMIP")"
     do-one-keypair hub "$hubip"
     for n in $node_list; do
