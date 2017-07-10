@@ -190,9 +190,11 @@ times may be necessary.)
 
 ## Final Setup
 
-Building takes a long time, so two solutions were made to make development go faster: snapshots and patching.
+Building takes a long time, so two solutions were made to make development go faster: snapshots and jhvmdir reuse.
 
 ### Snapshots:
+
+(Snapshots only work for KVM builds, and have not been implemented for AWS builds yet.)
 
 The snapshot-whole-environment.sh script shutdowns all VMs and then makes
 a tar file of each VM directory.  For example:
@@ -216,29 +218,36 @@ $ ./ind-steps/build-jh-environment/restore-environment-from-snapshot.sh build-fe
 Now all VMs and containers are running, but more setup is probably
 necessary before the JupyterHub environment can be used.
 
-### Patching
+### JHVMDIR Reuse
 
-The following will load the latest patches and restart the JupyterHub
-container so that any patched code and changes to jupyterhub_config.py
-will be loaded:
+A build environment is made up of one "hub" VM, one or more "node"
+VMs, and one *extra* "jhvmdir" VM. (Sometimes it is called the "main" VM
+or the "ansible" VM in code comments or documentation) Its purpose is
+to give ansible a stable place to run, and also to cache docker images
+after they have been built.
+
+A new feature allows build environments to share a "jhvmdir" VM.  This
+feature works with both KVM builds and AWS builds.
+
+For discussion, assume an AWS environment has been built following the
+instructions above, with the result being a build directory at
+"/path/to/just/a/little/disk/buildname" that points to a "jhvmdir",
+"hub", and "node" VMs on AWS.  To reuse the "jhvmdir" for another
+build, use the environment variable $mainbuilddir to specify the
+existing build directory.  For example:
 
 ```
-$ ./build-feb15-copy1/simpleinit.sh
+$ mainbuilddir="/path/to/just/a/little/disk/buildname" \
+    ./ind-steps/build-jh-environment/toplevel-aws-build.sh-new /path/to/just/a/little/disk/buildname2
+
+$ /path/to/just/a/little/disk/buildname2/toplevel-aws-build.sh check
+$ /path/to/just/a/little/disk/buildname2/toplevel-aws-build.sh do
 ```
 
-One nice thing about the simpleinit.sh script, is it makes use of the active-hub directory and
-the ``./bin/multihubctl new`` command unnecessary.  The simpleinit.sh script will make the Jupyterhub
-environment usable at whatever port, without any additional /master/ (for example) inserted into the path.
-
-Note that this command will only work if the Jupyterhub container does not crash on startup.  Otherwise,
-it is necessary to restore another environment from a snapshot, or recreate the jupyterhub container somehow, perhaps doing something like this:
-
-```
-./active-hubs/000/jhvmdir-hub/ssh-shortcut.sh 
-$ sudo su
-$ cd /root
-$ docker-compose stop jupyterhub
-$ docker-compose up -d  jupyterhub
-```
+After you run the the "check" command, you should see that many build steps
+have already been done.  This makes building much faster.  For
+example, a recent build from scratch on AWS took about 50 minutes, but
+building a second JupyterHub environment by reusing the "jhvmdir" VM
+reduced the build time to less than 25 minutes.
 
 <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.

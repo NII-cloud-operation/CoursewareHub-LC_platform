@@ -393,10 +393,13 @@ EOF
     do-one-keypair()
     {
 	(
-	    $starting_step "Generate a keypair for a server $1"
-	    [ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    server_name="$1"
+	    private_IP="$2"
+	    $starting_step "Generate a keypair for server $server_name"
+	    [ "$private_IP" != "not.set.yet" ] &&
+		[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
 		"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
-[ -f "$ansible_path/jupyterhub-deploy/certificates/$1-key.pem" ]
+[ -f "$ansible_path/jupyterhub-deploy/certificates/${server_name}-key.pem" ]
 EOF
 	    $skip_step_if_already_done ; set -e
 	    
@@ -406,10 +409,11 @@ EOF
 set -e
 set -x
 cd "$ansible_path/jupyterhub-deploy/certificates"
-${KEYMASTER} signed-keypair -n $1 -h $1.website.com -p both -s IP:$2
+${KEYMASTER} signed-keypair -n ${server_name} -h ${server_name}.website.com -p both -s IP:${private_IP}
 EOF
 	) ; $iferr_exit
     }
+    VMIP="not.set.yet" # for when the bashstep "checks" are run before any VMs are created
     hubip="$(source "$DATADIR/$VMDIR-hub/datadir.conf" ; echo "$VMIP")"
     do-one-keypair hub "$hubip"
     for n in $node_list; do
@@ -423,7 +427,7 @@ EOF
     (
 	$starting_step "Adjust ansible config files for node_list"
 	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
-	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" -q bash <<EOF 2>/dev/null
 [ -f "$ansible_path/nodelist" ] && [ "\$(cat "$ansible_path/nodelist")" = "$node_list" ]
 EOF
 	$skip_step_if_already_done ; set -e
@@ -560,7 +564,7 @@ EOF
 
     (
 	$starting_step "Copy private ssh key to main KVM, plus minimal ssh config"
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" -q bash <<EOF 2>/dev/null
 [ -f .ssh/id_rsa ]
 EOF
 	$skip_step_if_already_done
@@ -586,7 +590,7 @@ EOF
 
     (
 	$starting_step "Run ./script/assemble_certs (from the jupyterhub-deploy repository)"
-	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" -q bash <<EOF 2>/dev/null
 cd "$ansible_path/jupyterhub-deploy/"
 [ -f ./host_vars/hub ]
 EOF
@@ -623,7 +627,7 @@ EOF
     $starting_step "Run main **Ansible script** (PART 1)"
     nodesarray=( $node_list )
     vmcount=$(( ${#nodesarray[@]} + 1 )) # nodes + just the hub
-    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
+    "$DATADIR/$VMDIR/ssh-shortcut.sh" -q bash <<EOF 2>/dev/null
 set -x
 cd "$ansible_path/jupyterhub-deploy/"
 # last part of ansible log should show "failed=0" three times. e.g:
@@ -724,7 +728,7 @@ EOF
     $starting_step "Run main **Ansible script** (PART 2)"  # mostly copy/pasted from above
     nodesarray=( $node_list )
     vmcount=$(( ${#nodesarray[@]} + 1 )) # nodes + just the hub
-    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null
+    "$DATADIR/$VMDIR/ssh-shortcut.sh" -q bash <<EOF 2>/dev/null
 set -x
 cd "$ansible_path/jupyterhub-deploy/"
 count="\$(tail deploylog-part2.log | grep -o "unreachable=0.*failed=0" | wc -l)"
