@@ -18,11 +18,11 @@ EOF
 	# key generated for the hub
 	[ -f "$DATADIR/auth-proxy.key" ] || \
 	    "$DATADIR/$VMDIR/ssh-shortcut.sh" \
-		cat jupyterhub-deploy/certificates/hub-key.pem >"$DATADIR/auth-proxy.key"
+		cat "$ansible_path/jupyterhub-deploy/certificates/hub-key.pem" >"$DATADIR/auth-proxy.key"
 	
 	[ -f "$DATADIR/auth-proxy.chained.cer" ] || \
 	    "$DATADIR/$VMDIR/ssh-shortcut.sh" \
-		cat jupyterhub-deploy/certificates/hub-cert.pem >"$DATADIR/auth-proxy.chained.cer"
+		cat "$ansible_path/jupyterhub-deploy/certificates/hub-cert.pem" >"$DATADIR/auth-proxy.chained.cer"
 	
 	"$DATADIR/$VMDIR-hub/ssh-shortcut.sh" <<EOF
 set -x

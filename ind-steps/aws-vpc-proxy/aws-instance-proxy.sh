@@ -14,6 +14,9 @@ eval_iferr_exit 'source "$DATADIR/vpc-datadir/datadir.conf"'
 
     # check that these have been set by vpc-datadir:
     : ${VPCNAME?} ${vpcsecuritygroup?}  ${vpcsubnet?}
+    # and check that these have been set by $DATADIR/datadir.conf
+    : ${aws_snapshot_id?} ${aws_ami_id?}
+    
     # TODO: is it enough just to just let "set -u" *and* iferr_exit catch these?
 
     # extracted with: aws ec2 describe-images --image-ids ami-5dd8b73a
@@ -24,7 +27,7 @@ eval_iferr_exit 'source "$DATADIR/vpc-datadir/datadir.conf"'
                     "DeviceName": "/dev/sda1", 
                     "Ebs": {
                         "DeleteOnTermination": true, 
-                        "SnapshotId": "snap-089b2f07be211d887", 
+                        "SnapshotId": "$aws_snapshot_id", 
                         "VolumeSize": 50, 
                         "VolumeType": "gp2"
                     }
@@ -39,7 +42,7 @@ eval_iferr_exit 'source "$DATADIR/vpc-datadir/datadir.conf"'
                 }
             ]
 EOF
-    awsout="$(aws ec2 run-instances --image-id ami-5dd8b73a --count 1 \
+    awsout="$(aws ec2 run-instances --image-id "$aws_ami_id" --count 1 \
         --instance-type c4.xlarge --key-name "$VPCNAME" \
         --block-device-mapping file:///tmp/modified-mappings.json \
 	--security-group-ids "$vpcsecuritygroup" --subnet-id "$vpcsubnet"
