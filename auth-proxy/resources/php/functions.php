@@ -5,14 +5,6 @@ require_once __DIR__ . '/../simplesamlphp/www/_include.php';
 
 $SESSION_NAME = session_name();
 
-/*
-function session_start()
-{
-    session_set_cookie_params($lifetime);
-    @session_start();
-}
-*/
-
 /**
  * Redirect to the JupyterHub if local user was authenticated.
  */
@@ -44,31 +36,23 @@ function redirect_by_fed_user_session()
 
     $as = new SimpleSAML_Auth_Simple('default-sp');
     if ($as->isAuthenticated()) {
-        if (isset($_SESSION['username'])) {
-            // redirect to JupyterHub
+        // maybe access to other course
+        // redirect to authenticator of JupyterHub
+        $attributes = $as->getAttributes();
+        $mail_address = $attributes[GF_ATTRIBUTES['mail']][0];
+        $group_list = $attributes[GF_ATTRIBUTES['isMemberOf']];
+
+        // check authorization
+        if (check_authorization($group_list)) {
+            session_regenerate_id(true);
+            $username = get_username_from_mail_address($mail_address);
             header("X-Accel-Redirect: /entrance/");
             header("X-Reproxy-URL: ".HUB_URL.$_SERVER['HTTP_X_REPROXY_URI']);
-        } else { 
-            // maybe access to other course
-            // redirect to authenticator of JupyterHub
-            $attributes = $as->getAttributes();
-            $mail_address = $attributes[GF_ATTRIBUTES['mail']][0];
-            $group_list = $attributes[GF_ATTRIBUTES['isMemberOf']];
-            // check authorization
-            if (check_authorization($group_list)) {
-                session_regenerate_id(true);
-                $username = get_username_from_mail_address($mail_address);
-                $_SESSION['username'] = $username;
-
-                header("X-Accel-Redirect: /entrance/");
-                header("X-Reproxy-URL: ".HUB_URL.'/'.COURSE_NAME."/hub/login");
-                header("X-REMOTE-USER: $username");
-            } else {
-                // redirect to message page
-                header("X-Accel-Redirect: /entrance/");
-                header("X-Reproxy-URL: https://".$_SERVER['HTTP_HOST']."/no_author");
-            } 
-        }
+            header("X-REMOTE-USER: $username");
+        } else {
+            // redirect to message page
+            header("X-Accel-Redirect: /no_author");
+        } 
         exit;
     }
 }
@@ -92,11 +76,11 @@ function logout_fed()
  */
 function check_authorization($group_list)
 {
-    $result = True;
+    $result = False;
     if (empty(AUTHOR_GROUP_LIST)) {
         $result = True;
     } else {
-       foreach ($group_lista as $group) {
+       foreach ($group_list as $group) {
            if (in_array($group, AUTHOR_GROUP_LIST)) { 
                $result = True;
                break;
