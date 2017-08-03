@@ -135,30 +135,6 @@ sudo daemon -n restuser -o /var/log/restuser.log -- python /srv/restuser/restuse
 EOF
     ) ; $iferr_exit
 
-    (
-	$starting_step "Setup keys, restart nginx"
-	"$DATADIR"/jhvmdir-hub/ssh-shortcut.sh <<'EOF' 1>/dev/null 2>&1
-dout="$(sudo docker ps | grep root_nginx_1)"
-set -x
-exec 2>/tmp/why
-[[ "$dout" == *Up* ]]
-EOF
-	$skip_step_if_already_done; set -e
-
-	# docker mistakenly makes these too, so they must be deleted first
-	# (or we may have old keys there)
-	"$DATADIR"/jhvmdir-hub/ssh-shortcut.sh sudo rm -fr /tmp/proxycert /tmp/proxykey
-	
-	cat ~/letsencrypt/archive/opty.jp/fullchain1.pem | \
-	    "$DATADIR"/jhvmdir-hub/ssh-shortcut.sh sudo tee /tmp/proxycert
-	
-	cat ~/letsencrypt/archive/opty.jp/privkey1.pem | \
-	    "$DATADIR"/jhvmdir-hub/ssh-shortcut.sh sudo tee /tmp/proxykey
-	
-	"$DATADIR"/jhvmdir-hub/ssh-shortcut.sh sudo docker stop root_nginx_1
-	"$DATADIR"/jhvmdir-hub/ssh-shortcut.sh sudo docker start root_nginx_1
-    ) ; $iferr_exit
-
     (  # TODO: this step has been copied to post-build-for-auth-proxy.dstep
 	# and this copy can probably be removed.
 	
