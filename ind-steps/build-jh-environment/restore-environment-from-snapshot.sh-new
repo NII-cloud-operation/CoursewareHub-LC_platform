@@ -71,6 +71,5 @@ for i in "$snapshot_source"/* ; do
 done
 
 ln -s "$(readlink -f "$ORGCODEDIR/restore-environment-from-snapshot.sh")" "$new_dir/"
-cp "$(readlink -f "$snapshot_source/simpleinit.sh")" "$new_dir/"
 
 echo Success
