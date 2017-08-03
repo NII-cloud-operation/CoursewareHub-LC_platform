@@ -114,7 +114,8 @@ EOF
     (
         $starting_step "Configure hub-const.php"
         hub_const_path="/home/ubuntu/auth-proxy/php/hub-const.php"
-        "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q cat $hub_const_path | grep -q $dbip
+	current_text="$("$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q cat $hub_const_path)"
+	[[ "$current_text" == *${dbip}* ]] && [[ "$current_text" == *${hubip}:${hubport}* ]]
         $skip_step_if_already_done
 
         "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q << EOF
