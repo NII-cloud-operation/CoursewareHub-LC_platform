@@ -1,0 +1,4 @@
+DDCONFFILE="datadir.conf"
+AUTH_PROXY_NAME="root_nginx_3"
+HUB_CONST_PATH="/home/ubuntu/auth-proxy/php/hub-const.php"
+NGINX_CONF_PATH="/etc/nginx/nginx.conf"

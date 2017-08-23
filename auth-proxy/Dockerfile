@@ -41,6 +41,7 @@ COPY resources/nginx/nginx.conf /etc/nginx/
 COPY resources/simplesamlphp/config/config.php /var/www/simplesamlphp/config
 COPY resources/simplesamlphp/config/authsources.php /var/www/simplesamlphp/config
 COPY resources/simplesamlphp/bin/get_idp_proxy_metadata.sh /var/www/simplesamlphp/bin
+COPY resources/simplesamlphp/bin/remove_idp_proxy_metadata.sh /var/www/simplesamlphp/bin
 # simplesamlphp keys
 RUN set -x \
     && cd /var/www/simplesamlphp/cert \

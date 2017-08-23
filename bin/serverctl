@@ -55,12 +55,12 @@ serverctl image-list COURSE_DIR
 EOF
 }
 
+source $(dirname $0)/const
+
 export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
 
 rootdir="${ORGCODEDIR%/*}"
 ahdir="$rootdir/active-hubs"
-
-DDCONFFILE="datadir.conf"
 
 node_list="node1 node2"  # This should be overwritten by the value in the main datadir.conf
 
