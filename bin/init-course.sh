@@ -9,12 +9,11 @@ reportfailed()
     exit 255
 }
 
+source $(dirname $0)/const
 
 export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
 
 rootdir="${ORGCODEDIR%/*}"
-
-AUTH_PROXY_NAME=root_nginx_3
 
 JUPYTER_USER_ID=1001
 
@@ -113,9 +112,8 @@ EOF
     # configure hub-const.php
     (
         $starting_step "Configure hub-const.php"
-	HUB_CONST_PATH="/home/ubuntu/auth-proxy/php/hub-const.php"
-	current_text="$("$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q cat $HUB_CONST_PATH)"
-	[[ "$current_text" == *${dbip}* ]] && [[ "$current_text" == *${hubip}:${hubport}* ]]
+        current_text="$("$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q cat $HUB_CONST_PATH)"
+        [[ "$current_text" == *${dbip}* ]] && [[ "$current_text" == *${hubip}:${hubport}* ]]
         $skip_step_if_already_done
 
         "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q << EOF
@@ -127,14 +125,13 @@ EOF
     # configure nginx.conf
     (
         $starting_step "Configure nginx.conf"
-        nginx_conf_path=/etc/nginx/nginx.conf
         "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i ${AUTH_PROXY_NAME} bash << EOF | grep -q $hubip:$hubport
-cat $nginx_conf_path
+cat $NGINX_CONF_PATH
 EOF
         $skip_step_if_already_done
 
         "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i ${AUTH_PROXY_NAME} bash << EOF
-sed -i "s,proxy_pass http:.*,proxy_pass http://$hubip:$hubport;," $nginx_conf_path
+sed -i "s,proxy_pass http:.*,proxy_pass http://$hubip:$hubport;," $NGINX_CONF_PATH
 EOF
         # Restarting auth-proxy container
         "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop ${AUTH_PROXY_NAME}
