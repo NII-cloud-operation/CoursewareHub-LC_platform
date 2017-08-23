@@ -50,6 +50,19 @@ coursectl set-accesspoint COURSE_DIR ACCESS_POINT
   COURSE_DIR: directory of the course environtment.
   ACCESS_POINT: access point of the course. hostname or FQDN. 
 
+## set authorization for the user's attendance 
+coursectl set-author COURSE_DIR GROUP_LIST
+  COURSE_DIR: directory of the course environtment.
+  GROUP_LIST: group list of the user. 
+
+## reset authorization for the user's attendance 
+coursectl reset-author COURSE_DIR
+  COURSE_DIR: directory of the course environtment.
+
+## show authorization for the user's attendance 
+coursectl show-author COURSE_DIR
+  COURSE_DIR: directory of the course environtment.
+
 ## change password of the specified local user.
 coursectl change-password COURSE_DIR USER_EMAIL NEW_PASSWORD
   COURSE_DIR: directory of the course environtment.
@@ -64,14 +77,14 @@ coursectl reset-password COURSE_DIR USER_EMAIL
 EOF
 }
 
+source $(dirname $0)/const
+
 # Before doing anything -- is mkpasswd available?
 check_dep "mkpasswd"
 
 export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
 
 rootdir="${ORGCODEDIR%/*}"
-
-AUTH_PROXY_NAME=root_nginx_3
 
 function generate_course()
 {
@@ -179,6 +192,40 @@ sed -i "s;'entityID' => .*;'entityID' => '$entity_id',;" /var/www/simplesamlphp/
 EOF
 }
 
+function set_authorization()
+{
+    local hubdir="$1"
+    local group_list="$2"
+
+    group_list=$(echo $group_list | sed -e "s/ /' '/g")  
+    group_list="'$group_list'"
+ 
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q << EOF
+sed -i "s,AUTHOR_GROUP_LIST = array (.*,AUTHOR_GROUP_LIST = array ($group_list);," $HUB_CONST_PATH
+EOF
+   
+}
+
+function reset_authorization()
+{
+    local hubdir="$1"
+
+    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q << EOF
+sed -i "s,AUTHOR_GROUP_LIST = array (.*,AUTHOR_GROUP_LIST = array ();," $HUB_CONST_PATH
+EOF
+}
+
+function show_authorization()
+{
+    local hubdir="$1"
+
+    list=$("$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q << EOF | grep AUTH 
+grep AUTHOR_GROUP_LIST $HUB_CONST_PATH
+EOF
+)
+    echo $list | sed -e "s/'//g" | sed -e "s/^const.*array (//" | sed -e "s/);$//" 
+}
+
 function change_password()
 {
     local hubdir="$1"
@@ -242,6 +289,16 @@ case "$cmd" in
     restart) restart_jupyterhub "$@"
         ;;
     set-accesspoint) set_accesspoint "$@"
+        ;;
+    set-author)
+        hub=$1
+        shift
+        list=$@
+        set_authorization $hub "$list"
+        ;;
+    reset-author) reset_authorization "$@"
+        ;;
+    show-author) show_authorization "$@"
         ;;
     change-password) change_password "$@"
         ;;
