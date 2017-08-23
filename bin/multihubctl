@@ -95,89 +95,6 @@ do_new()
     "$ahdir/000"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_nginx_1
 }
 
-do_simpleinit()
-{
-    # This is a simplified version of do_new() for single jupyterhub
-    # environments running separately.  It does not require the
-    # active-hubs/00x naming convention, and it does not use one nginx to
-    # dispatch to multiple jupyterhub environments.  Each environment
-    # uses its own nginx for SSL connections.  The extra word in the
-    # URL (e.g. "/master/")is not used. 
-
-    hubdir="$1"  # Path to the build directory
-    teacher_mail="$2"
-
-    [ -d "$hubdir" ] || reportfailed "Hub direcotry '$hubdir' already exists"
-
-    # remove original proxy container
-    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker rm -f root_nginx_1 bash
-
-    # create local user id of teacher from teacher's mail address
-    teacherid=$("$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_3 bash << EOF
-php -r "require_once '/var/www/php/functions.php'; echo get_username_from_mail_address('"$mail"');"
-EOF
-    )
- 
-    # configure jupyterhub 
-    reconfigure_one_jupyterhub "$hubdir" "$teacherid"
-    push_hub_patch "$hubdir" 1>/dev/null
-    create_directory_structure "$hubdir" "$teacherid"
-    
-    echo "Restarting new JupyterHub container."
-    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_jupyterhub_1
-    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_jupyterhub_1
-    
-    echo "Configuring auth-proxy container."
-    hubip="$(source "$hubdir/jhvmdir-hub/datadir.conf" ; echo "$VMIP")"
-    hubport=8000
-    # configure hub-const.php
-    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q << EOF
-sed -i "s,HUB_URL = .*,HUB_URL = $hubip:$hubport, ' /home/ubuntu/auth-proxy/php/hub-const.php
-EOF
-    # configure nginx.conf
-    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_3 bash << EOF
-sed -i "s,proxy_pass http:.*,proxy_pass http://$hubip:$hubport," /etc/nginx/nginx.conf
-EOF
-
-    echo "Restarting auth-proxy nginx container."
-    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker stop root_nginx_3
-    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker start root_nginx_3
-
-    echo "Restarting auth-proxy daemons."
-    "$hubdir/jhvmdir-hub/ssh-shortcut.sh" -q << EOF
-sudo docker exec -i root_nginx_3 bash << EOF2
-(
-  /etc/init.d/nginx start
-  /etc/init.d/php5.6-fpm start
-) >/tmp/dstart.log 2>&1
-# The redirection is necessary otherwise init.d/nginx makes "docker exec" hang
-EOF2
-EOF
-
-    # Add database schema of local user
-    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q \
-    sudo docker exec -i root_jpydb_1 \
-    /usr/lib/postgresql/9.6/bin/psql -U postgres -d jupyterhub << EOF
-CREATE SEQUENCE local_users_id_seq START 1;
-CREATE TABLE local_users (
-    id  integer CONSTRAINT firstkey PRIMARY KEY,
-    user_name  varchar(64) NOT NULL,
-    password  varchar(128) NOT NULL,
-    mail  varchar(64) NOT NULL
-);
-EOF
-
-    # create password for teacher    
-    password=$(tr -cd [:alpha:] < /dev/urandom | head -c 10)
-
-    # register teacher's userid and password
-    "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_nginx_3 bash << EOF
-php -r "require_once '/var/www/php/db.php'; add_local_user('"$teacher_mail"', '"$password"');"
-EOF
-
-}
-
-
 : ${urlbase:="niidemo.com"}
 reconfigure_one_jupyterhub()
 {
@@ -570,8 +487,6 @@ shift
 
 case "$cmd" in
     new) do_new "$@"
-	 ;;
-    simpleinit) do_simpleinit "$@"
 	 ;;
     delete) delete_jupyterhub "$@"
 	 ;;

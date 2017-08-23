@@ -112,7 +112,8 @@ EOF
     # configure hub-const.php
     (
         $starting_step "Configure hub-const.php"
-        "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q cat $HUB_CONST_PATH | grep -q $dbip
+        current_text="$("$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q cat $HUB_CONST_PATH)"
+        [[ "$current_text" == *${dbip}* ]] && [[ "$current_text" == *${hubip}:${hubport}* ]]
         $skip_step_if_already_done
 
         "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q << EOF
