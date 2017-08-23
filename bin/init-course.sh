@@ -113,14 +113,14 @@ EOF
     # configure hub-const.php
     (
         $starting_step "Configure hub-const.php"
-        hub_const_path="/home/ubuntu/auth-proxy/php/hub-const.php"
-	current_text="$("$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q cat $hub_const_path)"
+	HUB_CONST_PATH="/home/ubuntu/auth-proxy/php/hub-const.php"
+	current_text="$("$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q cat $HUB_CONST_PATH)"
 	[[ "$current_text" == *${dbip}* ]] && [[ "$current_text" == *${hubip}:${hubport}* ]]
         $skip_step_if_already_done
 
         "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q << EOF
-sed -i "s,HUB_URL = .*,HUB_URL = \"http://$hubip:$hubport\";," $hub_const_path 
-sed -i "s,DB_HOST = .*,DB_HOST = \"$dbip\";," $hub_const_path
+sed -i "s,HUB_URL = .*,HUB_URL = \"http://$hubip:$hubport\";," $HUB_CONST_PATH 
+sed -i "s,DB_HOST = .*,DB_HOST = \"$dbip\";," $HUB_CONST_PATH
 EOF
     )
 
