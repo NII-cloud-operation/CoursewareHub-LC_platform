@@ -292,6 +292,8 @@ function create_directory_structure()
 
        mkdir -p "/jupyter/admin/$teacherid"
        mkdir -p "/jupyter/admin/$teacherid/.ssh"
+       mkdir -p "/jupyter/admin/$teacherid/textbook"
+       mkdir -p "/jupyter/admin/$teacherid/info"
 
        ipycfg="/jupyter/admin/$teacherid/.ipython/profile_default/ipython_config.py"
        mkdir -p "\${ipycfg%/*}"
