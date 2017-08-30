@@ -183,7 +183,7 @@ source "$ORGCODEDIR/post-build-for-auth-proxy.dstep"
     $starting_step "Output port forwarding hint script"
     false # just always refresh this
     $skip_step_if_already_done
-    httpsport="$(source "$DATADIR"/jhvmdir-hub/datadir.conf ; echo $((VNCPORT + 90 )) )"
+    httpsport="$(source "$DATADIR"/jhvmdir-hub/datadir.conf ; echo $((VNCPORT + 43 )) )"
     # guess at local IP address
     device="$(cat /proc/self/net/route | \
                while read a b c ; do [ "$b" == 00000000 ] && echo "$a" && break ; done)"
