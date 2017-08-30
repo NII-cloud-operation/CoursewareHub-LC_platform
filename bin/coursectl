@@ -79,9 +79,6 @@ EOF
 
 source $(dirname $0)/const
 
-# Before doing anything -- is mkpasswd available?
-check_dep "mkpasswd"
-
 export ORGCODEDIR="$(cd "$(dirname $(readlink -f "$0"))" && pwd -P)" || reportfailed
 
 rootdir="${ORGCODEDIR%/*}"

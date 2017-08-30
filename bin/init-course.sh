@@ -212,7 +212,7 @@ EOF
         $skip_step_if_already_done
 
         # generate password    
-        password=$($rootdir/bin/pwgen.sh)
+        password=$($rootdir/bin/pwgen.sh $hubdir)
 
         # register teacher's userid and password
         "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i ${AUTH_PROXY_NAME} bash << EOF
