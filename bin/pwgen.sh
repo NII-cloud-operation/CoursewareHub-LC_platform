@@ -1,13 +1,13 @@
 #!/bin/bash
 
-exclude="[1I0O\"\'\(\)\^~\\\`\{\}_\?<>]"
-while :
-do
-  password=$(mkpasswd -l 10)
-  if [[ "$password" =~ $exclude ]]; then
-      continue
-  fi
-  break
-done
+
+source $(dirname $0)/const
+
+hubdir=$1
+
+password=$("$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i ${AUTH_PROXY_NAME} bash << EOF
+php -r "require_once '/var/www/php/functions.php'; echo generate_password();"
+EOF
+)
 
 echo $password

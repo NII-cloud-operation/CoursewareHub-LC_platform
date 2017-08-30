@@ -112,7 +112,8 @@ EOF
     # configure hub-const.php
     (
         $starting_step "Configure hub-const.php"
-        "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q cat $HUB_CONST_PATH | grep -q $dbip
+        current_text="$("$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q cat $HUB_CONST_PATH)"
+        [[ "$current_text" == *${dbip}* ]] && [[ "$current_text" == *${hubip}:${hubport}* ]]
         $skip_step_if_already_done
 
         "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q << EOF
@@ -211,7 +212,7 @@ EOF
         $skip_step_if_already_done
 
         # generate password    
-        password=$($rootdir/bin/pwgen.sh)
+        password=$($rootdir/bin/pwgen.sh $hubdir)
 
         # register teacher's userid and password
         "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i ${AUTH_PROXY_NAME} bash << EOF
@@ -291,6 +292,8 @@ function create_directory_structure()
 
        mkdir -p "/jupyter/admin/$teacherid"
        mkdir -p "/jupyter/admin/$teacherid/.ssh"
+       mkdir -p "/jupyter/admin/$teacherid/textbook"
+       mkdir -p "/jupyter/admin/$teacherid/info"
 
        ipycfg="/jupyter/admin/$teacherid/.ipython/profile_default/ipython_config.py"
        mkdir -p "\${ipycfg%/*}"
