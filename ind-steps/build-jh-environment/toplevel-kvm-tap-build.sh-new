@@ -8,9 +8,13 @@ bridge_param="$2"
 [ "$bridge_param" != "" ] ; iferr_exit "Second parameter must be the name of an existing bridge"
 
 # TODO: decide the best way to configure node count and the VM ip addresses
-defaultip=( 192.168.33.{99,88,11,12} )
 : "${nodecount:=2}"
-: "${ipaddresses:=${defaultip[*]}}"
+if [ "${ipaddresses:=}" = "" ]; then
+    ipaddresses="192.168.33.99 192.168.33.88"
+    for ((i=0; i < nodecount ; i++)); do
+	ipaddresses="$ipaddresses 192.168.33.$(( 11 + i ))"
+    done
+fi
 
 : "${mainbuilddir:=}"  # default to empty string, which means to build a "main" jupyterhub environmnet
 
