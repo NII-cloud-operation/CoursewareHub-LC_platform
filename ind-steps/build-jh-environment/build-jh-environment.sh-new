@@ -57,13 +57,17 @@ mainbuilddir="$mainbuilddir" # empty if this is the main build
 setcommit_jh_jupyterhub="6078b8d9e5576cd14eb2d76d8efbe83685f72beb"
 # TODO: debug why later jupyterhub commits break the system
 
-setcommit_dockerspawner="unchanged"
+setcommit_dockerspawner="49491ad878ac0d15ef597fdd0aadcaa112158211" # TODO: temp fix
 setcommit_docker_stacks="eb70bcf1a2927f259472dca911a4b12e0529ac46"  # TODO: temp fix
 setcommit_jupyterhub="unchanged"
 setcommit_jupyterhub_deploy="unchanged"
 setcommit_restuser="unchanged"
 setcommit_systemuser="unchanged"
 EOF
+
+# For reference: It was probably this commit on https://github.com/jupyterhub/dockerspawner
+# that broke our build:
+# https://github.com/jupyterhub/dockerspawner/commit/f498057e110a239f1dd8bb5c5bc1cfd93fb7e933
 
 # make all of the reset scripts callable through the build directory
 for i in "$ORGCODEDIR/reset-scripts"/reset*.sh ; do
