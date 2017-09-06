@@ -5,9 +5,13 @@ source "$(dirname $(readlink -f "$0"))/bashsteps-bash-utils-jan2017.source" || e
 new_dir="$1"
 
 # TODO: decide the best way to configure node count and the VM ip addresses
-defaultip=( 192.168.33.{99,88,11,12} )
 : "${nodecount:=2}"
-: "${ipaddresses:=${defaultip[*]}}"
+if [ "${ipaddresses:=}" = "" ]; then
+    ipaddresses="192.168.33.99 192.168.33.88"
+    for ((i=0; i < nodecount ; i++)); do
+	ipaddresses="$ipaddresses 192.168.33.$(( 11 + i ))"
+    done
+fi
 
 : "${mainbuilddir:=}"  # default to empty string, which means to build a "main" jupyterhub environmnet
 
