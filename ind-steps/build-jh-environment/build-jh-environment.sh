@@ -440,6 +440,33 @@ EOF
 
     # following the guide at: https://github.com/compmodels/jupyterhub-deploy/blob/master/INSTALL.md
     KEYMASTER="docker run --rm -v $ansible_path/jupyterhub-deploy/certificates/:/certificates/ cloudpipe/keymaster"
+    # But that docker container has problems if the UID here is not 1000.
+    # (See: https://github.com/cloudpipe/keymaster/issues/8 )
+    # So simply copying the small amount of bash code from
+    # https://github.com/cloudpipe/keymaster
+    # to here so that docker issues are avoided
+
+    (
+	$starting_step "Clone cloudpipe into the jhvmdir machine"
+	[ -x "$DATADIR/$VMDIR/ssh-shortcut.sh" ] &&
+	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF 2>/dev/null 1>/dev/null
+[ -d "keymaster" ]
+EOF
+	$skip_step_if_already_done ; set -e
+
+	# The access to /dev/random must be done on the host because
+	# it hangs in KVM
+	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+
+git clone https://github.com/cloudpipe/keymaster.git
+{
+    # change paths since this code is no longer running inside of docker
+    echo 'export CERTDIR=$ansible_path/jupyterhub-deploy/certificates'
+    echo 'export CAFILE="\${CERTDIR}/ca.pem"' # put existing line in again at the end
+} >> keymaster/common/global.sh
+
+EOF
+    ) ; $iferr_exit
 
     (
 	$starting_step "Gather random data from host, set vault-password"
@@ -452,15 +479,17 @@ EOF
 	# The access to /dev/random must be done on the host because
 	# it hangs in KVM
 	"$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
+set -xe
 mkdir -p "$ansible_path/jupyterhub-deploy/certificates"
 
 echo ubuntu >"$ansible_path/jupyterhub-deploy/vault-password"
 
 cat >"$ansible_path/jupyterhub-deploy/certificates/password" <<EOF2
-$(cat /dev/random | head -c 128 | base64)
+$(cat /dev/urandom | head -c 128 | base64)
 EOF2
 
-${KEYMASTER} ca
+cd keymaster
+./ca
 
 EOF
     ) ; $iferr_exit
@@ -483,8 +512,8 @@ EOF
 	    "$DATADIR/$VMDIR/ssh-shortcut.sh" <<EOF
 set -e
 set -x
-cd "$ansible_path/jupyterhub-deploy/certificates"
-${KEYMASTER} signed-keypair -n ${server_name} -h ${server_name}.website.com -p both -s IP:${private_IP}
+cd keymaster
+./signed-keypair -n ${server_name} -h ${server_name}.website.com -p both -s IP:${private_IP}
 EOF
 	) ; $iferr_exit
     }
