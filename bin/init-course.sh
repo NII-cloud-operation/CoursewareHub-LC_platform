@@ -185,13 +185,13 @@ EOF
     (
         $starting_step "Add database schema of local user"
         "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_jpydb_1 \
-        /usr/lib/postgresql/9.6/bin/psql -U postgres -d jupyterhub << EOF | grep -q local_users
+        psql -U postgres -d jupyterhub << EOF | grep -q local_users
 select relname as table_name from pg_stat_user_tables;
 EOF
         $skip_step_if_already_done
 
         "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q \
-        sudo docker exec -i root_jpydb_1 /usr/lib/postgresql/9.6/bin/psql -U postgres -d jupyterhub << EOF
+        sudo docker exec -i root_jpydb_1 psql -U postgres -d jupyterhub << EOF
 CREATE SEQUENCE local_users_id_seq START 1;
 CREATE TABLE local_users (
     id  integer CONSTRAINT firstkey PRIMARY KEY,
@@ -206,7 +206,7 @@ EOF
     (
         $starting_step "Register Course administrator."
         "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q sudo docker exec -i root_jpydb_1 \
-        /usr/lib/postgresql/9.6/bin/psql -U postgres -d jupyterhub << EOF | grep -q $teacherid
+        psql -U postgres -d jupyterhub << EOF | grep -q $teacherid
 select user_name from local_users;
 EOF
         $skip_step_if_already_done
