@@ -7,9 +7,9 @@ require_once __DIR__ . '/functions.php';
 setcookie(session_name(), '', time() - 1800, '/');
 setcookie('jupyter-hub-token', '', time() - 1800, '/');
 setcookie('_xsrf', '', time() - 1800, '/');
-// destroy session
-session_destroy();
 // logout federation authentication
 logout_fed();
+// destroy session
+session_destroy();
 // redirect to login
 header('Location: /login');
