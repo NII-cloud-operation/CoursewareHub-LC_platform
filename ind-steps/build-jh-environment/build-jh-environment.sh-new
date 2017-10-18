@@ -58,11 +58,22 @@ setcommit_jh_jupyterhub="6078b8d9e5576cd14eb2d76d8efbe83685f72beb"
 # TODO: debug why later jupyterhub commits break the system
 
 setcommit_dockerspawner="49491ad878ac0d15ef597fdd0aadcaa112158211" # TODO: temp fix
-setcommit_docker_stacks="unchanged"
-setcommit_jupyterhub="unchanged"
-setcommit_jupyterhub_deploy="unchanged"
-setcommit_restuser="unchanged"
-setcommit_systemuser="unchanged"
+
+## commit 2815057 on Oct 6 broke the build by loading jupyterhub 8.0 into base-notebook
+## https://github.com/jupyter/docker-stacks/commit/281505737f8a24cb19fb5e335738dff9736fb591
+setcommit_docker_stacks="e1677043235c1d96f306564ed1add934231bd616"  # Thu Sep 28 21:01:51 2017
+
+## To try to make the build more stable, now
+## pinning the rest of these to known-to-work commits:
+## (even though some of these are currently the lastest master and
+## some are our custom fork of the repository)
+## NOTE: the docker files in these pull from other upstream
+## repositories and image hub-a-thingies, so it is still possible
+## for upstream to break the build.
+setcommit_jupyterhub="9971937f56e9739b6a29cf5aaeacbbc87dc41f87"
+setcommit_jupyterhub_deploy="e348430976abc42e9ed49445cfb0a68927b6b236"
+setcommit_restuser="8ae60639c6be8cb3c50d8dd838a98ad8508b4f19"
+setcommit_systemuser="895f7d508bf613895d8d4219935727e848659422"
 EOF
 
 # For reference: It was probably this commit on https://github.com/jupyterhub/dockerspawner

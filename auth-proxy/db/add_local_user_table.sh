@@ -4,7 +4,7 @@ hubdir=$1
 
 "$hubdir"/jhvmdir-hub/ssh-shortcut.sh -q \
 sudo docker exec -i root_jpydb_1 \
-/usr/lib/postgresql/9.6/bin/psql -U postgres -d jupyterhub << EOS  
+psql -U postgres -d jupyterhub << EOS
 CREATE SEQUENCE local_users_id_seq START 1;
 CREATE TABLE local_users (
     id  integer CONSTRAINT firstkey PRIMARY KEY,
@@ -13,4 +13,3 @@ CREATE TABLE local_users (
     mail  varchar(64) NOT NULL
 );
 EOS
-
