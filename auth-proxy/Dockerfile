@@ -32,6 +32,7 @@ RUN set -x \
         php5.6-pgsql \
     && ln -sf /dev/stdout /var/log/nginx/access.log \
     && ln -sf /dev/stderr /var/log/nginx/error.log \
+    && mkdir -p /run/php \
     # Install simplesamlphp
     && cd /var/www \
     && curl -Lo /var/www/downloaded-simplesamlphp.tar.gz https://github.com/simplesamlphp/simplesamlphp/releases/download/v1.14.12/simplesamlphp-1.14.12.tar.gz \
