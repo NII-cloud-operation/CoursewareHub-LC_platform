@@ -107,7 +107,7 @@ http {{
         }}
 
         location / {{
-            proxy_pass $scheme://localhost:$server_port/php/auth.php;
+            proxy_pass $scheme://127.0.0.1:$server_port/php/auth.php;
             proxy_set_header X-Reproxy-URI $uri;
             proxy_set_header X-Reproxy-Query $is_args$args;
             proxy_set_header X-Real-IP $remote_addr;
