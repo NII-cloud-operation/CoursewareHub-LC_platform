@@ -47,8 +47,7 @@ RUN perl -pi -e 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' /etc/php/5.6/fpm/ph
 RUN perl -pi -e 's/allow_url_fopen = Off/allow_url_fopen = On/g' /etc/php/5.6/fpm/php.ini
 RUN perl -pi -e 's/expose_php = On/expose_php = Off/g' /etc/php/5.6/fpm/php.ini
 
-# Copy nginx.conf
-COPY resources/nginx/nginx.conf /etc/nginx/
+# Prepare nginx configuration
 RUN mkdir /etc/nginx/certs
 
 # Setup simplesamlphp
@@ -79,4 +78,8 @@ WORKDIR /var/www/html
 EXPOSE 80
 EXPOSE 443
 
-CMD /usr/bin/supervisord -n -c /etc/supervisord.conf
+COPY resources/scripts/config.py /
+COPY resources/scripts/start.sh /
+RUN chmod +x /config.py /start.sh
+
+CMD /start.sh
