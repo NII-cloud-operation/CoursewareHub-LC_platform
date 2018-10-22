@@ -3,7 +3,7 @@ import os
 # Configuration file for jupyterhub.
 
 ## The ip for this process
-c.JupyterHub.hub_ip = os.environ['HUB_IP']
+c.JupyterHub.hub_ip = '0.0.0.0'
 
 ## The public facing ip of the whole application (the proxy)
 c.JupyterHub.ip = '0.0.0.0'
