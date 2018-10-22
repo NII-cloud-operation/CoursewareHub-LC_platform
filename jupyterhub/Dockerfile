@@ -12,3 +12,7 @@ RUN mkdir /tmp/spawner
 ADD ./spawner /tmp/spawner/
 RUN pip --no-cache-dir install dockerspawner && \
     cd /tmp/spawner; pip --no-cache-dir install .
+
+# Resources
+RUN mkdir /var/jupyterhub
+ADD jupyterhub_config.py /srv/jupyterhub/
