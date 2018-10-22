@@ -1,6 +1,10 @@
-FROM ubuntu:14.04
+FROM ubuntu:18.04
 
 # Update cache and install base packages
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y gnupg2 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 RUN set -x \
     && apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 00A6F0A3C300EE8C \
     && apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 4F4EA0AAE5267A6C \
@@ -27,7 +31,7 @@ RUN set -x \
     && curl -Lo /var/www/downloaded-simplesamlphp.tar.gz https://github.com/simplesamlphp/simplesamlphp/releases/download/v1.14.12/simplesamlphp-1.14.12.tar.gz \
     && tar xvfz downloaded-simplesamlphp.tar.gz \
     && mv $( ls | grep simplesaml | grep -v *tar.gz ) simplesamlphp \
-    && rm /var/www/downloaded-simplesamlphp.tar.gz 
+    && rm /var/www/downloaded-simplesamlphp.tar.gz
 
 # Configure PHP settings
 RUN perl -pi -e 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' /etc/php/5.6/fpm/php.ini
@@ -64,4 +68,3 @@ WORKDIR /var/www/html
 # Expose port 80
 EXPOSE 80
 EXPOSE 443
-
