@@ -10,13 +10,19 @@ RUN set -x \
     && apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 4F4EA0AAE5267A6C \
     #&& apt-key adv --recv-keys --keyserver keyserver.ubuntu.com \
     && apt-get update \
-    && apt-get -y --force-yes install software-properties-common \
-    && apt-get -y --force-yes install pwgen
+    && apt-get -y --force-yes install \
+        software-properties-common \
+        pwgen \
+        curl \
+        git \
+        unzip \
+        supervisor \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 RUN set -x \
     && add-apt-repository ppa:nginx/stable \
     && add-apt-repository ppa:ondrej/php \
     && apt-get update \
-    && apt-get -y --force-yes install curl git unzip \
     && apt-get -y --force-yes --no-install-recommends --no-install-suggests install \
         nginx \
         php5.6-cli \
@@ -31,7 +37,9 @@ RUN set -x \
     && curl -Lo /var/www/downloaded-simplesamlphp.tar.gz https://github.com/simplesamlphp/simplesamlphp/releases/download/v1.14.12/simplesamlphp-1.14.12.tar.gz \
     && tar xvfz downloaded-simplesamlphp.tar.gz \
     && mv $( ls | grep simplesaml | grep -v *tar.gz ) simplesamlphp \
-    && rm /var/www/downloaded-simplesamlphp.tar.gz
+    && rm /var/www/downloaded-simplesamlphp.tar.gz \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Configure PHP settings
 RUN perl -pi -e 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' /etc/php/5.6/fpm/php.ini
@@ -60,8 +68,8 @@ RUN set -x \
     && chown -R www-data:www-data /var/www/simplesamlphp \
     && chmod a+x /var/www/simplesamlphp/bin/get_idp_proxy_metadata.sh
 
-# Boot up Nginx, and PHP5-FPM when container is started
-CMD service php5.6-fpm start && service nginx start
+# supervisord
+COPY resources/supervisord.conf /etc/
 
 # Set the current working directory
 WORKDIR /var/www/html
@@ -69,3 +77,5 @@ WORKDIR /var/www/html
 # Expose port 80
 EXPOSE 80
 EXPOSE 443
+
+CMD /usr/bin/supervisord -n -c /etc/supervisord.conf
