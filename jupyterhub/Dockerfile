@@ -16,3 +16,6 @@ RUN pip --no-cache-dir install dockerspawner && \
 # Resources
 RUN mkdir /var/jupyterhub
 ADD jupyterhub_config.py /srv/jupyterhub/
+
+EXPOSE 8000
+EXPOSE 8081
