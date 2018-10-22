@@ -82,4 +82,8 @@ COPY resources/scripts/config.py /
 COPY resources/scripts/start.sh /
 RUN chmod +x /config.py /start.sh
 
+RUN mkdir /var/www/php
+COPY resources/php /var/www/php
+RUN chown -R www-data:www-data /var/www/php
+
 CMD /start.sh
