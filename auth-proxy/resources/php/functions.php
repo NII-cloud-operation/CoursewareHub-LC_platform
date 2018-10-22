@@ -5,6 +5,17 @@ require_once __DIR__ . '/../simplesamlphp/www/_include.php';
 
 $SESSION_NAME = session_name();
 
+
+function redirect_to_hub()
+{
+    $reproxy_url = HUB_URL.implode('/', array_map('rawurlencode', explode('/', $_SERVER['HTTP_X_REPROXY_URI'])));
+    if (array_key_exists('HTTP_X_REPROXY_QUERY', $_SERVER)) {
+        $reproxy_url = $reproxy_url.$_SERVER['HTTP_X_REPROXY_QUERY'];
+    }
+    header("X-Accel-Redirect: /entrance/");
+    header("X-Reproxy-URL: ".$reproxy_url);
+}
+
 /**
  * Redirect to the JupyterHub if local user was authenticated.
  */
@@ -16,8 +27,7 @@ function redirect_by_local_user_session()
         // check user entry
 
         // redirect to hub
-        header("X-Accel-Redirect: /entrance/");
-        header("X-Reproxy-URL: ".HUB_URL.$_SERVER['HTTP_X_REPROXY_URI']);
+        redirect_to_hub();
         exit;
     }
 }
@@ -29,7 +39,7 @@ function redirect_by_fed_user_session()
 {
     @session_start();
 
-    // if idp metadata file does not exist, cancel the session check. 
+    // if idp metadata file does not exist, cancel the session check.
     if (!file_exists(IDP_METADATA_FILE_PATH)) {
         return;
     }
@@ -44,15 +54,13 @@ function redirect_by_fed_user_session()
 
         // check authorization
         if (check_authorization($group_list)) {
-            session_regenerate_id(true);
             $username = get_username_from_mail_address($mail_address);
-            header("X-Accel-Redirect: /entrance/");
-            header("X-Reproxy-URL: ".HUB_URL.$_SERVER['HTTP_X_REPROXY_URI']);
             header("X-REMOTE-USER: $username");
+            redirect_to_hub();
         } else {
             // redirect to message page
             header("X-Accel-Redirect: /no_author");
-        } 
+        }
         exit;
     }
 }
@@ -81,11 +89,11 @@ function check_authorization($group_list)
         $result = True;
     } else {
        foreach ($group_list as $group) {
-           if (in_array($group, AUTHOR_GROUP_LIST)) { 
+           if (in_array($group, AUTHOR_GROUP_LIST)) {
                $result = True;
                break;
            }
-       }   
+       }
     }
 
     return $result;
@@ -136,7 +144,7 @@ function get_username_from_mail_address($mail_address)
     // Convert to lower and remove characters except alphabetic
     $wk = explode("@", $mail_address);
     $local_part = strtolower($wk[0]);
-    $result = preg_replace('/[^a-zA-Z]/', '', $local_part);    
+    $result = preg_replace('/[^a-zA-Z]/', '', $local_part);
     // Add top 6bytes of hash string
     $hash = substr(md5($mail_address), 0, 6);
     $result .= $hash;
@@ -153,7 +161,7 @@ function generate_password($length = 10)
         $password = exec("pwgen -1ys $length");
         if (preg_match($exclude, $password)) {
             continue;
-        }  
+        }
         break;
     }
     return $password;
