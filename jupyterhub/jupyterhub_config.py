@@ -26,3 +26,13 @@ c.LocalAuthenticator.add_user_cmd = ["adduser", "-q", "--gecos", "\"\"", "--home
 c.LocalAuthenticator.create_system_users = True
 
 c.JupyterHub.logo_file = '/var/jupyterhub/logo.png'
+
+# DB
+pg_user = os.environ['POSTGRES_ENV_JPY_PSQL_USER']
+pg_pass = os.environ['POSTGRES_ENV_JPY_PSQL_PASSWORD']
+pg_host = os.environ['POSTGRES_PORT_5432_TCP_ADDR']
+c.JupyterHub.db_url = 'postgresql://{}:{}@{}:5432/jupyterhub'.format(
+    pg_user,
+    pg_pass,
+    pg_host,
+)

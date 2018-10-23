@@ -13,6 +13,12 @@ ADD ./spawner /tmp/spawner/
 RUN pip --no-cache-dir install dockerspawner && \
     cd /tmp/spawner; pip --no-cache-dir install .
 
+# DB
+RUN apt-get install -y libpq-dev \
+    && apt-get autoremove -y \
+    && apt-get clean -y \
+    && pip --no-cache-dir install psycopg2
+
 # Resources
 RUN mkdir /var/jupyterhub
 ADD jupyterhub_config.py /srv/jupyterhub/
