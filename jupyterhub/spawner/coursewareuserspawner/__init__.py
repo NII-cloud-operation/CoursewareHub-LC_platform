@@ -138,7 +138,7 @@ class CoursewareUserSpawner(SwarmSpawner):
         return state
 
     def start(self, image=None, extra_create_kwargs=None,
-        extra_start_kwargs=None, extra_host_config=None):
+              extra_host_config=None):
         """start the single-user server in a docker container"""
         if extra_create_kwargs is None:
             extra_create_kwargs = {}
@@ -151,7 +151,6 @@ class CoursewareUserSpawner(SwarmSpawner):
         return super(CoursewareUserSpawner, self).start(
             image=image,
             extra_create_kwargs=extra_create_kwargs,
-            extra_start_kwargs=extra_start_kwargs,
             extra_host_config=extra_host_config
         )
 
