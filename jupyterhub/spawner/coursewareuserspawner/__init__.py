@@ -7,7 +7,7 @@ from traitlets import (
     Integer,
     Unicode,
 )
-
+from tornado import gen
 
 class CoursewareUserSpawner(SwarmSpawner):
 
@@ -138,22 +138,13 @@ class CoursewareUserSpawner(SwarmSpawner):
             state['user_id'] = self.user_id
         return state
 
-    def start(self, image=None, extra_create_kwargs=None,
-              extra_host_config=None):
-        """start the single-user server in a docker container"""
-        if extra_create_kwargs is None:
-            extra_create_kwargs = {}
-
-        extra_create_kwargs.setdefault('workdir', self.homedir)
+    @gen.coroutine
+    def create_object(self):
         # systemuser image must be started as root
         # relies on NB_UID and NB_USER handling in docker-stacks
-        extra_create_kwargs.setdefault('user', '0')
+        self.extra_container_spec = {'workdir': self.homedir, 'user': '0'}
 
-        return super(CoursewareUserSpawner, self).start(
-            image=image,
-            extra_create_kwargs=extra_create_kwargs,
-            extra_host_config=extra_host_config
-        )
+        return yield super(CoursewareUserSpawner, self).create_object()
 
     def _is_admin(self):
         with open(self.userlist_path, 'r') as user_file:
