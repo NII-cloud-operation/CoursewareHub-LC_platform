@@ -23,5 +23,8 @@ RUN apt-get install -y libpq-dev \
 RUN mkdir /var/jupyterhub
 ADD jupyterhub_config.py /srv/jupyterhub/
 
+# Configurations
+RUN mkdir /srv/jupyterhub_users/ && touch /srv/jupyterhub_users/userlist
+
 EXPOSE 8000
 EXPOSE 8081
