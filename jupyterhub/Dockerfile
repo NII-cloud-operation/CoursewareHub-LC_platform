@@ -10,7 +10,7 @@ RUN pip --no-cache-dir install git+https://github.com/cwaldbieser/jhub_remote_us
 # Spawner
 RUN mkdir /tmp/spawner
 ADD ./spawner /tmp/spawner/
-RUN pip --no-cache-dir install dockerspawner && \
+RUN pip --no-cache-dir install git+https://github.com/yacchin1205/dockerspawner.git@fix/incompatible-volume-settings && \
     cd /tmp/spawner; pip --no-cache-dir install .
 
 # DB
