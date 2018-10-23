@@ -73,8 +73,9 @@ class CoursewareUserSpawner(SwarmSpawner):
         actually call start().  The required format is a dict of dicts that
         looks like:
         {
-            host_location: {'bind': container_location, 'ro': True}
+            host_location: {'bind': container_location, 'mode': 'rw'}
         }
+        mode may be 'ro', 'rw', 'z', or 'Z'.
         """
         volumes = super(CoursewareUserSpawner, self).volume_binds
         with open(self.userlist_path, 'r') as user_file:
@@ -83,23 +84,23 @@ class CoursewareUserSpawner(SwarmSpawner):
         if self._is_admin():
             volumes['/jupyter/admin/{user}'.format(user=self.user.name)] = {
                 'bind': self.homedir,
-                'ro': False
+                'mode': 'rw'
             }
             # new (k8s) directory structure
             for dirname in ['textbook', 'info']:
                 cpath = os.path.join('/home/jupyter', dirname)
                 hpath = os.path.join('/jupyter/admin', dirname)
-                volumes[hpath] = {'bind': cpath, 'ro': False}
-            volumes['/jupyter/users'] = {'bind': '/home/jupyter/workspace', 'ro': False}
-            volumes['/jupyter/admin'] = {'bind': '/jupyter/admin', 'ro': False}
+                volumes[hpath] = {'bind': cpath, 'mode': 'rw'}
+            volumes['/jupyter/users'] = {'bind': '/home/jupyter/workspace', 'mode': 'rw'}
+            volumes['/jupyter/admin'] = {'bind': '/jupyter/admin', 'mode': 'rw'}
         else:
             volumes['/jupyter/users/{user}'.format(user=self.user.name)] = {
                 'bind': self.homedir,
-                'ro': False
+                'mode': 'rw'
             }
             for dirname in ['textbook', 'tools', 'info']:
                 path = os.path.join('/jupyter/admin', dirname)
-                volumes[path] = {'bind': path, 'ro': True}
+                volumes[path] = {'bind': path, 'mode': 'ro'}
         return volumes
 
     def get_env(self):
