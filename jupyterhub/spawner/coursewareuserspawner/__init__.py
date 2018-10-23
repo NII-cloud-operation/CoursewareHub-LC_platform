@@ -1,7 +1,7 @@
 import pwd
 import os
 
-from dockerspawner import DockerSpawner
+from dockerspawner import SwarmSpawner
 from textwrap import dedent
 from traitlets import (
     Integer,
@@ -9,7 +9,7 @@ from traitlets import (
 )
 
 
-class CoursewareUserSpawner(DockerSpawner):
+class CoursewareUserSpawner(SwarmSpawner):
 
     userlist_path = Unicode(
         "/srv/jupyterhub_users/userlist",
