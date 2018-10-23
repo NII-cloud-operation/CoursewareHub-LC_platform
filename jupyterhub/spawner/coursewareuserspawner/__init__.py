@@ -144,7 +144,7 @@ class CoursewareUserSpawner(SwarmSpawner):
         # relies on NB_UID and NB_USER handling in docker-stacks
         self.extra_container_spec = {'workdir': self.homedir, 'user': '0'}
 
-        return yield super(CoursewareUserSpawner, self).create_object()
+        return (yield super(CoursewareUserSpawner, self).create_object())
 
     def _is_admin(self):
         with open(self.userlist_path, 'r') as user_file:
