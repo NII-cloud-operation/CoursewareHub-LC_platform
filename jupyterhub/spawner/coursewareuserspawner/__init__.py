@@ -144,7 +144,7 @@ class CoursewareUserSpawner(SwarmSpawner):
         if extra_create_kwargs is None:
             extra_create_kwargs = {}
 
-        extra_create_kwargs.setdefault('working_dir', self.homedir)
+        extra_create_kwargs.setdefault('workdir', self.homedir)
         # systemuser image must be started as root
         # relies on NB_UID and NB_USER handling in docker-stacks
         extra_create_kwargs.setdefault('user', '0')
