@@ -125,7 +125,10 @@ class CoursewareUserSpawner(SwarmSpawner):
         this will never be called, which is necessary if
         the system users are not on the Hub system (i.e. Hub itself is in a container).
         """
-        return pwd.getpwnam(self.user.name).pw_uid
+        uent = self._get_user_entry()
+        if uent is not None and len(uent) >= 1:
+            return int(uent[0])
+        raise NameError(self.user.name)
 
     def load_state(self, state):
         super().load_state(state)
@@ -147,6 +150,15 @@ class CoursewareUserSpawner(SwarmSpawner):
         return (yield super(CoursewareUserSpawner, self).create_object())
 
     def _is_admin(self):
+        uent = self._get_user_entry()
+        if uent is not None and len(uent) >= 2:
+            return uent[1] == 'admin'
+        return False
+
+    def _get_user_entry(self):
         with open(self.userlist_path, 'r') as user_file:
-            usersstring = user_file.read()
-        return self.user.name + ' admin' in usersstring
+            for line in user_file.readlines():
+                uinfo = line.strip().split()
+                if len(uinfo) > 0 and uinfo[0] == self.user.name:
+                    return uinfo[1:]
+        return None
