@@ -15,6 +15,7 @@ c.JupyterHub.ip = '0.0.0.0'
 c.JupyterHub.spawner_class = 'coursewareuserspawner.CoursewareUserSpawner'
 c.DockerSpawner.container_ip = "0.0.0.0"
 c.DockerSpawner.container_image = os.environ['CONTAINER_IMAGE']
+c.DockerSpawner.network_name = os.environ['BACKEND_NETWORK']
 
 c.JupyterHub.authenticator_class = "jhub_remote_user_authenticator.remote_user_auth.RemoteUserAuthenticator"
 
