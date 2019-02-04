@@ -17,6 +17,7 @@ RUN set -x \
         git \
         unzip \
         supervisor \
+        cron \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 RUN set -x \
@@ -78,9 +79,15 @@ WORKDIR /var/www/html
 EXPOSE 80
 EXPOSE 443
 
+# Set cron for updating metadata of idp-proxy
+RUN set -x \
+    && echo "0 0 */10 * * /update_idp_proxy_metadata.sh" > /var/spool/cron/root
+
 COPY resources/scripts/config.py /
 COPY resources/scripts/start.sh /
-RUN chmod +x /config.py /start.sh
+COPY resources/scripts/update_idp_proxy_metadata.sh /
+RUN chmod +x /config.py /start.sh /update_idp_proxy_metadata.sh
+
 
 RUN mkdir /var/www/php
 COPY resources/php /var/www/php
