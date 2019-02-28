@@ -54,6 +54,7 @@ RUN mkdir /etc/nginx/certs
 # Setup simplesamlphp
 COPY resources/simplesamlphp/config/config.php /var/www/simplesamlphp/config
 COPY resources/simplesamlphp/config/authsources.php /var/www/simplesamlphp/config
+COPY resources/simplesamlphp/config/config-metarefresh.php /var/www/simplesamlphp/config
 COPY resources/simplesamlphp/bin/get_idp_proxy_metadata.sh /var/www/simplesamlphp/bin
 COPY resources/simplesamlphp/bin/remove_idp_proxy_metadata.sh /var/www/simplesamlphp/bin
 # simplesamlphp keys
@@ -63,6 +64,12 @@ RUN set -x \
          -out auth-proxy.cer \
          -keyout auth-proxy.key \
          -subj "/C=JP/ST=Tokyo/L=Chiyoda-ku/O=NII/CN=auth-proxy"
+
+# simplesamlphp metarefresh module
+RUN set -x \
+    && touch /var/www/simplesamlphp/modules/cron/enable \
+    && touch /var/www/simplesamlphp/modules/metarefresh/enable \
+    && mkdir -p /var/www/simplesamlphp/metadata/idp-proxy
 
 # Change owner
 RUN set -x \
@@ -79,14 +86,9 @@ WORKDIR /var/www/html
 EXPOSE 80
 EXPOSE 443
 
-# Set cron for updating metadata of idp-proxy
-RUN set -x \
-    && echo "0 0 */10 * * /update_idp_proxy_metadata.sh" > /var/spool/cron/root
-
 COPY resources/scripts/config.py /
 COPY resources/scripts/start.sh /
-COPY resources/scripts/update_idp_proxy_metadata.sh /
-RUN chmod +x /config.py /start.sh /update_idp_proxy_metadata.sh
+RUN chmod +x /config.py /start.sh
 
 
 RUN mkdir /var/www/php

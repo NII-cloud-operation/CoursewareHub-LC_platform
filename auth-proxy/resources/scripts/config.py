@@ -154,3 +154,29 @@ http {{
 
     }}
 }}'''.format(master_ip=hub_name, master_fqdn=master_fqdn))
+
+
+cron_secret = os.environ['CRON_SECRET']
+
+with open('/var/www/simplesamlphp/config/module_cron.php', 'w') as f:
+    f.write('''<?php
+/*
+ * Configuration for the Cron module.
+ */
+
+$config = array (
+
+        'key' => '{cron_secret}',
+        'allowed_tags' => array('daily', 'hourly', 'frequent'),
+        'debug_message' => TRUE,
+        'sendemail' => FALSE,
+
+);
+'''.format(cron_secret=cron_secret))
+
+
+with open('/var/spool/cron/crontabs/root', 'w') as f:
+    f.write('@reboot /bin/sleep 10 && /usr/bin/curl --silent --insecure "https://localhost/simplesaml/module.php/cron/cron.php?key={cron_secret}&tag=daily"\n'.format(cron_secret=cron_secret))
+    f.write('0 0 * * * /usr/bin/curl --silent --insecure "https://localhost/simplesaml/module.php/cron/cron.php?key={cron_secret}&tag=daily"\n'.format(cron_secret=cron_secret))
+
+os.chmod('/var/spool/cron/crontabs/root', 0o600)
