@@ -1,25 +1,18 @@
 import pwd
 import os
+import subprocess
 
 from dockerspawner import SwarmSpawner
+from docker.types import Mount
 from textwrap import dedent
 from traitlets import (
     Integer,
     Unicode,
+    default
 )
 from tornado import gen
 
 class CoursewareUserSpawner(SwarmSpawner):
-
-    userlist_path = Unicode(
-        "/srv/jupyterhub_users/userlist",
-        config=True,
-        help=dedent(
-            """
-            Userlist file of Courseware
-            """
-        )
-    )
 
     image_homedir_format_string = Unicode(
         "/home/{username}",
@@ -54,54 +47,62 @@ class CoursewareUserSpawner(SwarmSpawner):
         return self.image_homedir_format_string.format(username=self.user.name)
 
     @property
-    def volume_mount_points(self):
-        """
-        Volumes are declared in docker-py in two stages.  First, you declare
-        all the locations where you're going to mount volumes when you call
-        create_container.
-        Returns a list of all the values in self.volumes or
-        self.read_only_volumes.
-        """
-        mount_points = super(CoursewareUserSpawner, self).volume_mount_points
-        mount_points.append(self.homedir)
-        return mount_points
-
-    @property
-    def volume_binds(self):
-        """
-        The second half of declaring a volume with docker-py happens when you
-        actually call start().  The required format is a dict of dicts that
-        looks like:
-        {
-            host_location: {'bind': container_location, 'mode': 'rw'}
-        }
-        mode may be 'ro', 'rw', 'z', or 'Z'.
-        """
-        volumes = super(CoursewareUserSpawner, self).volume_binds
-        with open(self.userlist_path, 'r') as user_file:
-            usersstring = user_file.read()
+    def mounts(self):
+        volumes = []
+        volumes.append(
+            Mount(
+                type="bind",
+                target=self.homedir,
+                source='/jupyter/users/{user}'.format(user=self.user.name),
+                read_only=False
+            )
+        )
 
         if self._is_admin():
-            volumes['/jupyter/admin/{user}'.format(user=self.user.name)] = {
-                'bind': self.homedir,
-                'mode': 'rw'
-            }
-            # new (k8s) directory structure
+            volumes.append(
+                Mount(
+                    type="bind",
+                    target=os.path.join(self.homedir, 'admin_tools'),
+                    source='/jupyter/admin/admin_tools',
+                    read_only=False
+                )
+            )
             for dirname in ['textbook', 'info']:
-                cpath = os.path.join('/home/jupyter', dirname)
-                hpath = os.path.join('/jupyter/admin', dirname)
-                volumes[hpath] = {'bind': cpath, 'mode': 'rw'}
-            volumes['/jupyter/users'] = {'bind': '/home/jupyter/workspace', 'mode': 'rw'}
-            volumes['/jupyter/admin'] = {'bind': '/jupyter/admin', 'mode': 'rw'}
+                volumes.append(
+                    Mount(
+                        type="bind",
+                        target=os.path.join('/home/jupyter', dirname),
+                        source=os.path.join('/jupyter/admin', dirname),
+                        read_only=False
+                    )
+                )
+            volumes.append(
+                Mount(
+                    type="bind",
+                    target='/home/jupyter/workspace',
+                    source='/jupyter/users',
+                    read_only=False
+                )
+            )
+            volumes.append(
+                Mount(
+                    type="bind",
+                    target='/jupyter/admin',
+                    source='/jupyter/admin',
+                    read_only=False
+                )
+            )
         else:
-            volumes['/jupyter/users/{user}'.format(user=self.user.name)] = {
-                'bind': self.homedir,
-                'mode': 'rw'
-            }
             for dirname in ['textbook', 'tools', 'info']:
-                path = os.path.join('/jupyter/admin', dirname)
-                volumes[path] = {'bind': path, 'mode': 'ro'}
-        return volumes
+                volumes.append(
+                    Mount(
+                        type="bind",
+                        target=os.path.join(self.homedir, dirname),
+                        source=os.path.join('/jupyter/admin', dirname),
+                        read_only=True
+                    )
+                )
+        return sorted(volumes, key=lambda v: v['Target'])
 
     def get_env(self):
         env = super(CoursewareUserSpawner, self).get_env()
@@ -118,17 +119,16 @@ class CoursewareUserSpawner(SwarmSpawner):
             env['GRANT_SUDO'] = 'yes'
         return env
 
-    def _user_id_default(self):
+    @default('user_id')
+    def _default_user_id(self):
         """
         Get user_id from pwd lookup by name
         If the authenticator stores user_id in the user state dict,
         this will never be called, which is necessary if
         the system users are not on the Hub system (i.e. Hub itself is in a container).
         """
-        uent = self._get_user_entry()
-        if uent is not None and len(uent) >= 1:
-            return int(uent[0])
-        raise NameError(self.user.name)
+        userout = subprocess.check_output(['/get_user_id.sh', self.user.name])
+        return int(userout.decode('utf-8'))
 
     def load_state(self, state):
         super().load_state(state)
@@ -150,15 +150,4 @@ class CoursewareUserSpawner(SwarmSpawner):
         return (yield super(CoursewareUserSpawner, self).create_object())
 
     def _is_admin(self):
-        uent = self._get_user_entry()
-        if uent is not None and len(uent) >= 2:
-            return uent[1] == 'admin'
-        return False
-
-    def _get_user_entry(self):
-        with open(self.userlist_path, 'r') as user_file:
-            for line in user_file.readlines():
-                uinfo = line.strip().split()
-                if len(uinfo) > 0 and uinfo[0] == self.user.name:
-                    return uinfo[1:]
-        return None
+        return self.user.admin
