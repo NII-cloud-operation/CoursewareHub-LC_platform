@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/functions.php';
+require_once __DIR__ . '/../../lib/functions.php';
 
 # Redirect to the JupyterHub if local user was authenticated.
 redirect_by_local_user_session();

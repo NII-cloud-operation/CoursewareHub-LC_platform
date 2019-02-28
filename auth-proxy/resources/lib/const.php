@@ -9,5 +9,5 @@ const GF_ATTRIBUTES = array(
 );
 
 // Path of IdP metadata file
-const IDP_METADATA_FILE_PATH = "/var/www/simplesamlphp/metadata/idp-proxy.xml";
+const IDP_METADATA_FILE_PATH = "/var/www/simplesamlphp/metadata/idp-proxy/saml20-idp-remote.php";
 ?>

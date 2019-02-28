@@ -1,8 +1,8 @@
 <?php
-require_once __DIR__ . '/const.php';
-require_once __DIR__ . '/hub-const.php';
-require_once __DIR__ . '/functions.php';
-require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/../../lib/const.php';
+require_once __DIR__ . '/../../lib/hub-const.php';
+require_once __DIR__ . '/../../lib/functions.php';
+require_once __DIR__ . '/../../lib/db.php';
 
 @session_start();
 
@@ -168,4 +168,3 @@ form {
 </div>
 </body>
 </html>
-

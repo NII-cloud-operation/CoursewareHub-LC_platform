@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . '/functions.php';
+require_once __DIR__ . '/../../lib/functions.php';
 @session_start();
 
 // remove cookies

@@ -52,7 +52,7 @@ http {{
     server {{
         listen 443 ssl;
         server_name hub;
-        root /var/www;
+        root /var/www/htdocs;
         index auth.php login.php logout.php;
 
         ssl on;
