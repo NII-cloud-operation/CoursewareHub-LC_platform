@@ -22,6 +22,8 @@ c.LocalAuthenticator.add_user_cmd = ["/get_user_id.sh"]
 
 c.JupyterHub.logo_file = '/var/jupyterhub/logo.png'
 
+c.JupyterHub.admin_access = True if os.environ.get('ADMIN_ACCESS', '1') in ('yes', '1') else False
+
 # DB
 pg_user = os.environ['POSTGRES_ENV_JPY_PSQL_USER']
 pg_pass = os.environ['POSTGRES_ENV_JPY_PSQL_PASSWORD']
