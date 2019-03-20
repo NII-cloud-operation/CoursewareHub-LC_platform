@@ -24,6 +24,22 @@ c.JupyterHub.logo_file = '/var/jupyterhub/logo.png'
 
 c.JupyterHub.admin_access = True if os.environ.get('ADMIN_ACCESS', '1') in ('yes', '1') else False
 
+if 'CONCURRENT_SPAWN_LIMIT' in os.environ:
+    c.JupyterHub.concurrent_spawn_limit = int(os.environ['CONCURRENT_SPAWN_LIMIT'])
+if 'SPAWNER_HTTP_TIMEOUT' in os.environ:
+    c.Spawner.http_timeout = int(os.environ['SPAWNER_HTTP_TIMEOUT'])
+if 'SPAWNER_START_TIMEOUT' in os.environ:
+    c.Spawner.start_timeout = int(os.environ['SPAWNER_START_TIMEOUT'])
+
+if 'CPU_LIMIT' in os.environ:
+    c.Spawner.cpu_limit = float(os.environ['CPU_LIMIT'])
+if 'CPU_GUARANTEE' in os.environ:
+    c.Spawner.cpu_guarantee = float(os.environ['CPU_GUARANTEE'])
+if 'MEM_LIMIT' in os.environ:
+    c.Spawner.mem_limit = os.environ['MEM_LIMIT']
+if 'MEM_GUARANTEE' in os.environ:
+    c.Spawner.mem_guarantee = os.environ['MEM_GUARANTEE']
+
 # DB
 pg_user = os.environ['POSTGRES_ENV_JPY_PSQL_USER']
 pg_pass = os.environ['POSTGRES_ENV_JPY_PSQL_PASSWORD']
