@@ -1,7 +1,9 @@
 from tornado import gen
 from notebook.services.kernels.kernelmanager import MappingKernelManager
-from traitlets import Int
+from traitlets import Int, Bool
 
+class ExceedMaxNumOfKernels(Exception):
+    pass
 
 class CoursewareKernelManager(MappingKernelManager):
 
@@ -9,18 +11,26 @@ class CoursewareKernelManager(MappingKernelManager):
         None, config=True, allow_none=True,
         help="The maximum number of running kernels.")
 
+    cull_oldest_activity_kernel = Bool(
+        False, config=True,
+        help="Cull oldest activity kernel if the number of running kernels has exceeded limit.")
+
     @gen.coroutine
     def start_kernel(self, kernel_id=None, path=None, **kwargs):
+
+        if not self.cull_oldest_activity_kernel and len(self._kernels) >= self.max_kernels:
+            raise ExceedMaxNumOfKernels("Exceed Max # of kernels [%d]. Please shutdown unused kernels." % self.max_kernels)
 
         kernel_id = yield gen.maybe_future(
             super(CoursewareKernelManager, self).start_kernel(
                 kernel_id=kernel_id, path=path, **kwargs)
         )
 
-        try:
-            self.cull_kernels_if_exceed_num_limit()
-        except Exception as e:
-            self.log.exception("The following exception was encountered while checking the number of running kernels: %s", e)
+        if self.cull_oldest_activity_kernel:
+            try:
+                self.cull_kernels_if_exceed_num_limit()
+            except Exception as e:
+                self.log.exception("The following exception was encountered while checking the number of running kernels: %s", e)
 
         raise gen.Return(kernel_id)
 
