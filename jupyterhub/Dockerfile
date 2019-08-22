@@ -14,7 +14,7 @@ RUN pip --no-cache-dir install git+https://github.com/jupyterhub/dockerspawner.g
    cd /tmp/spawner; pip --no-cache-dir install .
 
 # DB
-RUN apt-get install -y libpq-dev \
+RUN apt-get install -y gcc libpq-dev \
     && apt-get autoremove -y \
     && apt-get clean -y \
     && pip --no-cache-dir install psycopg2
