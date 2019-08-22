@@ -1,4 +1,4 @@
-FROM jupyterhub/jupyterhub:0.9.4
+FROM jupyterhub/jupyterhub:1.0.0
 
 # dind
 RUN apt-get update && apt-get install -y make && apt-get autoclean && apt-get clean && apt-get autoremove
