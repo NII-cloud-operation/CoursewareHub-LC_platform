@@ -19,6 +19,9 @@ RUN apt-get install -y gcc libpq-dev \
     && apt-get clean -y \
     && pip --no-cache-dir install psycopg2
 
+# cull servers
+ADD cull_idle_servers.py /usr/local/bin/cull_idle_servers.py
+
 # Resources
 RUN mkdir /var/jupyterhub
 ADD jupyterhub_config.py /srv/jupyterhub/
