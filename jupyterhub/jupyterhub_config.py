@@ -1,4 +1,5 @@
 import os
+import sys
 
 # Configuration file for jupyterhub.
 
@@ -49,3 +50,26 @@ c.JupyterHub.db_url = 'postgresql://{}:{}@{}:5432/jupyterhub'.format(
     pg_pass,
     pg_host,
 )
+
+# services
+services = []
+
+## cull servers
+cull_server = os.environ.get('CULL_SERVER', 'no')
+if cull_server == '1' or cull_server == 'yes':
+    cull_server_idle_timeout = int(os.environ.get('CULL_SERVER_IDLE_TIMEOUT', '600'))
+    cull_server_max_age = int(os.environ.get('CULL_SERVER_MAX_AGE', '0'))
+    cull_server_every = int(os.environ.get('CULL_SERVER_EVERY', '0'))
+    if cull_server_idle_timeout > 0:
+        services.append(
+            {
+                'name': 'cull-idle',
+                'admin': True,
+                'command': [sys.executable,
+                            '/usr/local/bin/cull_idle_servers.py',
+                            '--timeout={}'.format(str(cull_server_idle_timeout)),
+                            '--max-age={}'.format(str(cull_server_max_age)),
+                            '--cull-every={}'.format(str(cull_server_every))],
+            }
+        )
+c.JupyterHub.services = services
