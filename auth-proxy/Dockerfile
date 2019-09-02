@@ -91,8 +91,9 @@ COPY resources/scripts/start.sh /
 RUN chmod +x /config.py /start.sh
 
 
-RUN mkdir -p /var/www/htdocs/php /var/www/bin /var/www/lib
+RUN mkdir -p /var/www/htdocs/php /var/www/htdocs/html /var/www/bin /var/www/lib
 COPY resources/htdocs/php /var/www/htdocs/php
+COPY resources/html /var/www/htdocs/html
 COPY resources/bin /var/www/bin
 COPY resources/lib /var/www/lib
 RUN chown -R www-data:www-data /var/www/htdocs /var/www/bin /var/www/lib
