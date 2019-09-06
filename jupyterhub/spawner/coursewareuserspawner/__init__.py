@@ -1,6 +1,7 @@
 import pwd
 import os
 import subprocess
+from copy import copy
 
 from dockerspawner import SwarmSpawner
 from docker.types import Mount
@@ -8,6 +9,7 @@ from textwrap import dedent
 from traitlets import (
     Integer,
     Unicode,
+    List,
     default
 )
 from tornado import gen
@@ -39,6 +41,87 @@ class CoursewareUserSpawner(SwarmSpawner):
         )
     )
 
+    user_mounts = List(
+        config=True,
+        help=dedent(
+            """
+            Mount options for a single-user container.
+            List of docker.types.Mount objects.
+
+            - {username} is expanded to the jupyterhub username
+            - {homedir} is expanded to user's home directory in a container
+            """
+        )
+    )
+
+    extra_user_mounts = List(
+        default=[],
+        config=True,
+        help=dedent(
+            """
+            Extra mount options for a single-user container.
+            List of docker.types.Mount objects.
+
+            - {username} is expanded to the jupyterhub username
+            - {homedir} is expanded to user's home directory in a container
+            """
+        )
+    )
+
+    admin_mounts = List(
+        config=True,
+        help=dedent(
+            """
+            Mount options for an admin's single-user container.
+            List of docker.types.Mount objects.
+
+            - {username} is expanded to the jupyterhub username
+            - {homedir} is expanded to user's home directory in a container
+            """
+        )
+    )
+
+    extra_admin_mounts = List(
+        default=[],
+        config=True,
+        help=dedent(
+            """
+            Extra mount options for an admin's single-user container.
+            List of docker.types.Mount objects.
+
+            - {username} is expanded to the jupyterhub username
+            - {homedir} is expanded to user's home directory in a container
+            """
+        )
+    )
+
+    non_admin_mounts = List(
+        config=True,
+        help=dedent(
+            """
+            Mount options for an non-admin's single-user container.
+            List of docker.types.Mount objects.
+
+            - {username} is expanded to the jupyterhub username
+            - {homedir} is expanded to user's home directory in a container
+            """
+        )
+    )
+
+    extra_non_admin_mounts = List(
+        default=[],
+        config=True,
+        help=dedent(
+            """
+            Extra mount options for an non-admin's single-user container.
+            List of docker.types.Mount objects.
+
+            - {username} is expanded to the jupyterhub username
+            - {homedir} is expanded to user's home directory in a container
+            """
+        )
+    )
+
     @property
     def homedir(self):
         """
@@ -48,61 +131,95 @@ class CoursewareUserSpawner(SwarmSpawner):
 
     @property
     def mounts(self):
-        volumes = []
-        volumes.append(
+        mounts = []
+        mounts.extend(self.user_mounts)
+        mounts.extend(self.extra_user_mounts)
+        if self._is_admin():
+            mounts.extend(self.admin_mounts)
+            mounts.extend(self.extra_admin_mounts)
+        else:
+            mounts.extend(self.non_admin_mounts)
+            mounts.extend(self.extra_non_admin_mounts)
+        mounts = [self._expand_mount_properties(m) for m in mounts]
+        return sorted(mounts, key=lambda v: v['Target'])
+
+    @default('user_mounts')
+    def _default_user_mounts(self):
+        mounts = []
+        mounts.append(
             Mount(
                 type="bind",
-                target=self.homedir,
-                source='/jupyter/users/{user}'.format(user=self.user.name),
+                target='{homedir}',
+                source='/jupyter/users/{username}',
                 read_only=False
             )
         )
+        return mounts
 
-        if self._is_admin():
-            volumes.append(
+    @default('admin_mounts')
+    def _default_admin_mounts(self):
+        mounts = []
+        mounts.append(
+            Mount(
+                type="bind",
+                target='{homedir}/admin_tools',
+                source='/jupyter/admin/admin_tools',
+                read_only=False
+            )
+        )
+        for dirname in ['textbook', 'info']:
+            mounts.append(
                 Mount(
                     type="bind",
-                    target=os.path.join(self.homedir, 'admin_tools'),
-                    source='/jupyter/admin/admin_tools',
+                    target=os.path.join('/home/jupyter', dirname),
+                    source=os.path.join('/jupyter/admin', dirname),
                     read_only=False
                 )
             )
-            for dirname in ['textbook', 'info']:
-                volumes.append(
-                    Mount(
-                        type="bind",
-                        target=os.path.join('/home/jupyter', dirname),
-                        source=os.path.join('/jupyter/admin', dirname),
-                        read_only=False
-                    )
-                )
-            volumes.append(
+        mounts.append(
+            Mount(
+                type="bind",
+                target='/home/jupyter/workspace',
+                source='/jupyter/users',
+                read_only=False
+            )
+        )
+        mounts.append(
+            Mount(
+                type="bind",
+                target='/jupyter/admin',
+                source='/jupyter/admin',
+                read_only=False
+            )
+        )
+        return mounts
+
+    @default('non_admin_mounts')
+    def _default_non_admin_mounts(self):
+        mounts = []
+        for dirname in ['textbook', 'tools', 'info']:
+            mounts.append(
                 Mount(
                     type="bind",
-                    target='/home/jupyter/workspace',
-                    source='/jupyter/users',
-                    read_only=False
+                    target='{homedir}/' + dirname,
+                    source=os.path.join('/jupyter/admin', dirname),
+                    read_only=True
                 )
             )
-            volumes.append(
-                Mount(
-                    type="bind",
-                    target='/jupyter/admin',
-                    source='/jupyter/admin',
-                    read_only=False
-                )
-            )
-        else:
-            for dirname in ['textbook', 'tools', 'info']:
-                volumes.append(
-                    Mount(
-                        type="bind",
-                        target=os.path.join(self.homedir, dirname),
-                        source=os.path.join('/jupyter/admin', dirname),
-                        read_only=True
-                    )
-                )
-        return sorted(volumes, key=lambda v: v['Target'])
+        return mounts
+
+    def _expand_user_properties(self, template):
+        return template.format(
+            homedir=self.homedir,
+            username=self.user.name
+        )
+
+    def _expand_mount_properties(self, m):
+        m = copy(m)
+        for k, v in m.items():
+            if isinstance(v, str):
+                m[k] = self._expand_user_properties(v)
+        return m
 
     def get_env(self):
         env = super(CoursewareUserSpawner, self).get_env()
