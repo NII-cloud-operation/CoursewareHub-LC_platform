@@ -1,5 +1,6 @@
 import os
 import sys
+from docker.types import (RestartPolicy, Placement)
 
 # Configuration file for jupyterhub.
 
@@ -40,6 +41,23 @@ if 'MEM_LIMIT' in os.environ:
     c.Spawner.mem_limit = os.environ['MEM_LIMIT']
 if 'MEM_GUARANTEE' in os.environ:
     c.Spawner.mem_guarantee = os.environ['MEM_GUARANTEE']
+
+restart_max_attempts = int(os.environ.get('SPAWNER_RESTART_MAX_ATTEMPTS', '10'))
+extra_task_spec = {
+    'restart_policy': RestartPolicy(
+        condition='any',
+        delay=5000000000,
+        max_attempts=restart_max_attempts
+    )
+}
+if 'SPAWNER_CONSTRAINTS' in os.environ:
+    placement_constraints = os.environ['SPAWNER_CONSTRAINTS']
+    extra_task_spec.update({
+        'placement': Placement(
+            constraints=[x.strip() for x in placement_constraints.split(';')]
+        )
+    })
+c.SwarmSpawner.extra_task_spec = extra_task_spec
 
 # DB
 pg_user = os.environ['POSTGRES_ENV_JPY_PSQL_USER']
