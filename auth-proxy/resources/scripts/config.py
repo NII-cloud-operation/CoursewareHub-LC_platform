@@ -126,6 +126,7 @@ http {{
             proxy_set_header Host $host;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-NginX-Proxy true;
+            proxy_set_header X-Scheme $scheme;
         }}
 
         location ~* /(logo|.*\.(jpg|jpeg|gif|png|css|js|ico|xml|map|woff|ttf))$ {{
@@ -144,6 +145,7 @@ http {{
             proxy_set_header Host $host;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-NginX-Proxy true;
+            proxy_set_header X-Scheme $scheme;
 
             # WebSocket support
             proxy_http_version 1.1;
