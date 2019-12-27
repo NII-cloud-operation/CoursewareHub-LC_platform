@@ -141,12 +141,13 @@ function get_username_from_mail_address($mail_address)
 {
     $result = "";
 
-    // Convert to lower and remove characters except alphabetic
+    // Convert to lower and remove characters except for alphabets and digits
     $wk = explode("@", $mail_address);
     $local_part = strtolower($wk[0]);
-    $result = preg_replace('/[^a-zA-Z]/', '', $local_part);
+    $result = preg_replace('/[^a-zA-Z0-9]/', '', $local_part);
     // Add top 6bytes of hash string
     $hash = substr(md5($mail_address), 0, 6);
+    $result .= 'x';
     $result .= $hash;
 
     return $result;
