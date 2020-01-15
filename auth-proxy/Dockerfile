@@ -1,5 +1,7 @@
 FROM ubuntu:18.04
 
+ARG SIMPLESAMLPHP_VERSION="1.18.3"
+
 # Update cache and install base packages
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y gnupg2 && \
@@ -36,7 +38,7 @@ RUN set -x \
     && mkdir -p /run/php \
     # Install simplesamlphp
     && cd /var/www \
-    && curl -Lo /var/www/downloaded-simplesamlphp.tar.gz https://github.com/simplesamlphp/simplesamlphp/releases/download/v1.14.12/simplesamlphp-1.14.12.tar.gz \
+    && curl -Lo /var/www/downloaded-simplesamlphp.tar.gz https://github.com/simplesamlphp/simplesamlphp/releases/download/v${SIMPLESAMLPHP_VERSION}/simplesamlphp-${SIMPLESAMLPHP_VERSION}.tar.gz \
     && tar xvfz downloaded-simplesamlphp.tar.gz \
     && mv $( ls | grep simplesaml | grep -v *tar.gz ) simplesamlphp \
     && rm /var/www/downloaded-simplesamlphp.tar.gz \
