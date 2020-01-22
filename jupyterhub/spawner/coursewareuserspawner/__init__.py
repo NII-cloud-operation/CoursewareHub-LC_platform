@@ -1,18 +1,30 @@
-import pwd
 import os
-import subprocess
 from copy import copy
 
 from dockerspawner import SwarmSpawner
 from docker.types import Mount
 from textwrap import dedent
 from traitlets import (
+    Any,
     Integer,
     Unicode,
     List,
     default
 )
 from tornado import gen
+import requests_unixsocket
+
+
+def get_user_id_default(spawner):
+    """
+    Get user ID via restuser service that runs on a master node.
+    """
+    session = requests_unixsocket.Session()
+    r = session.post(
+        'http+unix://%2Fvar%2Frun%2Frestuser.sock/{}'.format(spawner.user.name)
+    )
+    return r['uid']
+
 
 class CoursewareUserSpawner(SwarmSpawner):
 
@@ -34,9 +46,10 @@ class CoursewareUserSpawner(SwarmSpawner):
             """
             If system users are being used, then we need to know their user id
             in order to mount the home directory.
+
             User IDs are looked up in two ways:
             1. stored in the state dict (authenticator can write here)
-            2. lookup via pwd
+            2. lookup via get_user_id function
             """
         )
     )
@@ -118,6 +131,22 @@ class CoursewareUserSpawner(SwarmSpawner):
 
             - {username} is expanded to the jupyterhub username
             - {homedir} is expanded to user's home directory in a container
+            """
+        )
+    )
+
+    get_user_id = Any(
+        default=get_user_id_default,
+        config=True,
+        help=dedent(
+            """
+            An optional function that returns a user ID of a single-user
+            notebook server in order to mount the home directory.
+            The function takes a spawner object argument and returns a user ID.
+
+            The default function calls restuser service via UNIX domain socket
+            and returns the user ID.
+            If the user is not found, restuser service adds a user.
             """
         )
     )
@@ -239,13 +268,12 @@ class CoursewareUserSpawner(SwarmSpawner):
     @default('user_id')
     def _default_user_id(self):
         """
-        Get user_id from pwd lookup by name
+        Get user_id via get_user_id function.
+
         If the authenticator stores user_id in the user state dict,
-        this will never be called, which is necessary if
-        the system users are not on the Hub system (i.e. Hub itself is in a container).
+        this will never be called.
         """
-        userout = subprocess.check_output(['/get_user_id.sh', self.user.name])
-        return int(userout.decode('utf-8'))
+        return self.get_user_id(self)
 
     def load_state(self, state):
         super().load_state(state)
