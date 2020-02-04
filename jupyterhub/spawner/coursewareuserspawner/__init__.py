@@ -23,7 +23,7 @@ def get_user_id_default(spawner):
     r = session.post(
         'http+unix://%2Fvar%2Frun%2Frestuser.sock/{}'.format(spawner.user.name)
     )
-    return r['uid']
+    return r.json()['uid']
 
 
 class CoursewareUserSpawner(SwarmSpawner):
