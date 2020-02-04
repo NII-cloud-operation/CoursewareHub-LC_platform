@@ -41,7 +41,8 @@ class CoursewareUserSpawner(SwarmSpawner):
         )
     )
 
-    user_id = Integer(-1,
+    user_id = Integer(
+        -1,
         help=dedent(
             """
             If system users are being used, then we need to know their user id
@@ -68,7 +69,7 @@ class CoursewareUserSpawner(SwarmSpawner):
     )
 
     extra_user_mounts = List(
-        default=[],
+        [],
         config=True,
         help=dedent(
             """
@@ -95,7 +96,7 @@ class CoursewareUserSpawner(SwarmSpawner):
     )
 
     extra_admin_mounts = List(
-        default=[],
+        [],
         config=True,
         help=dedent(
             """
@@ -122,7 +123,7 @@ class CoursewareUserSpawner(SwarmSpawner):
     )
 
     extra_non_admin_mounts = List(
-        default=[],
+        [],
         config=True,
         help=dedent(
             """
@@ -136,7 +137,7 @@ class CoursewareUserSpawner(SwarmSpawner):
     )
 
     get_user_id = Any(
-        default=get_user_id_default,
+        get_user_id_default,
         config=True,
         help=dedent(
             """
