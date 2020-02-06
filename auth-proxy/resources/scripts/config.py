@@ -86,7 +86,7 @@ http {{
 
         location ~ [^/]\.php(/|$) {{
             fastcgi_split_path_info ^(.+\.php)(/.*)$;
-            fastcgi_pass unix:/run/php/php5.6-fpm.sock;
+            fastcgi_pass unix:/run/php/php7.1-fpm.sock;
             include fastcgi_params;
             fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
             fastcgi_param PATH_INFO $fastcgi_path_info;
@@ -98,7 +98,7 @@ http {{
             alias /var/www/simplesamlphp/www;
 
             location ~ ^(?<prefix>/simplesaml)(?<phpfile>.+?\.php)(?<pathinfo>/.*)?$ {{
-                fastcgi_pass unix:/run/php/php5.6-fpm.sock;
+                fastcgi_pass unix:/run/php/php7.1-fpm.sock;
                 fastcgi_index index.php;
                 include fastcgi_params;
                 fastcgi_param SCRIPT_FILENAME $document_root$phpfile;
