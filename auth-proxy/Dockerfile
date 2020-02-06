@@ -1,6 +1,6 @@
 FROM ubuntu:18.04
 
-ARG SIMPLESAMLPHP_VERSION="1.18.3"
+ARG SIMPLESAMLPHP_VERSION="1.18.4"
 
 # Update cache and install base packages
 ENV DEBIAN_FRONTEND=noninteractive
