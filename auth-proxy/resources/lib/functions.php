@@ -40,7 +40,7 @@ function redirect_by_fed_user_session()
     @session_start();
 
     // if idp metadata file does not exist, cancel the session check.
-    if (!file_exists(IDP_METADATA_FILE_PATH)) {
+    if (empty(grub(IDP_METADATA_FILE_PATH))) {
         return;
     }
 
