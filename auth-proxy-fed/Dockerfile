@@ -10,7 +10,7 @@ COPY resources/simplesamlphp/templates/selectidp-dropdown.php /var/www/simplesam
 COPY resources/saml/www/sp/discoresp.php /var/www/simplesamlphp/modules/saml/www/sp/discoresp.php
 
 # Setup simplesamlphp config
-ARG MASTER_FQDN="nbhub.ecloud.nii.ac.jp"
+ARG MASTER_FQDN
 ARG DS_FQDN="ds.gakunin.nii.ac.jp"
 ARG CG_FQDN="cg.gakunin.jp"
 RUN sed -i "s;'entityID' => .*;'entityID' => 'https://${MASTER_FQDN}/shibboleth-sp',;" \
