@@ -13,6 +13,7 @@ COPY resources/saml/www/sp/discoresp.php /var/www/simplesamlphp/modules/saml/www
 ARG MASTER_FQDN
 ARG DS_FQDN="ds.gakunin.nii.ac.jp"
 ARG CG_FQDN="cg.gakunin.jp"
+RUN if [ -z "${MASTER_FQDN}" ]; then exit 1; fi
 RUN sed -i "s;'entityID' => .*;'entityID' => 'https://${MASTER_FQDN}/shibboleth-sp',;" \
     /var/www/simplesamlphp/config/authsources.php
 RUN sed -i "s;'entityId' => .*;'entityId' => 'https://${CG_FQDN}/idp/shibboleth',;" \
