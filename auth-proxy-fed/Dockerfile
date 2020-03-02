@@ -3,6 +3,7 @@ FROM $BASE_CONTAINER
 
 # Install simplesamlphp-module-attributeaggregator
 RUN set -x \
+    && apt-get update \
     && apt-get -y --force-yes --no-install-recommends --no-install-suggests install \
        php7.1-curl \
        php7.1-mcrypt \
