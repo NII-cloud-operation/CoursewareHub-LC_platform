@@ -44,7 +44,7 @@ function redirect_by_fed_user_session()
         return;
     }
 
-    $as = new SimpleSAML_Auth_Simple('default-sp');
+    $as = new \SimpleSAML\Auth\Simple('default-sp');
     if ($as->isAuthenticated()) {
         // maybe access to other course
         // redirect to authenticator of JupyterHub
@@ -70,7 +70,7 @@ function redirect_by_fed_user_session()
  */
 function logout_fed()
 {
-    $as = new SimpleSAML_Auth_Simple('default-sp');
+    $as = new \SimpleSAML\Auth\Simple('default-sp');
     if ($as->isAuthenticated()) {
         $as->logout();
     }

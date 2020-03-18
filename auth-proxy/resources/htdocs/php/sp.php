@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../simplesamlphp/www/_include.php';
 
 @session_start();
 
-$as = new SimpleSAML_Auth_Simple('default-sp');
+$as = new \SimpleSAML\Auth\Simple('default-sp');
 if (! $as->isAuthenticated()) {
     $as->requireAuth();
 }
