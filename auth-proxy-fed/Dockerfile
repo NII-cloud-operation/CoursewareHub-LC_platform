@@ -13,7 +13,7 @@ RUN set -x \
        php7.1-ldap \
        composer \
     && cd /var/www/simplesamlphp \
-    && composer config repositories.attributeaggregator vcs https://github.com/NII-cloud-operation/simplesamlphp-module-attributeaggregator \
+    && composer config repositories.attributeaggregator '{"type": "vcs", "url": "https://github.com/NII-cloud-operation/simplesamlphp-module-attributeaggregator", "no-api": true}' \
     && composer require niif/simplesamlphp-module-attributeaggregator:dev-2.x-gakunin-cloud-gateway \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
