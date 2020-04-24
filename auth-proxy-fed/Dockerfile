@@ -19,8 +19,9 @@ RUN set -x \
     && rm -rf /var/lib/apt/lists/*
 
 # Add Federation configuration
+ARG SIMPLESAMLPHP_CONFIG="config.php"
 ARG SIMPLESAMLPHP_METAREFRESH_CONFIG="config-metarefresh.php"
-COPY resources/simplesamlphp/config/config.php /var/www/simplesamlphp/config
+COPY resources/simplesamlphp/config/${SIMPLESAMLPHP_CONFIG} /var/www/simplesamlphp/config/config.php
 COPY resources/simplesamlphp/config/authsources.php /var/www/simplesamlphp/config
 COPY resources/simplesamlphp/config/${SIMPLESAMLPHP_METAREFRESH_CONFIG} /var/www/simplesamlphp/config/config-metarefresh.php
 COPY resources/simplesamlphp/templates/selectidp-dropdown.php /var/www/simplesamlphp/templates/selectidp-dropdown.php
