@@ -5,12 +5,11 @@ FROM $BASE_CONTAINER
 RUN set -x \
     && apt-get update \
     && apt-get -y --force-yes --no-install-recommends --no-install-suggests install \
-       php7.1-curl \
-       php7.1-mcrypt \
-       php7.1-mbstring \
-       php7.1-gmp \
-       php7.1-soap \
-       php7.1-ldap \
+       php7.3-curl \
+       php7.3-mbstring \
+       php7.3-gmp \
+       php7.3-soap \
+       php7.3-ldap \
        composer \
     && cd /var/www/simplesamlphp \
     && composer config repositories.attributeaggregator '{"type": "vcs", "url": "https://github.com/NII-cloud-operation/simplesamlphp-module-attributeaggregator", "no-api": true}' \
