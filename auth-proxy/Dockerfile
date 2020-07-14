@@ -28,11 +28,11 @@ RUN set -x \
     && apt-get update \
     && apt-get -y --force-yes --no-install-recommends --no-install-suggests install \
         nginx \
-        php7.1-cli \
-        php7.1-fpm \
-        php7.1-common \
-        php7.1-xml \
-        php7.1-pgsql \
+        php7.3-cli \
+        php7.3-fpm \
+        php7.3-common \
+        php7.3-xml \
+        php7.3-pgsql \
     && ln -sf /dev/stdout /var/log/nginx/access.log \
     && ln -sf /dev/stderr /var/log/nginx/error.log \
     && mkdir -p /run/php \
@@ -46,10 +46,10 @@ RUN set -x \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure PHP settings
-RUN perl -pi -e 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' /etc/php/7.1/fpm/php.ini && \
-    perl -pi -e 's/allow_url_fopen = Off/allow_url_fopen = On/g' /etc/php/7.1/fpm/php.ini && \
-    perl -pi -e 's/expose_php = On/expose_php = Off/g' /etc/php/7.1/fpm/php.ini && \
-    perl -pi -e 's/;?\s*session\.gc_maxlifetime\s*=\s*.+/session.gc_maxlifetime = 10800/g' /etc/php/7.1/fpm/php.ini
+RUN perl -pi -e 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' /etc/php/7.3/fpm/php.ini && \
+    perl -pi -e 's/allow_url_fopen = Off/allow_url_fopen = On/g' /etc/php/7.3/fpm/php.ini && \
+    perl -pi -e 's/expose_php = On/expose_php = Off/g' /etc/php/7.3/fpm/php.ini && \
+    perl -pi -e 's/;?\s*session\.gc_maxlifetime\s*=\s*.+/session.gc_maxlifetime = 10800/g' /etc/php/7.3/fpm/php.ini
 
 # Prepare nginx configuration
 RUN mkdir /etc/nginx/certs
