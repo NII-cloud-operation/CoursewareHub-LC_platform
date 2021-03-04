@@ -29,6 +29,14 @@ RUN python3 -m pip wheel --wheel-dir wheelhouse --constraint requirements \
 RUN python3 -m pip wheel --wheel-dir wheelhouse --constraint requirements \
     psycopg2
 
+# PyYAML
+RUN python3 -m pip wheel --wheel-dir wheelhouse --constraint requirements \
+    PyYAML
+
+# jsonschema
+RUN python3 -m pip wheel --wheel-dir wheelhouse --constraint requirements \
+    jsonschema
+
 FROM jupyterhub/jupyterhub:1.3
 
 # dind
@@ -53,6 +61,7 @@ ADD cull_idle_servers.py /usr/local/bin/cull_idle_servers.py
 # Resources
 RUN mkdir /var/jupyterhub
 ADD jupyterhub_config.py /srv/jupyterhub/
+ADD resources-schema.json /srv/jupyterhub/
 ADD get_user_id.sh /
 RUN chmod +x /get_user_id.sh
 RUN apt-get install -y netcat-openbsd \

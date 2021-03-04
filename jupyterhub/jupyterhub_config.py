@@ -1,6 +1,10 @@
 import os
 import sys
+import yaml
+import json
+import jsonschema
 from docker.types import (RestartPolicy, Placement)
+from coursewareuserspawner.traitlets import ResourceAllocation
 
 # Configuration file for jupyterhub.
 
@@ -41,6 +45,42 @@ if 'MEM_LIMIT' in os.environ:
     c.Spawner.mem_limit = os.environ['MEM_LIMIT']
 if 'MEM_GUARANTEE' in os.environ:
     c.Spawner.mem_guarantee = os.environ['MEM_GUARANTEE']
+
+with open('resources-schema.json') as f:
+    resource_config_schema = json.load(f)
+
+def resources(config):
+    return ResourceAllocation(
+               mem_limit=config.get('mem_limit'),
+               cpu_limit=config.get('cpu_limit'),
+               mem_guarantee=config.get('mem_guarantee'),
+               cpu_guarantee=config.get('cpu_guarantee'),
+               priority=config.get('priority', 0))
+
+
+if 'RESOURCE_ALLOCATION_FILE' in os.environ:
+    resource_allocation_file = os.environ['RESOURCE_ALLOCATION_FILE']
+    if not os.path.exists(resource_allocation_file):
+        raise ValueError('Resource allocation config file not found: %s' %
+                         resource_allocation_file)
+    with open(resource_allocation_file) as f:
+        resource_config = yaml.load(f, Loader=yaml.SafeLoader)
+        jsonschema.validate(resource_config, resource_config_schema)
+
+        group_config = resource_config.get('groups', {})
+        group_resources = {}
+        for g, config in group_config.items():
+            group_resources[g] = resources(config)
+        c.CoursewareUserSpawner.group_resources = group_resources
+
+        admin_config = resource_config.get('admin')
+        if admin_config is not None:
+            r = resources(admin_config)
+            c.CoursewareUserSpawner.admin_resources = r
+        default_config = resource_config.get('default')
+        if default_config is not None:
+            r = resources(default_config)
+            c.CoursewareUserSpawner.default_resources = r
 
 restart_max_attempts = int(os.environ.get('SPAWNER_RESTART_MAX_ATTEMPTS', '10'))
 extra_task_spec = {
@@ -91,3 +131,9 @@ if cull_server == '1' or cull_server == 'yes':
             }
         )
 c.JupyterHub.services = services
+
+# debug log
+if os.environ.get('DEBUG', '0') in ['yes', '1']:
+    c.JupyterHub.log_level = 'DEBUG'
+    c.Spawner.debug = True
+

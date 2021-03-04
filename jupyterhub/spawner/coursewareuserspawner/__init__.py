@@ -9,8 +9,10 @@ from traitlets import (
     Integer,
     Unicode,
     List,
+    Dict,
     default
 )
+from .traitlets import ResourceAllocationTrait
 from tornado import gen
 import requests_unixsocket
 
@@ -152,6 +154,86 @@ class CoursewareUserSpawner(SwarmSpawner):
         )
     )
 
+    group_resources = Dict(
+        config=True,
+        key_trait=Unicode,
+        value_trait=ResourceAllocationTrait,
+        default_value={},
+        help=dedent(
+            """
+            Dict of group:`.traitlets.ResourceAllocation` to be applied
+            to a single-user notebook server container.
+
+            The key is user's group name.
+            The `ResourceAllocation` object contains resource
+            allocation settings for the group, and its priority.
+
+            A spawner gets the settings using the user's group name as a key.
+            If the user belong to more than one group the spawner use
+            the settings with the smaller priority value.
+
+            The allocation settings for each group are independent
+            for each other.
+            The spawner does not combine settings of different group .
+
+            If `cpu_limit`, `mem_limit`, `cpu_guarantee` or `mem_guarantee`
+            are configured this trait is ignored.
+
+            For example:
+            ```
+            from coursewareuserspawner.traits import ResourceAllocation
+
+            c.CoursewareUserSpawner.group_resources = {
+                'group1': ResourceAllocation(
+                    mem_limit = '2G',
+                    cpu_limit = 2.0,
+                    mem_guarantee = '1G',
+                    cpu_guarantee = 0.5,
+                    priority = 0
+                ),
+               'group2': ResourceAllocation(
+                    mem_limit = '1G',
+                    cpu_limit = 1.0,
+                    priority = 10
+                )
+            }
+
+            c.CoursewareUserSpawner.default_resources = ResourceAllocation(
+                mem_limit = '1G',
+                cpu_limit = 2.0,
+                mem_guarantee = '1G',
+                cpu_guarantee = 0.5
+            )
+
+            c.CoursewareUserSpawner.admin_resources = ResourceAllocation(
+                mem_limit = '4G'
+            )
+            ```
+            """
+        )
+    )
+
+    default_resources = ResourceAllocationTrait(
+        config=True,
+        help=dedent(
+            """
+            Default resource allocations for a user's single-user container
+            if the user group is not match any resource allocation settings
+            of `group_resources`.
+            """
+        )
+    )
+
+    admin_resources = ResourceAllocationTrait(
+        config=True,
+        help=dedent(
+            """
+            The resource allocations for admin user's single-user container.
+            This setting has the highest priority.
+            """
+        )
+    )
+
     @property
     def homedir(self):
         """
@@ -286,6 +368,56 @@ class CoursewareUserSpawner(SwarmSpawner):
         if self.user_id >= 0:
             state['user_id'] = self.user_id
         return state
+
+    def _get_resource_config(self, config_name):
+        resources = None
+        groups = [g.name for g in self.user.groups]
+        admin = self._is_admin()
+        self.log.debug(('_get_resource_config: config=%s, '
+                        'user=%s, groups=%s, admin=%s'),
+                       config_name, self.user.name, str(groups), str(admin))
+
+        if admin and self.admin_resources is not None:
+            resources = self.admin_resources
+        else:
+            config_list = self.group_resources.items()
+            config_list = [(g, c) for g, c in config_list
+                           if (g in groups and
+                               g != 'admin' and g != 'default' and
+                               c is not None)]
+            config_list = sorted(config_list, key=lambda x: x[1].priority)
+            if config_list:
+                resources = config_list[0][1]
+
+        if resources is None:
+            resources = self.default_resources
+
+        self.log.debug(('_get_resource_config result: config=%s, '
+                        'user=%s, groups=%s, admin=%s, resources=%s'),
+                       config_name, self.user.name, str(groups),
+                       str(admin), str(resources))
+        config_value = None
+        if resources is not None:
+            config_value = getattr(resources, config_name)
+        self.log.debug('resource allocation: user=%s, %s=%s',
+                       self.user.name, config_name, config_value)
+        return config_value
+
+    @default('cpu_limit')
+    def _default_cpu_limit(self):
+        return self._get_resource_config('cpu_limit')
+
+    @default('cpu_guarantee')
+    def _default_cpu_guarantee(self):
+        return self._get_resource_config('cpu_guarantee')
+
+    @default('mem_limit')
+    def _default_mem_limit(self):
+        return self._get_resource_config('mem_limit')
+
+    @default('mem_guarantee')
+    def _default_mem_guarantee(self):
+        return self._get_resource_config('mem_guarantee')
 
     @gen.coroutine
     def create_object(self):
