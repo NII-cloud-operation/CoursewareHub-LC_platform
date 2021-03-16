@@ -1,0 +1,36 @@
+{
+    "$schema": "http://json-schema.org/draft/2019-09/schema#",
+
+    "definitions": {
+        "resources": {
+            "type": "object",
+            "properties": {
+                "mem_limit" : { "type": "string" },
+                "cpu_limit" : { "type": "number" },
+                "mem_guarantee" : { "type": "string" },
+                "cpu_guarantee" : { "type": "number" },
+                "priority" : { "type": "number" }
+            },
+            "additionalProperties": false
+        }
+    },
+
+    "type": "object",
+    "properties": {
+        "groups": {
+            "type": "object",
+            "patternProperties": {
+                "^.+$": {
+                    "$ref": "#/definitions/resources"
+                }
+            },
+            "additionalProperties": false
+        },
+        "default": {
+            "$ref": "#/definitions/resources"
+        },
+        "admin": {
+            "$ref": "#/definitions/resources"
+        }
+    }
+}
