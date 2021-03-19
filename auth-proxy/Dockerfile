@@ -33,6 +33,7 @@ RUN set -x \
         php7.3-common \
         php7.3-xml \
         php7.3-pgsql \
+        composer \
     && ln -sf /dev/stdout /var/log/nginx/access.log \
     && ln -sf /dev/stderr /var/log/nginx/error.log \
     && mkdir -p /run/php \
@@ -44,6 +45,10 @@ RUN set -x \
     && rm /var/www/downloaded-simplesamlphp.tar.gz \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Install lti-1-3-php-library
+COPY resources/composer.json /var/www/composer.json
+RUN cd /var/www && composer install
 
 # Configure PHP settings
 RUN perl -pi -e 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' /etc/php/7.3/fpm/php.ini && \
@@ -76,7 +81,7 @@ RUN set -x \
 
 # Change owner
 RUN set -x \
-    && chown -R www-data:www-data /var/www/simplesamlphp \
+    && chown -R www-data:www-data /var/www/simplesamlphp /var/www/vendor \
     && chmod a+x /var/www/simplesamlphp/bin/get_idp_proxy_metadata.sh
 
 # supervisord
@@ -94,11 +99,10 @@ COPY resources/scripts/start.sh /
 RUN chmod +x /config.py /start.sh
 
 
-RUN mkdir -p /var/www/htdocs/php /var/www/htdocs/html /var/www/bin /var/www/lib
-COPY resources/htdocs/php /var/www/htdocs/php
-COPY resources/html /var/www/htdocs/html
-COPY resources/bin /var/www/bin
-COPY resources/lib /var/www/lib
-RUN chown -R www-data:www-data /var/www/htdocs /var/www/bin /var/www/lib
+COPY --chown=www-data:www-data resources/htdocs/php /var/www/htdocs/php
+COPY --chown=www-data:www-data resources/html /var/www/htdocs/html
+COPY --chown=www-data:www-data resources/templates /var/www/templates
+COPY --chown=www-data:www-data resources/bin /var/www/bin
+COPY --chown=www-data:www-data resources/lib /var/www/lib
 
 CMD /start.sh

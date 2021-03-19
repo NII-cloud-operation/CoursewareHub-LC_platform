@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../../lib/functions.php';
 
-# Redirect to the JupyterHub if local user was authenticated.
+# Redirect to the JupyterHub if local user or LTI user was authenticated.
 redirect_by_local_user_session();
 # Redirect to the JupyterHub if Gakunin user was authenticated.
 redirect_by_fed_user_session();

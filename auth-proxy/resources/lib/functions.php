@@ -132,6 +132,18 @@ function h($str)
 }
 
 /**
+ * Display error page
+ *
+ *  @param $title title string
+ *  @param $message message string
+ */
+function error_page($title, $message)
+{
+    $v = array('title' => $title, 'message' => $message);
+    include(__DIR__ . "/../templates/error_page.html");
+}
+
+/**
  * Get local username form user's mail address
  *
  * @param string $str  mail_address
