@@ -1,22 +1,6 @@
 ARG BASE_CONTAINER=niicloudoperation/auth-proxy-common
 FROM $BASE_CONTAINER
 
-# Install simplesamlphp-module-attributeaggregator
-RUN set -x \
-    && apt-get update \
-    && apt-get -y --force-yes --no-install-recommends --no-install-suggests install \
-       php7.3-curl \
-       php7.3-mbstring \
-       php7.3-gmp \
-       php7.3-soap \
-       php7.3-ldap \
-       composer \
-    && cd /var/www/simplesamlphp \
-    && composer config repositories.attributeaggregator '{"type": "vcs", "url": "https://github.com/NII-cloud-operation/simplesamlphp-module-attributeaggregator", "no-api": true}' \
-    && composer require niif/simplesamlphp-module-attributeaggregator:dev-2.x-gakunin-cloud-gateway \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
 # Add Federation configuration
 ARG SIMPLESAMLPHP_CONFIG="config.php"
 ARG SIMPLESAMLPHP_METAREFRESH_CONFIG="config-metarefresh.php"
