@@ -76,7 +76,6 @@ RUN set -x \
 # simplesamlphp metarefresh module
 RUN set -x \
     && touch /var/www/simplesamlphp/modules/cron/enable \
-    && touch /var/www/simplesamlphp/modules/metarefresh/enable \
     && mkdir -p /var/www/simplesamlphp/metadata/idp-proxy
 
 # Change owner
@@ -103,6 +102,18 @@ RUN set -x \
 # supervisord
 COPY resources/supervisord.conf /etc/
 
+# Install j2cli
+RUN set -x \
+    && apt-get update \
+    && apt-get -y --force-yes --no-install-recommends --no-install-suggests install \
+       python-pip \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir j2cli
+
+# Install config template files
+COPY resources/etc/templates /etc/templates
+
 # Set the current working directory
 WORKDIR /var/www/html
 
@@ -110,10 +121,8 @@ WORKDIR /var/www/html
 EXPOSE 80
 EXPOSE 443
 
-COPY resources/scripts/config.py /
 COPY resources/scripts/start.sh /
-RUN chmod +x /config.py /start.sh
-
+RUN chmod +x /start.sh
 
 COPY --chown=www-data:www-data resources/htdocs/php /var/www/htdocs/php
 COPY --chown=www-data:www-data resources/html /var/www/htdocs/html
