@@ -99,6 +99,9 @@ RUN set -x \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Install custom discoresp.php
+COPY resources/saml/www/sp/discoresp.php /var/www/simplesamlphp/modules/saml/www/sp/discoresp.php
+
 # supervisord
 COPY resources/supervisord.conf /etc/
 
