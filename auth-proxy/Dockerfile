@@ -60,9 +60,6 @@ RUN perl -pi -e 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' /etc/php/7.3/fpm/ph
 RUN mkdir /etc/nginx/certs
 
 # Setup simplesamlphp
-COPY resources/simplesamlphp/config/config.php /var/www/simplesamlphp/config
-COPY resources/simplesamlphp/config/authsources.php /var/www/simplesamlphp/config
-COPY resources/simplesamlphp/config/config-metarefresh.php /var/www/simplesamlphp/config
 COPY resources/simplesamlphp/bin/get_idp_proxy_metadata.sh /var/www/simplesamlphp/bin
 COPY resources/simplesamlphp/bin/remove_idp_proxy_metadata.sh /var/www/simplesamlphp/bin
 # simplesamlphp keys
