@@ -10,6 +10,7 @@ $config = [
         'core:AdminPassword',
     ],
 
+    {% set enable_federation = env("ENABLE_FEDERATION", "no")%}
 
     // An authentication source which can authenticate against both SAML 2.0
     // and Shibboleth 1.3 IdPs.
@@ -20,15 +21,27 @@ $config = [
 
         // The entity ID of this SP.
         // Can be NULL/unset, in which case an entity ID is generated based on the metadata URL.
-        'entityID' => 'https://auth-proxy/simplesaml/module.php',
+        {% if enable_federation=="1" or enable_federation=="yes" %}
+        'entityID' => 'https://{{ env("MASTER_FQDN") }}/shibboleth-sp',
+        {% else %}
+        'entityID' => 'https://{{ env("MASTER_FQDN") }}/simplesaml/module.php',
+        {% endif %}
 
         // The entity ID of the IdP this SP should contact.
         // Can be NULL/unset, in which case the user will be shown a list of available IdPs.
+        {% if enable_federation=="1" or enable_federation=="yes" %}
         'idp' => null,
+        {% else %}
+        'idp' => 'https://{{ env("AUTH_FQDN") }}/simplesaml/saml2/idp/metadata.php',
+        {% endif %}
 
         // The URL to the discovery service.
         // Can be NULL/unset, in which case a builtin discovery service will be used.
+        {% if enable_federation=="1" or enable_federation=="yes" %}
         //'discoURL' => null,
+        {% else %}
+        'discoURL' => null,
+        {% endif %}
 
         /*
          * The attributes parameter must contain an array of desired attributes by the SP.

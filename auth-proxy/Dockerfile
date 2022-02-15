@@ -60,9 +60,6 @@ RUN perl -pi -e 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' /etc/php/7.3/fpm/ph
 RUN mkdir /etc/nginx/certs
 
 # Setup simplesamlphp
-COPY resources/simplesamlphp/config/config.php /var/www/simplesamlphp/config
-COPY resources/simplesamlphp/config/authsources.php /var/www/simplesamlphp/config
-COPY resources/simplesamlphp/config/config-metarefresh.php /var/www/simplesamlphp/config
 COPY resources/simplesamlphp/bin/get_idp_proxy_metadata.sh /var/www/simplesamlphp/bin
 COPY resources/simplesamlphp/bin/remove_idp_proxy_metadata.sh /var/www/simplesamlphp/bin
 # simplesamlphp keys
@@ -76,7 +73,6 @@ RUN set -x \
 # simplesamlphp metarefresh module
 RUN set -x \
     && touch /var/www/simplesamlphp/modules/cron/enable \
-    && touch /var/www/simplesamlphp/modules/metarefresh/enable \
     && mkdir -p /var/www/simplesamlphp/metadata/idp-proxy
 
 # Change owner
@@ -84,8 +80,39 @@ RUN set -x \
     && chown -R www-data:www-data /var/www/simplesamlphp /var/www/vendor \
     && chmod a+x /var/www/simplesamlphp/bin/get_idp_proxy_metadata.sh
 
+# Install simplesamlphp-module-attributeaggregator
+RUN set -x \
+    && apt-get update \
+    && apt-get -y --force-yes --no-install-recommends --no-install-suggests install \
+       php7.3-curl \
+       php7.3-mbstring \
+       php7.3-gmp \
+       php7.3-soap \
+       php7.3-ldap \
+       composer \
+    && cd /var/www/simplesamlphp \
+    && composer config repositories.attributeaggregator '{"type": "vcs", "url": "https://github.com/NII-cloud-operation/simplesamlphp-module-attributeaggregator", "no-api": true}' \
+    && composer require niif/simplesamlphp-module-attributeaggregator:dev-2.x-gakunin-cloud-gateway \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install custom discoresp.php
+COPY resources/saml/www/sp/discoresp.php /var/www/simplesamlphp/modules/saml/www/sp/discoresp.php
+
 # supervisord
 COPY resources/supervisord.conf /etc/
+
+# Install j2cli
+RUN set -x \
+    && apt-get update \
+    && apt-get -y --force-yes --no-install-recommends --no-install-suggests install \
+       python-pip \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir j2cli
+
+# Install config template files
+COPY resources/etc/templates /etc/templates
 
 # Set the current working directory
 WORKDIR /var/www/html
@@ -94,10 +121,8 @@ WORKDIR /var/www/html
 EXPOSE 80
 EXPOSE 443
 
-COPY resources/scripts/config.py /
 COPY resources/scripts/start.sh /
-RUN chmod +x /config.py /start.sh
-
+RUN chmod +x /start.sh
 
 COPY --chown=www-data:www-data resources/htdocs/php /var/www/htdocs/php
 COPY --chown=www-data:www-data resources/html /var/www/htdocs/html

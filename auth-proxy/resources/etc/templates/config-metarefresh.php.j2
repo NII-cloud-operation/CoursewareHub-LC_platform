@@ -6,7 +6,7 @@ $config = array(
             'cron' => array('daily'),
             'sources' => array(
                 array(
-                    'src' => 'https://nbhub.ecloud.nii.ac.jp/simplesaml/saml2/idp/metadata.php',
+                    'src' => 'https://{{ env("AUTH_FQDN") }}/simplesaml/saml2/idp/metadata.php',
                     'certificates' => array(
                         'idp-proxy.cer'
                     )
