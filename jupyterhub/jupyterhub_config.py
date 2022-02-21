@@ -137,3 +137,12 @@ if os.environ.get('DEBUG', '0') in ['yes', '1']:
     c.JupyterHub.log_level = 'DEBUG'
     c.Spawner.debug = True
 
+# load additional config files
+additional_config_path = os.environ.get('JUPYTERHUB_ADDITIONAL_CONFIG_PATH',
+                                        '/jupyterhub_config.d')
+if os.path.exists(additional_config_path):
+    for filename in sorted(os.listdir(additional_config_path)):
+        _, ext = os.path.splitext(filename)
+        if ext.lower() != '.py':
+            continue
+        load_subconfig(os.path.join(additional_config_path, filename))
