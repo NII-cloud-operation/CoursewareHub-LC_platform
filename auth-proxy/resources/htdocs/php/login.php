@@ -19,6 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Set Session info
         $username = get_username_from_mail_address($email);
         $_SESSION['username'] = $username;
+        $_SESSION['authtype'] = 'local';
 
         header("X-Accel-Redirect: /entrance/");
         header("X-Reproxy-URL: ".HUB_URL.'/'.COURSE_NAME."/hub/login");

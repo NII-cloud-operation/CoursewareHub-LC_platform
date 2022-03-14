@@ -132,6 +132,19 @@ function h($str)
 }
 
 /**
+ * Display template page
+ *
+ *
+ *  @param $template template name
+ *  @param $vars template variables
+ */
+function template_page($template, $vars)
+{
+    $v = $vars;
+    include(__DIR__ . "/../templates/" . $template);
+}
+
+/**
  * Display error page
  *
  *  @param $title title string
@@ -140,7 +153,7 @@ function h($str)
 function error_page($title, $message)
 {
     $v = array('title' => $title, 'message' => $message);
-    include(__DIR__ . "/../templates/error_page.html");
+    template_page("error_page.html", $v);
 }
 
 /**
