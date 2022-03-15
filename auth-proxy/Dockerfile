@@ -96,7 +96,11 @@ RUN set -x \
        php8.0-ldap \
        composer \
     && cd /var/www/simplesamlphp \
-    && composer require --dev -W "simplesamlphp/simplesamlphp-test-framework:^1.1.5" "phpunit/phpunit:^7.5|^8.5|^9.5" "vimeo/psalm:^4.17" \
+    && composer require --dev -W \
+        "simplesamlphp/simplesamlphp-test-framework:^1.1.5" \
+        "phpunit/phpunit:^7.5|^8.5|^9.5" "vimeo/psalm:^4.17" \
+    && composer require -W \
+        "simplesamlphp/saml2:~4.2.5, <4.2.8" \
     && composer config repositories.attributeaggregator '{"type": "vcs", "url": "https://github.com/NII-cloud-operation/simplesamlphp-module-attributeaggregator", "no-api": true}' \
     && composer require --update-no-dev niif/simplesamlphp-module-attributeaggregator:dev-2.x-gakunin-cloud-gateway \
     && apt-get clean \
