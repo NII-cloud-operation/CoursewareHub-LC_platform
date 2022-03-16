@@ -1,6 +1,6 @@
 FROM ubuntu:18.04
 
-ARG SIMPLESAMLPHP_VERSION="1.18.8"
+ARG SIMPLESAMLPHP_VERSION="1.19.5"
 
 # Update cache and install base packages
 ENV DEBIAN_FRONTEND=noninteractive
@@ -28,12 +28,17 @@ RUN set -x \
     && apt-get update \
     && apt-get -y --force-yes --no-install-recommends --no-install-suggests install \
         nginx \
-        php7.3-cli \
-        php7.3-fpm \
-        php7.3-common \
-        php7.3-xml \
-        php7.3-pgsql \
-        composer \
+        php8.0-cli \
+        php8.0-fpm \
+        php8.0-common \
+        php8.0-xml \
+        php8.0-pgsql \
+    && php8.0 -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
+    && php8.0 -r "if (hash_file('sha384', 'composer-setup.php') === '906a84df04cea2aa72f40b5f787e49f22d4c2f19492ac310e8cba5b96ac8b64115ac402c8cd292b8a03482574915d1a8') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;" \
+    && php8.0 composer-setup.php \
+    && php8.0 -r "unlink('composer-setup.php');" \
+    && mv composer.phar /usr/local/bin/composer \
+    && chmod +x /usr/local/bin/composer \
     && ln -sf /dev/stdout /var/log/nginx/access.log \
     && ln -sf /dev/stderr /var/log/nginx/error.log \
     && mkdir -p /run/php \
@@ -48,13 +53,13 @@ RUN set -x \
 
 # Install lti-1-3-php-library
 COPY resources/composer.json /var/www/composer.json
-RUN cd /var/www && composer install
+RUN cd /var/www && composer install --no-dev
 
 # Configure PHP settings
-RUN perl -pi -e 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' /etc/php/7.3/fpm/php.ini && \
-    perl -pi -e 's/allow_url_fopen = Off/allow_url_fopen = On/g' /etc/php/7.3/fpm/php.ini && \
-    perl -pi -e 's/expose_php = On/expose_php = Off/g' /etc/php/7.3/fpm/php.ini && \
-    perl -pi -e 's/;?\s*session\.gc_maxlifetime\s*=\s*.+/session.gc_maxlifetime = 10800/g' /etc/php/7.3/fpm/php.ini
+RUN perl -pi -e 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' /etc/php/8.0/fpm/php.ini && \
+    perl -pi -e 's/allow_url_fopen = Off/allow_url_fopen = On/g' /etc/php/8.0/fpm/php.ini && \
+    perl -pi -e 's/expose_php = On/expose_php = Off/g' /etc/php/8.0/fpm/php.ini && \
+    perl -pi -e 's/;?\s*session\.gc_maxlifetime\s*=\s*.+/session.gc_maxlifetime = 10800/g' /etc/php/8.0/fpm/php.ini
 
 # Prepare nginx configuration
 RUN mkdir /etc/nginx/certs
@@ -84,15 +89,20 @@ RUN set -x \
 RUN set -x \
     && apt-get update \
     && apt-get -y --force-yes --no-install-recommends --no-install-suggests install \
-       php7.3-curl \
-       php7.3-mbstring \
-       php7.3-gmp \
-       php7.3-soap \
-       php7.3-ldap \
+       php8.0-curl \
+       php8.0-mbstring \
+       php8.0-gmp \
+       php8.0-soap \
+       php8.0-ldap \
        composer \
     && cd /var/www/simplesamlphp \
+    && composer require --dev -W \
+        "simplesamlphp/simplesamlphp-test-framework:^1.1.5" \
+        "phpunit/phpunit:^7.5|^8.5|^9.5" "vimeo/psalm:^4.17" \
+    && composer require -W \
+        "simplesamlphp/saml2:~4.2.5, <4.2.8" \
     && composer config repositories.attributeaggregator '{"type": "vcs", "url": "https://github.com/NII-cloud-operation/simplesamlphp-module-attributeaggregator", "no-api": true}' \
-    && composer require niif/simplesamlphp-module-attributeaggregator:dev-2.x-gakunin-cloud-gateway \
+    && composer require --update-no-dev niif/simplesamlphp-module-attributeaggregator:dev-2.x-gakunin-cloud-gateway \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
