@@ -1,4 +1,4 @@
-FROM jupyterhub/jupyterhub:1.3 AS builder
+FROM jupyterhub/jupyterhub:1.5 AS builder
 
 # dev tools
 RUN apt-get update && \
@@ -37,7 +37,7 @@ RUN python3 -m pip wheel --wheel-dir wheelhouse --constraint requirements \
 RUN python3 -m pip wheel --wheel-dir wheelhouse --constraint requirements \
     jsonschema
 
-FROM jupyterhub/jupyterhub:1.3
+FROM jupyterhub/jupyterhub:1.5
 
 # dind
 RUN apt-get update && \
