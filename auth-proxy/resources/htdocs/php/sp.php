@@ -18,6 +18,7 @@ $group_list = $attributes[GF_ATTRIBUTES['isMemberOf']];
 if (check_authorization($group_list)) {
     // redirect to authenticator of JupyterHub
     session_regenerate_id(true);
+    $_SESSION['authtype'] = 'saml';
     $username = get_username_from_mail_address($mail_address);
     header("X-Accel-Redirect: /entrance/");
     header("X-Reproxy-URL: ".HUB_URL.'/'.COURSE_NAME."/hub/login");

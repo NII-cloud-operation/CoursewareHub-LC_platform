@@ -38,6 +38,8 @@ if ($launch->is_resource_launch()) {
     session_regenerate_id(true);
     $username = get_username_from_mail_address($mail_address);
     $_SESSION['username'] = $username;
+    $_SESSION['authtype'] = 'lti';
+    $_SESSION['iss'] = $issuer;
 
     $data = $custom = $launch->get_launch_data();
     $custom_key = 'https://purl.imsglobal.org/spec/lti/claim/custom';
@@ -46,6 +48,12 @@ if ($launch->is_resource_launch()) {
         $custom = $data[$custom_key];
         if (isset($custom['notebook'])) {
             $notebook = $custom['notebook'];
+        }
+        if (isset($custom['logout-redirect-url'])) {
+            $logout_redirect_url = $custom['logout-redirect-url'];
+            $logout_redirect_url = filter_var($logout_redirect_url, FILTER_UNSAFE_RAW,
+                                              FILTER_FLAG_ENCODE_HIGH | FILTER_FLAG_ENCODE_LOW);
+            $_SESSION['logout-redirect-url'] = $logout_redirect_url;
         }
     }
     header("X-Accel-Redirect: /entrance/");
