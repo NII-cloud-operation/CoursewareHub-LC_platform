@@ -99,6 +99,11 @@ if 'SPAWNER_CONSTRAINTS' in os.environ:
     })
 c.SwarmSpawner.extra_task_spec = extra_task_spec
 
+if 'JUPYTERHUB_SINGLEUSER_APP' in os.environ:
+    c.Spawner.environment = {
+        'JUPYTERHUB_SINGLEUSER_APP': os.environ['JUPYTERHUB_SINGLEUSER_APP']
+    }
+
 # DB
 pg_user = os.environ['POSTGRES_ENV_JPY_PSQL_USER']
 pg_pass = os.environ['POSTGRES_ENV_JPY_PSQL_PASSWORD']
