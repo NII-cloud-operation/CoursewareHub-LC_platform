@@ -1,6 +1,8 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
-ARG SIMPLESAMLPHP_VERSION="1.19.5"
+ARG SIMPLESAMLPHP_VERSION="1.19.7"
+ARG ATTRIBUTE_AGGREGATOR_URL="https://github.com/NII-cloud-operation/simplesamlphp-module-attributeaggregator"
+ARG ATTRIBUTE_AGGREGATOR_BRANCH="dev-2.x-gakunin-cloud-gateway"
 
 # Update cache and install base packages
 ENV DEBIAN_FRONTEND=noninteractive
@@ -12,7 +14,7 @@ RUN set -x \
     && apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 4F4EA0AAE5267A6C \
     #&& apt-key adv --recv-keys --keyserver keyserver.ubuntu.com \
     && apt-get update \
-    && apt-get -y --force-yes install \
+    && apt-get -y install \
         software-properties-common \
         pwgen \
         curl \
@@ -26,17 +28,17 @@ RUN set -x \
     && add-apt-repository ppa:nginx/stable \
     && add-apt-repository ppa:ondrej/php \
     && apt-get update \
-    && apt-get -y --force-yes --no-install-recommends --no-install-suggests install \
+    && apt-get -y --no-install-recommends --no-install-suggests install \
         nginx \
-        php8.0-cli \
-        php8.0-fpm \
-        php8.0-common \
-        php8.0-xml \
-        php8.0-pgsql \
-    && php8.0 -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
-    && php8.0 -r "if (hash_file('sha384', 'composer-setup.php') === '906a84df04cea2aa72f40b5f787e49f22d4c2f19492ac310e8cba5b96ac8b64115ac402c8cd292b8a03482574915d1a8') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;" \
-    && php8.0 composer-setup.php \
-    && php8.0 -r "unlink('composer-setup.php');" \
+        php8.1-cli \
+        php8.1-fpm \
+        php8.1-common \
+        php8.1-xml \
+        php8.1-pgsql \
+    && php8.1 -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
+    && php8.1 -r "if (hash_file('sha384', 'composer-setup.php') === '55ce33d7678c5a611085589f1f3ddf8b3c52d662cd01d4ba75c0ee0459970c2200a51f492d557530c71c15d8dba01eae') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;" \
+    && php8.1 composer-setup.php \
+    && php8.1 -r "unlink('composer-setup.php');" \
     && mv composer.phar /usr/local/bin/composer \
     && chmod +x /usr/local/bin/composer \
     && ln -sf /dev/stdout /var/log/nginx/access.log \
@@ -56,10 +58,10 @@ COPY resources/composer.json /var/www/composer.json
 RUN cd /var/www && composer install --no-dev
 
 # Configure PHP settings
-RUN perl -pi -e 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' /etc/php/8.0/fpm/php.ini && \
-    perl -pi -e 's/allow_url_fopen = Off/allow_url_fopen = On/g' /etc/php/8.0/fpm/php.ini && \
-    perl -pi -e 's/expose_php = On/expose_php = Off/g' /etc/php/8.0/fpm/php.ini && \
-    perl -pi -e 's/;?\s*session\.gc_maxlifetime\s*=\s*.+/session.gc_maxlifetime = 10800/g' /etc/php/8.0/fpm/php.ini
+RUN perl -pi -e 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' /etc/php/8.1/fpm/php.ini && \
+    perl -pi -e 's/allow_url_fopen = Off/allow_url_fopen = On/g' /etc/php/8.1/fpm/php.ini && \
+    perl -pi -e 's/expose_php = On/expose_php = Off/g' /etc/php/8.1/fpm/php.ini && \
+    perl -pi -e 's/;?\s*session\.gc_maxlifetime\s*=\s*.+/session.gc_maxlifetime = 10800/g' /etc/php/8.1/fpm/php.ini
 
 # Prepare nginx configuration
 RUN mkdir /etc/nginx/certs
@@ -89,20 +91,18 @@ RUN set -x \
 RUN set -x \
     && apt-get update \
     && apt-get -y --force-yes --no-install-recommends --no-install-suggests install \
-       php8.0-curl \
-       php8.0-mbstring \
-       php8.0-gmp \
-       php8.0-soap \
-       php8.0-ldap \
+       php8.1-curl \
+       php8.1-mbstring \
+       php8.1-gmp \
+       php8.1-soap \
+       php8.1-ldap \
        composer \
     && cd /var/www/simplesamlphp \
     && composer require --dev -W \
         "simplesamlphp/simplesamlphp-test-framework:^1.1.5" \
         "phpunit/phpunit:^7.5|^8.5|^9.5" "vimeo/psalm:^4.17" \
-    && composer require -W \
-        "simplesamlphp/saml2:~4.2.5, <4.2.8" \
-    && composer config repositories.attributeaggregator '{"type": "vcs", "url": "https://github.com/NII-cloud-operation/simplesamlphp-module-attributeaggregator", "no-api": true}' \
-    && composer require --update-no-dev niif/simplesamlphp-module-attributeaggregator:dev-2.x-gakunin-cloud-gateway \
+    && composer config repositories.attributeaggregator "{\"type\": \"vcs\", \"url\": \"${ATTRIBUTE_AGGREGATOR_URL}\", \"no-api\": true}" \
+    && composer require --update-no-dev niif/simplesamlphp-module-attributeaggregator:${ATTRIBUTE_AGGREGATOR_BRANCH} \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -115,8 +115,8 @@ COPY resources/supervisord.conf /etc/
 # Install j2cli
 RUN set -x \
     && apt-get update \
-    && apt-get -y --force-yes --no-install-recommends --no-install-suggests install \
-       python-pip \
+    && apt-get -y --no-install-recommends --no-install-suggests install \
+       python3-pip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && pip install --no-cache-dir j2cli
