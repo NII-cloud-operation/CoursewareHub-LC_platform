@@ -1,0 +1,2 @@
+recursive-include cwh_repo2docker/templates/ *
+recursive-include cwh_repo2docker/static/ *
