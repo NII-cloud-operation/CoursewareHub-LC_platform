@@ -36,6 +36,11 @@ http {
         server {{ env("MASTER_FQDN") }}:443;
     }
 
+    map $http_upgrade $connection_upgrade {
+        default upgrade;
+        ''      close;
+    }
+
     server {
         listen 80;
         server_name hub;
@@ -46,7 +51,7 @@ http {
         listen 443 ssl;
         server_name hub;
         root /var/www/htdocs;
-        index auth.php login.php logout.php;
+        index login.php logout.php;
 
         ssl on;
         ssl_certificate "/etc/nginx/certs/auth-proxy.chained.cer";
@@ -68,8 +73,8 @@ http {
             rewrite /logout /php/logout.php permanent;
         }
 
-        location ^~ /hub/logout {
-            rewrite /hub/logout /php/logout.php permanent;
+        location ^~ /hub/login {
+            rewrite /login /php/login.php permanent;
         }
 
         location ^~ /no_author {
@@ -100,14 +105,19 @@ http {
         }
 
         location / {
-            proxy_pass $scheme://127.0.0.1:$server_port/php/auth.php;
-            proxy_set_header X-Reproxy-URI $uri;
-            proxy_set_header X-Reproxy-Query $is_args$args;
+            proxy_pass http://{{ env("HUB_NAME", default="jupyterhub") }}:8000;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header Host $host;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
             proxy_set_header X-NginX-Proxy true;
+            proxy_set_header X-Scheme $scheme;
+
+            # WebSocket support
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+            proxy_read_timeout 86400;
         }
 
         location ^~ /entrance/ {
@@ -123,33 +133,5 @@ http {
             proxy_set_header X-NginX-Proxy true;
             proxy_set_header X-Scheme $scheme;
         }
-
-        location ~* /(logo|.*\.(jpg|jpeg|gif|png|css|js|ico|xml|map|woff|ttf))$ {
-            access_log off;
-            proxy_pass http://{{ env("HUB_NAME", default="jupyterhub") }}:8000;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header Host $host;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header X-NginX-Proxy true;
-        }
-
-        #location ~* /(user/[^/]*)/(api/kernels/[^/]+/channels|terminals/websocket)/? {
-        location ~* /(api|terminals|files)/.*? {
-            proxy_pass http://{{ env("HUB_NAME", default="jupyterhub") }}:8000;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header Host $host;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header X-NginX-Proxy true;
-            proxy_set_header X-Scheme $scheme;
-
-            # WebSocket support
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection "upgrade";
-            proxy_read_timeout 86400;
-        }
-
     }
 }

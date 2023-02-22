@@ -6,6 +6,8 @@ import jsonschema
 from docker.types import (RestartPolicy, Placement)
 from coursewareuserspawner.traitlets import ResourceAllocation
 from cwh_repo2docker import cwh_repo2docker_jupyterhub_config
+from jupyterhub.handlers import LogoutHandler
+from jhub_remote_user_authenticator.remote_user_auth import RemoteUserLocalAuthenticator
 
 # Configuration file for jupyterhub.
 
@@ -31,7 +33,19 @@ c.Registry.host = registry_host
 c.Registry.username = os.environ.get('REGISTRY_USER', 'cwh')
 c.Registry.password = os.environ['REGISTRY_PASSWORD']
 
-c.JupyterHub.authenticator_class = "jhub_remote_user_authenticator.remote_user_auth.RemoteUserLocalAuthenticator"
+class CoursewareHubLogoutHandler(LogoutHandler):
+    async def render_logout_page(self):
+        self.redirect('/php/logout.php', permanent=False)
+
+class CoursewareHubRemoteUserLocalAuthenticator(RemoteUserLocalAuthenticator):
+    def get_handlers(self, app):
+        handlers = super().get_handlers(app)
+        handlers.append(
+            (r'/logout', CoursewareHubLogoutHandler)
+        )
+        return handlers
+
+c.JupyterHub.authenticator_class = CoursewareHubRemoteUserLocalAuthenticator
 c.LocalAuthenticator.create_system_users = True
 c.LocalAuthenticator.add_user_cmd = ["/get_user_id.sh"]
 
