@@ -21,8 +21,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['username'] = $username;
         $_SESSION['authtype'] = 'local';
 
+        $next_param = isset($_GET['next']) ? '?next=' . urlencode($_GET['next']) : '';
         header("X-Accel-Redirect: /entrance/");
-        header("X-Reproxy-URL: ".HUB_URL.'/'.COURSE_NAME."/hub/login");
+        header("X-Reproxy-URL: ".HUB_URL.'/'.COURSE_NAME."/hub/login".$next_param);
         header("X-REMOTE-USER: $username");
 
         exit;
@@ -158,12 +159,15 @@ form {
     </div>
     <div class="button-panel">
       <input type="hidden" name="token" value="<?=h(generate_token())?>">
+      <?php if (isset($_GET['next'])) {?>
+      <input type="hidden" name="next" value="<?=$_GET['next']?>">
+      <?php }?>
       <input type="submit" class="button" title="Sign In" value="Sign In"></input>
     </div>
   </form>
   <div class="form-footer">
   <?php if (!empty(glob(IDP_METADATA_FILE_PATH))) {?>
-    <p><a href="/php/sp.php">学認フェデレーションへ</a></p>
+    <p><a href="/php/sp.php<?=isset($_GET['next']) ? '?next=' . urlencode($_GET['next']) : ''?>">学認フェデレーションへ</a></p>
   <?php }?>
   </div>
 </div>

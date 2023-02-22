@@ -20,8 +20,9 @@ if (check_authorization($group_list)) {
     session_regenerate_id(true);
     $_SESSION['authtype'] = 'saml';
     $username = get_username_from_mail_address($mail_address);
+    $next_param = isset($_GET['next']) ? '?next=' . urlencode($_GET['next']) : '';
     header("X-Accel-Redirect: /entrance/");
-    header("X-Reproxy-URL: ".HUB_URL.'/'.COURSE_NAME."/hub/login");
+    header("X-Reproxy-URL: ".HUB_URL.'/'.COURSE_NAME."/hub/login".$next_param);
     header("X-REMOTE-USER: $username");
 } else {
     // redirect to message page
