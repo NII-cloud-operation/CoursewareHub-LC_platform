@@ -97,7 +97,6 @@ class Repo2DockerSpawner(CoursewareUserSpawner):
         if not default_course_images:
             self._use_initial_course_image(images)
             return
-        self.cmd = default_course_images[0]['config']['config']['Cmd']
 
     def _use_initial_course_image(self, images):
 
@@ -106,31 +105,33 @@ class Repo2DockerSpawner(CoursewareUserSpawner):
         initial_course_images = [i for i in images if i['initial_course_image']]
         if not initial_course_images:
             raise RuntimeError("Initial course image NOT found")
-        self.cmd = initial_course_images[0]['config']['config']['Cmd']
+
+    async def _get_cmd_from_image(self):
+        parts = self.image.split('/', 1)
+        if len(parts) == 2:
+            host, image_name = parts
+        else:
+            host, image_name = ('', parts[0])
+
+        if host == self._registry.host:
+            name, ref = split_image_name(image_name)
+            config = await self._registry.inspect_image(name, ref)
+            cmd = config['data']['config']['Cmd']
+        else:
+            image_info = await self.docker("inspect_image", self.image)
+            cmd = image_info["Config"]["Cmd"]
+        return cmd
 
     async def get_command(self):
-        """get command from registry instead of local image."""
-
-        self.log.debug("get_command: image=%s", self.image)
+        image_cmd = await self._get_cmd_from_image()
+        # override cmd for docker-stacks image
+        if image_cmd == ['start-notebook.sh']:
+            return image_cmd + self.get_args()
 
         if self.cmd:
             cmd = self.cmd
         else:
-            parts = self.image.split('/', 1)
-            if len(parts) == 2:
-                host, image_name = parts
-            else:
-                host, image_name = ('', parts[0])
-
-            if host == self._registry.host:
-                name, ref = split_image_name(image_name)
-                config = await self._registry.inspect_image(name, ref)
-                cmd = config['data']['config']['Cmd']
-            else:
-                image_info = await self.docker("inspect_image", self.image)
-                cmd = image_info["Config"]["Cmd"]
-
-        self.log.debug("get_command: %s", str(cmd))
+            cmd = image_cmd
 
         return cmd + self.get_args()
 
@@ -151,6 +152,8 @@ def cwh_repo2docker_jupyterhub_config(c):
     c.JupyterHub.template_paths.insert(
         0, os.path.join(os.path.dirname(__file__), "templates")
     )
+
+    c.DockerSpawner.cmd = ["jupyterhub-singleuser"]
 
     # register the handlers to manage the user images
     c.JupyterHub.extra_handlers.extend(
