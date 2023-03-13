@@ -19,7 +19,7 @@ elif [[ "$ENABLE_FEDERATION" == "1" || "$ENABLE_FEDERATION" == "yes" ]]; then
     # Join federation directly
     touch /var/www/simplesamlphp/modules/metarefresh/enable
     if [[ "$ENABLE_TEST_FEDERATION" == "1" || "$ENABLE_TEST_FEDERATION" == "yes" ]]; then
-        j2 ${TEMPLATE_DIR}/federation/config-metarefresh-test.php.j2 -o /var/www/simplesamlphp/config/config-metarefresh-test.php
+        j2 ${TEMPLATE_DIR}/federation/config-metarefresh-test.php.j2 -o /var/www/simplesamlphp/config/config-metarefresh.php
     else
         j2 ${TEMPLATE_DIR}/federation/config-metarefresh.php.j2 -o /var/www/simplesamlphp/config/config-metarefresh.php
     fi
