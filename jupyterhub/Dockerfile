@@ -21,9 +21,11 @@ RUN python3 -m pip wheel --wheel-dir wheelhouse --constraint requirements \
 # Spawner
 RUN mkdir /tmp/spawner
 ADD ./spawner /tmp/spawner/
+ADD ./cwh-repo2docker /tmp/cwh-repo2docker/
 RUN python3 -m pip wheel --wheel-dir wheelhouse --constraint requirements \
-    git+https://github.com/jupyterhub/dockerspawner.git && \
-    python3 -m pip wheel --wheel-dir wheelhouse --constraint requirements /tmp/spawner
+        git+https://github.com/jupyterhub/dockerspawner.git \
+        /tmp/spawner \
+        /tmp/cwh-repo2docker
 
 # DB
 RUN python3 -m pip wheel --wheel-dir wheelhouse --constraint requirements \

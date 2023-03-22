@@ -5,6 +5,9 @@ import json
 import jsonschema
 from docker.types import (RestartPolicy, Placement)
 from coursewareuserspawner.traitlets import ResourceAllocation
+from cwh_repo2docker import cwh_repo2docker_jupyterhub_config
+from jupyterhub.handlers import LogoutHandler
+from jhub_remote_user_authenticator.remote_user_auth import RemoteUserLocalAuthenticator
 
 # Configuration file for jupyterhub.
 
@@ -14,15 +17,35 @@ c.JupyterHub.hub_ip = '0.0.0.0'
 ## The public facing ip of the whole application (the proxy)
 c.JupyterHub.ip = '0.0.0.0'
 
-## The class to use for spawning single-user servers.
-#
-#  Should be a subclass of Spawner.
-c.JupyterHub.spawner_class = 'coursewareuserspawner.CoursewareUserSpawner'
-c.DockerSpawner.container_ip = "0.0.0.0"
-c.DockerSpawner.container_image = os.environ['CONTAINER_IMAGE']
+## Configure cwh_repo2docker spawner
+cwh_repo2docker_jupyterhub_config(c)
+
+registry_host = os.environ['REGISTRY_HOST']
+initial_image = os.environ.get('CONTAINER_IMAGE', 'coursewarehub/initial-course-image:latest')
+
+c.DockerSpawner.host_ip = "0.0.0.0"
+c.DockerSpawner.image = f'{registry_host}/{initial_image}'
 c.DockerSpawner.network_name = os.environ['BACKEND_NETWORK']
 
-c.JupyterHub.authenticator_class = "jhub_remote_user_authenticator.remote_user_auth.RemoteUserLocalAuthenticator"
+c.Registry.initial_course_image = initial_image
+c.Registry.default_course_image = os.environ.get('CONTAINER_IMAGE', 'coursewarehub/default-course-image:latest')
+c.Registry.host = registry_host
+c.Registry.username = os.environ.get('REGISTRY_USER', 'cwh')
+c.Registry.password = os.environ['REGISTRY_PASSWORD']
+
+class CoursewareHubLogoutHandler(LogoutHandler):
+    async def render_logout_page(self):
+        self.redirect('/php/logout.php', permanent=False)
+
+class CoursewareHubRemoteUserLocalAuthenticator(RemoteUserLocalAuthenticator):
+    def get_handlers(self, app):
+        handlers = super().get_handlers(app)
+        handlers.append(
+            (r'/logout', CoursewareHubLogoutHandler)
+        )
+        return handlers
+
+c.JupyterHub.authenticator_class = CoursewareHubRemoteUserLocalAuthenticator
 c.LocalAuthenticator.create_system_users = True
 c.LocalAuthenticator.add_user_cmd = ["/get_user_id.sh"]
 

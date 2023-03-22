@@ -6,65 +6,6 @@ require_once __DIR__ . '/../simplesamlphp/www/_include.php';
 $SESSION_NAME = session_name();
 
 
-function redirect_to_hub()
-{
-    $reproxy_url = HUB_URL.implode('/', array_map('rawurlencode', explode('/', $_SERVER['HTTP_X_REPROXY_URI'])));
-    if (array_key_exists('HTTP_X_REPROXY_QUERY', $_SERVER)) {
-        $reproxy_url = $reproxy_url.$_SERVER['HTTP_X_REPROXY_QUERY'];
-    }
-    header("X-Accel-Redirect: /entrance/");
-    header("X-Reproxy-URL: ".$reproxy_url);
-}
-
-/**
- * Redirect to the JupyterHub if local user was authenticated.
- */
-function redirect_by_local_user_session()
-{
-    @session_start();
-
-    if (isset($_SESSION['username'])) {
-        // check user entry
-
-        // redirect to hub
-        redirect_to_hub();
-        exit;
-    }
-}
-
-/**
- * Redirect to the JupyterHub if Gakunin user was authenticated.
- */
-function redirect_by_fed_user_session()
-{
-    @session_start();
-
-    // if idp metadata file does not exist, cancel the session check.
-    if (empty(glob(IDP_METADATA_FILE_PATH))) {
-        return;
-    }
-
-    $as = new \SimpleSAML\Auth\Simple('default-sp');
-    if ($as->isAuthenticated()) {
-        // maybe access to other course
-        // redirect to authenticator of JupyterHub
-        $attributes = $as->getAttributes();
-        $mail_address = $attributes[GF_ATTRIBUTES['mail']][0];
-        $group_list = $attributes[GF_ATTRIBUTES['isMemberOf']];
-
-        // check authorization
-        if (check_authorization($group_list)) {
-            $username = get_username_from_mail_address($mail_address);
-            header("X-REMOTE-USER: $username");
-            redirect_to_hub();
-        } else {
-            // redirect to message page
-            header("X-Accel-Redirect: /no_author");
-        }
-        exit;
-    }
-}
-
 /**
  * Logout from the federation
  */

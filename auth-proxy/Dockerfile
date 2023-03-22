@@ -6,6 +6,7 @@ ARG ATTRIBUTE_AGGREGATOR_BRANCH="dev-2.x-gakunin-cloud-gateway"
 
 # Update cache and install base packages
 ENV DEBIAN_FRONTEND=noninteractive
+ENV COMPOSER_ALLOW_SUPERUSER=1
 RUN apt-get update && apt-get install -y gnupg2 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -82,11 +83,6 @@ RUN set -x \
     && touch /var/www/simplesamlphp/modules/cron/enable \
     && mkdir -p /var/www/simplesamlphp/metadata/idp-proxy
 
-# Change owner
-RUN set -x \
-    && chown -R www-data:www-data /var/www/simplesamlphp /var/www/vendor \
-    && chmod a+x /var/www/simplesamlphp/bin/get_idp_proxy_metadata.sh
-
 # Install simplesamlphp-module-attributeaggregator
 RUN set -x \
     && apt-get update \
@@ -105,6 +101,11 @@ RUN set -x \
     && composer require --update-no-dev niif/simplesamlphp-module-attributeaggregator:${ATTRIBUTE_AGGREGATOR_BRANCH} \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Change owner
+RUN set -x \
+    && chown -R www-data:www-data /var/www/simplesamlphp /var/www/vendor \
+    && chmod a+x /var/www/simplesamlphp/bin/get_idp_proxy_metadata.sh
 
 # Install custom discoresp.php
 COPY resources/saml/www/sp/discoresp.php /var/www/simplesamlphp/modules/saml/www/sp/discoresp.php
