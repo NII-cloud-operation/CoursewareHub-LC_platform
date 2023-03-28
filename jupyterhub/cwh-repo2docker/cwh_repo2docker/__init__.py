@@ -43,17 +43,29 @@ class Repo2DockerSpawner(CoursewareUserSpawner):
                     <div class='col-md-4'>
                         Repository:
                     </div>
+                    {% if image.repo %}
                     <div class='col-md-8'>
                         <a href="{{ image.repo }}" target="_blank">{{ image.repo }}</a>
                     </div>
+                    {% else %}
+                    <div class='col-md-8'>
+                        -
+                    </div>
+                    {%- endif %}
                 </div>
                 <div class='row image-info'>
                     <div class='col-md-4'>
                         Reference:
                     </div>
+                    {% if image.repo and image.ref %}
                     <div class='col-md-8'>
                         <a href="{{ image.repo }}/tree/{{ image.ref }}" target="_blank">{{ image.ref }}</a>
                     </div>
+                    {% else %}
+                    <div class='col-md-8'>
+                        -
+                    </div>
+                    {%- endif %}
                 </div>
             </div>
         </label>
