@@ -127,6 +127,19 @@ if 'JUPYTERHUB_SINGLEUSER_APP' in os.environ:
         'JUPYTERHUB_SINGLEUSER_APP': os.environ['JUPYTERHUB_SINGLEUSER_APP']
     }
 
+notebook_args = []
+
+if 'JUPYTERHUB_SINGLEUSER_DEFAULT_URL' in os.environ:
+    singleuser_default_url = os.environ['JUPYTERHUB_SINGLEUSER_DEFAULT_URL']
+    c.Spawner.default_url = singleuser_default_url
+    notebook_args.append(
+        '--SingleUserNotebookApp.default_url={}'.format(singleuser_default_url))
+    # WORKAROUND: SingleUserNotebookApp.* preferences are ignored when ServerApp is specified
+    notebook_args.append(
+        '--ServerApp.default_url={}'.format(singleuser_default_url))
+
+c.Spawner.args = notebook_args
+
 # DB
 pg_user = os.environ['POSTGRES_ENV_JPY_PSQL_USER']
 pg_pass = os.environ['POSTGRES_ENV_JPY_PSQL_PASSWORD']
