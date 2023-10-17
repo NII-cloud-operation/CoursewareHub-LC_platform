@@ -39,6 +39,10 @@ RUN python3 -m pip wheel --wheel-dir wheelhouse --constraint requirements \
 RUN python3 -m pip wheel --wheel-dir wheelhouse --constraint requirements \
     jsonschema
 
+# idle-culler
+RUN python3 -m pip wheel --wheel-dir wheelhouse --constraint requirements \
+    jupyterhub-idle-culler
+
 FROM jupyterhub/jupyterhub:3.1
 
 # dind
@@ -56,9 +60,6 @@ RUN apt-get update && \
 # install the wheels from first stage
 COPY --from=builder /tmp/wheelhouse /tmp/wheelhouse
 RUN python3 -m pip install --no-cache /tmp/wheelhouse/*
-
-# cull servers
-ADD cull_idle_servers.py /usr/local/bin/cull_idle_servers.py
 
 # Resources
 RUN mkdir /var/jupyterhub
