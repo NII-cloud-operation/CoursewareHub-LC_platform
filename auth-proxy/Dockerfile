@@ -23,10 +23,21 @@ RUN set -x \
         unzip \
         supervisor \
         cron \
+	gnupg2 \
+	ca-certificates \
+	lsb-release \
+	ubuntu-keyring \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 RUN set -x \
-    && add-apt-repository ppa:nginx/stable \
+    && curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor \
+        | tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null \
+    && gpg --dry-run --quiet --import --import-options import-show /usr/share/keyrings/nginx-archive-keyring.gpg | grep 573BFD6B3D8FBC641079A6ABABF5BD827BD9BF62 \
+    && echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] \
+    http://nginx.org/packages/ubuntu `lsb_release -cs` nginx" \
+        | tee /etc/apt/sources.list.d/nginx.list \
+    && echo "Package: *\nPin: origin nginx.org\nPin: release o=nginx\nPin-Priority: 900\n" \
+        | tee /etc/apt/preferences.d/99nginx \
     && add-apt-repository ppa:ondrej/php \
     && apt-get update \
     && apt-get -y --no-install-recommends --no-install-suggests install \
@@ -46,6 +57,7 @@ RUN set -x \
     && ln -sf /dev/stderr /var/log/nginx/error.log \
     && mkdir -p /run/php \
     # Install simplesamlphp
+    && mkdir -p /var/www \
     && cd /var/www \
     && curl -Lo /var/www/downloaded-simplesamlphp.tar.gz https://github.com/simplesamlphp/simplesamlphp/releases/download/v${SIMPLESAMLPHP_VERSION}/simplesamlphp-${SIMPLESAMLPHP_VERSION}.tar.gz \
     && tar xvfz downloaded-simplesamlphp.tar.gz \
