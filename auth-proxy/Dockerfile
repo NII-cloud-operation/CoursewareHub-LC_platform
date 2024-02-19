@@ -42,15 +42,15 @@ RUN set -x \
     && apt-get update \
     && apt-get -y --no-install-recommends --no-install-suggests install \
         nginx \
-        php8.1-cli \
-        php8.1-fpm \
-        php8.1-common \
-        php8.1-xml \
-        php8.1-pgsql \
-    && php8.1 -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
-    && php8.1 -r "if (hash_file('sha384', 'composer-setup.php') === '$(curl -q https://composer.github.io/installer.sig)') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;" \
-    && php8.1 composer-setup.php \
-    && php8.1 -r "unlink('composer-setup.php');" \
+        php8.2-cli \
+        php8.2-fpm \
+        php8.2-common \
+        php8.2-xml \
+        php8.2-pgsql \
+    && php8.2 -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
+    && php8.2 -r "if (hash_file('sha384', 'composer-setup.php') === '$(curl -q https://composer.github.io/installer.sig)') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;" \
+    && php8.2 composer-setup.php \
+    && php8.2 -r "unlink('composer-setup.php');" \
     && mv composer.phar /usr/local/bin/composer \
     && chmod +x /usr/local/bin/composer \
     && ln -sf /dev/stdout /var/log/nginx/access.log \
@@ -71,10 +71,10 @@ COPY resources/composer.json /var/www/composer.json
 RUN cd /var/www && composer install --no-dev
 
 # Configure PHP settings
-RUN perl -pi -e 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' /etc/php/8.1/fpm/php.ini && \
-    perl -pi -e 's/allow_url_fopen = Off/allow_url_fopen = On/g' /etc/php/8.1/fpm/php.ini && \
-    perl -pi -e 's/expose_php = On/expose_php = Off/g' /etc/php/8.1/fpm/php.ini && \
-    perl -pi -e 's/;?\s*session\.gc_maxlifetime\s*=\s*.+/session.gc_maxlifetime = 10800/g' /etc/php/8.1/fpm/php.ini
+RUN perl -pi -e 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' /etc/php/8.2/fpm/php.ini && \
+    perl -pi -e 's/allow_url_fopen = Off/allow_url_fopen = On/g' /etc/php/8.2/fpm/php.ini && \
+    perl -pi -e 's/expose_php = On/expose_php = Off/g' /etc/php/8.2/fpm/php.ini && \
+    perl -pi -e 's/;?\s*session\.gc_maxlifetime\s*=\s*.+/session.gc_maxlifetime = 10800/g' /etc/php/8.2/fpm/php.ini
 
 # Prepare nginx configuration
 RUN mkdir /etc/nginx/certs
@@ -99,11 +99,11 @@ RUN set -x \
 RUN set -x \
     && apt-get update \
     && apt-get -y --force-yes --no-install-recommends --no-install-suggests install \
-       php8.1-curl \
-       php8.1-mbstring \
-       php8.1-gmp \
-       php8.1-soap \
-       php8.1-ldap \
+       php8.2-curl \
+       php8.2-mbstring \
+       php8.2-gmp \
+       php8.2-soap \
+       php8.2-ldap \
        composer \
     && cd /var/www/simplesamlphp \
     && composer require --dev -W \
