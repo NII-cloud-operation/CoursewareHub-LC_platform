@@ -1,6 +1,6 @@
 FROM ubuntu:22.04
 
-ARG SIMPLESAMLPHP_VERSION="1.19.7"
+ARG SIMPLESAMLPHP_VERSION="2.1.3"
 ARG ATTRIBUTE_AGGREGATOR_URL="https://github.com/NII-cloud-operation/simplesamlphp-module-attributeaggregator"
 ARG ATTRIBUTE_AGGREGATOR_BRANCH="dev-2.x-gakunin-cloud-gateway"
 
@@ -27,6 +27,7 @@ RUN set -x \
 	ca-certificates \
 	lsb-release \
 	ubuntu-keyring \
+        patch \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 RUN set -x \
@@ -47,6 +48,7 @@ RUN set -x \
         php8.2-common \
         php8.2-xml \
         php8.2-pgsql \
+        php8.2-sqlite3 \
     && php8.2 -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
     && php8.2 -r "if (hash_file('sha384', 'composer-setup.php') === '$(curl -q https://composer.github.io/installer.sig)') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;" \
     && php8.2 composer-setup.php \
@@ -59,7 +61,7 @@ RUN set -x \
     # Install simplesamlphp
     && mkdir -p /var/www \
     && cd /var/www \
-    && curl -Lo /var/www/downloaded-simplesamlphp.tar.gz https://github.com/simplesamlphp/simplesamlphp/releases/download/v${SIMPLESAMLPHP_VERSION}/simplesamlphp-${SIMPLESAMLPHP_VERSION}.tar.gz \
+    && curl -Lo /var/www/downloaded-simplesamlphp.tar.gz https://github.com/simplesamlphp/simplesamlphp/releases/download/v${SIMPLESAMLPHP_VERSION}/simplesamlphp-${SIMPLESAMLPHP_VERSION}-full.tar.gz \
     && tar xvfz downloaded-simplesamlphp.tar.gz \
     && mv $( ls | grep simplesaml | grep -v *tar.gz ) simplesamlphp \
     && rm /var/www/downloaded-simplesamlphp.tar.gz \
@@ -82,6 +84,10 @@ RUN mkdir /etc/nginx/certs
 # Setup simplesamlphp
 COPY resources/simplesamlphp/bin/get_idp_proxy_metadata.sh /var/www/simplesamlphp/bin
 COPY resources/simplesamlphp/bin/remove_idp_proxy_metadata.sh /var/www/simplesamlphp/bin
+COPY resources/simplesamlphp/templates/selectidp-dropdown.twig /var/www/simplesamlphp/templates
+COPY resources/simplesamlphp/templates/selectidp-embedded-wayf-start.twig /var/www/simplesamlphp/templates/includes
+COPY resources/simplesamlphp/templates/selectidp-embedded-wayf-end.twig /var/www/simplesamlphp/templates/includes
+
 # simplesamlphp keys
 RUN set -x \
     && cd /var/www/simplesamlphp/cert \
@@ -92,8 +98,14 @@ RUN set -x \
 
 # simplesamlphp metarefresh module
 RUN set -x \
-    && touch /var/www/simplesamlphp/modules/cron/enable \
     && mkdir -p /var/www/simplesamlphp/metadata/idp-proxy
+
+# Patch simplesamlphp
+COPY resources/simplesamlphp/simplesamlphp.patch /tmp/
+RUN set -x \
+    && cd /var/www/simplesamlphp \
+    && patch -p1 < /tmp/simplesamlphp.patch \
+    && rm -f /tmp/simplesamlphp.patch
 
 # Install simplesamlphp-module-attributeaggregator
 RUN set -x \
@@ -106,9 +118,6 @@ RUN set -x \
        php8.2-ldap \
        composer \
     && cd /var/www/simplesamlphp \
-    && composer require --dev -W \
-        "simplesamlphp/simplesamlphp-test-framework:^1.1.5" \
-        "phpunit/phpunit:^7.5|^8.5|^9.5" "vimeo/psalm:^4.17" \
     && composer config repositories.attributeaggregator "{\"type\": \"vcs\", \"url\": \"${ATTRIBUTE_AGGREGATOR_URL}\", \"no-api\": true}" \
     && composer require --update-no-dev niif/simplesamlphp-module-attributeaggregator:${ATTRIBUTE_AGGREGATOR_BRANCH} \
     && apt-get clean \
@@ -118,9 +127,6 @@ RUN set -x \
 RUN set -x \
     && chown -R www-data:www-data /var/www/simplesamlphp /var/www/vendor \
     && chmod a+x /var/www/simplesamlphp/bin/get_idp_proxy_metadata.sh
-
-# Install custom discoresp.php
-COPY resources/saml/www/sp/discoresp.php /var/www/simplesamlphp/modules/saml/www/sp/discoresp.php
 
 # supervisord
 COPY resources/supervisord.conf /etc/

@@ -1,0 +1,21 @@
+<?php
+
+$config = [
+    'sets' => [
+        'idp-proxy' => [
+            'cron' => ['daily'],
+            'sources' => [
+                [
+                    'src' => 'https://{{ env("AUTH_FQDN") }}/simplesaml/saml2/idp/metadata.php',
+                    'certificates' => [
+                        'idp-proxy.cer'
+                    ]
+                ]
+            ],
+            'outputDir' => 'metadata/idp-proxy/',
+            'outputFormat' => 'flatfile',
+            'expireAfter' => 60*60*24*4
+        ]
+    ]
+];
+

@@ -95,7 +95,7 @@ http {
         }
 
         location ^~ /simplesaml {
-            alias /var/www/simplesamlphp/www;
+            alias /var/www/simplesamlphp/public;
 
             location ~ ^(?<prefix>/simplesaml)(?<phpfile>.+?\.php)(?<pathinfo>/.*)?$ {
                 fastcgi_pass unix:/run/php/php8.2-fpm.sock;
