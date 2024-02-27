@@ -178,7 +178,7 @@ if cull_server == '1' or cull_server == 'yes':
             {
                 'name': 'jupyterhub-idle-culler-service',
                 'command': [sys.executable,
-                            '-m', 'jupyterhub_idle_culler.py',
+                            '-m', 'jupyterhub_idle_culler',
                             '--timeout={}'.format(str(cull_server_idle_timeout)),
                             '--max-age={}'.format(str(cull_server_max_age)),
                             '--cull-every={}'.format(str(cull_server_every))],
