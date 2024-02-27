@@ -163,6 +163,7 @@ if cull_server == '1' or cull_server == 'yes':
             "scopes": [
                 "list:users",
                 "read:users:activity",
+                "read:servers",
                 "delete:servers",
             ],
             "services": ["jupyterhub-idle-culler-service"],
