@@ -1,14 +1,11 @@
 import os
+import sys
 
 from coursewareuserspawner import CoursewareUserSpawner
 from jinja2 import Environment, BaseLoader
-from jupyterhub.handlers.static import CacheControlStaticFilesHandler
 from traitlets import Unicode
 
-from .builder import BuildHandler, DefaultCouseImageHandler
 from .registry import get_registry, split_image_name
-from .images import ImagesHandler
-from .logs import LogsHandler
 
 
 class Repo2DockerSpawner(CoursewareUserSpawner):
@@ -156,28 +153,40 @@ class Repo2DockerSpawner(CoursewareUserSpawner):
         return await super().create_object(*args, **kwargs)
 
 
-def cwh_repo2docker_jupyterhub_config(c):
+def cwh_repo2docker_jupyterhub_config(c, config_file=None):
     # hub
     c.JupyterHub.spawner_class = Repo2DockerSpawner
 
-    # add extra templates for the service UI
-    c.JupyterHub.template_paths.insert(
-        0, os.path.join(os.path.dirname(__file__), "templates")
-    )
-
     c.DockerSpawner.cmd = ["jupyterhub-singleuser"]
 
-    # register the handlers to manage the user images
-    c.JupyterHub.extra_handlers.extend(
-        [
-            (r"environments", ImagesHandler),
-            (r"api/environments", BuildHandler),
-            (r"api/environments/default-course-image", DefaultCouseImageHandler),
-            (r"api/environments/([^/]+)/logs", LogsHandler),
-            (
-                r"environments-static/(.*)",
-                CacheControlStaticFilesHandler,
-                {"path": os.path.join(os.path.dirname(__file__), "static")},
-            ),
-        ]
-    )
+    service_command = [
+        sys.executable,
+        "-m", "cwh_repo2docker.service",
+    ]
+
+    if config_file is not None:
+        service_command.extend([
+            "--config-file", config_file
+        ])
+
+    environ_names = [
+        'CONTAINER_IMAGE',
+        'REGISTRY_HOST',
+        'REGISTRY_USER',
+        'REGISTRY_PASSWORD'
+    ]
+
+    environments = {}
+    for name in environ_names:
+        if name in os.environ:
+            environments[name] = os.environ[name]
+
+    c.JupyterHub.services.extend([{
+        "name": "environments",
+        "command": service_command,
+        "url": "http://127.0.0.1:10101",
+        "oauth_no_confirm": True,
+        # "admin": True,
+        "environment": environments,
+        "oauth_client_allowed_scopes": ["inherit"]
+    }])

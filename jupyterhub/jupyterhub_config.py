@@ -18,20 +18,12 @@ c.JupyterHub.hub_ip = '0.0.0.0'
 c.JupyterHub.ip = '0.0.0.0'
 
 ## Configure cwh_repo2docker spawner
-cwh_repo2docker_jupyterhub_config(c)
-
 registry_host = os.environ['REGISTRY_HOST']
 initial_image = os.environ.get('CONTAINER_IMAGE', 'coursewarehub/initial-course-image:latest')
 
 c.DockerSpawner.host_ip = "0.0.0.0"
 c.DockerSpawner.image = f'{registry_host}/{initial_image}'
 c.DockerSpawner.network_name = os.environ['BACKEND_NETWORK']
-
-c.Registry.initial_course_image = initial_image
-c.Registry.default_course_image = os.environ.get('CONTAINER_IMAGE', 'coursewarehub/default-course-image:latest')
-c.Registry.host = registry_host
-c.Registry.username = os.environ.get('REGISTRY_USER', 'cwh')
-c.Registry.password = os.environ['REGISTRY_PASSWORD']
 
 class CoursewareHubLogoutHandler(LogoutHandler):
     async def render_logout_page(self):
@@ -185,6 +177,11 @@ if cull_server == '1' or cull_server == 'yes':
             }
         )
 c.JupyterHub.services = services
+
+## Configure cwh_repo2docker spawner and service
+cwh_repo2docker_config_path = '/srv/jupyterhub/cwh_repo2docker_config.py'
+cwh_repo2docker_jupyterhub_config(c, cwh_repo2docker_config_path)
+load_subconfig(cwh_repo2docker_config_path)
 
 # debug log
 if os.environ.get('DEBUG', '0') in ['yes', '1']:

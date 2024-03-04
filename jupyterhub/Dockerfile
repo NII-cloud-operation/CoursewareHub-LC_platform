@@ -64,6 +64,7 @@ RUN python3 -m pip install --no-cache /tmp/wheelhouse/*
 # Resources
 RUN mkdir /var/jupyterhub
 ADD jupyterhub_config.py /srv/jupyterhub/
+ADD cwh_repo2docker_config.py /srv/jupyterhub/
 ADD resources-schema.json /srv/jupyterhub/
 ADD get_user_id.sh /
 RUN chmod +x /get_user_id.sh

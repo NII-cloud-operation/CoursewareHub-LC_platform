@@ -2,23 +2,22 @@ import json
 import re
 
 from aiodocker import Docker, DockerError
-from jupyterhub.apihandlers import APIHandler
-from jupyterhub.scopes import needs_scope
+from jupyterhub.services.auth import HubOAuthenticated
 from tornado import web
 
 from .docker import build_image
 from .registry import get_registry, split_image_name
+from .base import BaseHandler
 
 IMAGE_NAME_RE = r"^[a-z0-9-_]+$"
 
 
-class BuildHandler(APIHandler):
+class BuildHandler(HubOAuthenticated, BaseHandler):
     """
     Handle requests to build user environments as Docker images
     """
 
     @web.authenticated
-    @needs_scope('admin-ui')
     async def delete(self):
         data = self.get_json_body()
         name = data["name"]
@@ -37,10 +36,10 @@ class BuildHandler(APIHandler):
                 raise web.HTTPError(500, e.message)
 
         self.set_status(200)
+        self.set_header('content-type', 'application/json')
         self.finish(json.dumps({"status": "ok"}))
 
     @web.authenticated
-    @needs_scope('admin-ui')
     async def post(self):
         data = self.get_json_body()
         repo = data["repo"]
@@ -74,16 +73,16 @@ class BuildHandler(APIHandler):
         await build_image(registry.host, repo, ref, name, username, password, extra_buildargs)
 
         self.set_status(200)
+        self.set_header('content-type', 'application/json')
         self.finish(json.dumps({"status": "ok"}))
 
 
-class DefaultCouseImageHandler(APIHandler):
+class DefaultCourseImageHandler(HubOAuthenticated, BaseHandler):
     """
     Handler to update the default course image
     """
 
     @web.authenticated
-    @needs_scope('admin-ui')
     async def put(self):
         data = self.get_json_body()
         name = data["name"]
@@ -95,4 +94,5 @@ class DefaultCouseImageHandler(APIHandler):
         await registry.set_default_course_image(repo, digest)
 
         self.set_status(200)
+        self.set_header('content-type', 'application/json')
         self.finish(json.dumps({"status": "ok"}))
