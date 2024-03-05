@@ -1,0 +1,8 @@
+{% extends "templates/page.html" %}
+
+{% block nav_bar_left_items %}
+{{ super() }}
+{% if 'access:services!service={{cwh_repo2docker_service_name}}' in expanded_scopes or 'access:services' in expanded_scopes %}
+<li><a href="{{prefix}}services/{{cwh_repo2docker_service_name}}/">Environments</a></li>
+{% endif %}
+{% endblock %}

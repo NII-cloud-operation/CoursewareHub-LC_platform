@@ -180,7 +180,10 @@ c.JupyterHub.services = services
 
 ## Configure cwh_repo2docker spawner and service
 cwh_repo2docker_config_path = '/srv/jupyterhub/cwh_repo2docker_config.py'
-cwh_repo2docker_jupyterhub_config(c, cwh_repo2docker_config_path)
+cwh_repo2docker_jupyterhub_config(
+    c,
+    config_file=cwh_repo2docker_config_path,
+    custom_menu=True)
 load_subconfig(cwh_repo2docker_config_path)
 
 # debug log
