@@ -178,16 +178,19 @@ if cull_server == '1' or cull_server == 'yes':
         )
 c.JupyterHub.services = services
 
+debug_log = os.environ.get('DEBUG', '0') in ['yes', '1']
+
 ## Configure cwh_repo2docker spawner and service
 cwh_repo2docker_config_path = '/srv/jupyterhub/cwh_repo2docker_config.py'
 cwh_repo2docker_jupyterhub_config(
     c,
     config_file=cwh_repo2docker_config_path,
-    custom_menu=True)
+    custom_menu=True,
+    debug=debug_log)
 load_subconfig(cwh_repo2docker_config_path)
 
 # debug log
-if os.environ.get('DEBUG', '0') in ['yes', '1']:
+if debug_log:
     c.JupyterHub.log_level = 'DEBUG'
     c.Spawner.debug = True
 
