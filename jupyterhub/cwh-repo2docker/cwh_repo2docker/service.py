@@ -27,6 +27,11 @@ class CwhRepo2DockerApplication(Application):
         help="The config file to load").tag(
         config=True
     )
+    brand_text = Unicode(
+        'Environments',
+        help='Brand text in navigation header').tag(
+        config=True
+    )
     aliases = {
         "config-file": "CwhRepo2DockerApplication.config_file"
     }
@@ -72,6 +77,7 @@ class CwhRepo2DockerApplication(Application):
             'app': self,
             'log': self.log,
             'base_url': base_url,
+            'brand_text': self.brand_text,
             'jinja2_env': jinja_env,
             'static_path': jupyterhub_static_path,
             'static_url_prefix': url_path_join(base_url, 'static/'),

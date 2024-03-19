@@ -28,6 +28,7 @@ class BaseHandler(web.RequestHandler):
                 self.settings['hub_prefix']),
             prefix=self.settings['base_url'],
             service_prefix=self.settings['service_prefix'],
+            brand_text=self.settings['brand_text'],
             user=user,
             static_url=self.static_url,
             no_spawner_check=True
