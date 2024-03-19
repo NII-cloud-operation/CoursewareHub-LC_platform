@@ -172,6 +172,7 @@ def cwh_repo2docker_jupyterhub_config(
         config_file=None,
         service_name='environments',
         custom_menu=False,
+        service_environments={},
         debug=False):
     # hub
     c.JupyterHub.spawner_class = Repo2DockerSpawner
@@ -199,18 +200,6 @@ def cwh_repo2docker_jupyterhub_config(
             "--debug"
         ])
 
-    environ_names = [
-        'CONTAINER_IMAGE',
-        'REGISTRY_HOST',
-        'REGISTRY_USER',
-        'REGISTRY_PASSWORD'
-    ]
-
-    environments = {}
-    for name in environ_names:
-        if name in os.environ:
-            environments[name] = os.environ[name]
-
     c.JupyterHub.template_vars.update({
         'cwh_repo2docker_service_name': service_name
     })
@@ -221,6 +210,6 @@ def cwh_repo2docker_jupyterhub_config(
         "url": "http://127.0.0.1:10101",
         "display": not custom_menu,
         "oauth_no_confirm": True,
-        "environment": environments,
+        "environment": service_environments,
         "oauth_client_allowed_scopes": ["inherit"]
     }])

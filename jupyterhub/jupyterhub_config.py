@@ -181,11 +181,24 @@ c.JupyterHub.services = services
 debug_log = os.environ.get('DEBUG', '0') in ['yes', '1']
 
 ## Configure cwh_repo2docker spawner and service
+cwh_repo2docker_environ_names = [
+    'CONTAINER_IMAGE',
+    'REGISTRY_HOST',
+    'REGISTRY_USER',
+    'REGISTRY_PASSWORD'
+]
+
+service_environments = {}
+for name in cwh_repo2docker_environ_names:
+    if name in os.environ:
+        service_environments[name] = os.environ[name]
+
 cwh_repo2docker_config_path = '/srv/jupyterhub/cwh_repo2docker_config.py'
 cwh_repo2docker_jupyterhub_config(
     c,
     config_file=cwh_repo2docker_config_path,
     custom_menu=True,
+    service_environments=service_environments,
     debug=debug_log)
 load_subconfig(cwh_repo2docker_config_path)
 
