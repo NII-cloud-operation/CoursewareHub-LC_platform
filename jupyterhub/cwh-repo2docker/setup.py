@@ -11,7 +11,7 @@ setup_args = dict(
     include_package_data = True,
     install_requires     = [
         "coursewareuserspawner",
-        "jupyterhub~=3.1",
+        "jupyterhub~=4.0",
         "aiodocker",
         'aiohttp']
 )
