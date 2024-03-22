@@ -1,14 +1,12 @@
 import os
+import sys
 
 from coursewareuserspawner import CoursewareUserSpawner
 from jinja2 import Environment, BaseLoader
-from jupyterhub.handlers.static import CacheControlStaticFilesHandler
 from traitlets import Unicode
+from tornado import web
 
-from .builder import BuildHandler, DefaultCouseImageHandler
 from .registry import get_registry, split_image_name
-from .images import ImagesHandler
-from .logs import LogsHandler
 
 
 class Repo2DockerSpawner(CoursewareUserSpawner):
@@ -102,6 +100,19 @@ class Repo2DockerSpawner(CoursewareUserSpawner):
         )
         return image_form_template.render(image_list=images, registry_host=self._registry.host)
 
+    async def check_allowed(self, image):
+        images = await self._registry.list_images()
+
+        registry_host = self._registry.host
+        image_names = [
+            f'{registry_host}/{image["image_name"]}'
+            for image in images
+        ]
+
+        if image not in image_names:
+            raise web.HTTPError(400, "Specifying image to launch is not allowed")
+        return image
+
     def _use_default_course_image(self, images):
         self.image = self._registry.get_default_course_image()
 
@@ -156,28 +167,49 @@ class Repo2DockerSpawner(CoursewareUserSpawner):
         return await super().create_object(*args, **kwargs)
 
 
-def cwh_repo2docker_jupyterhub_config(c):
+def cwh_repo2docker_jupyterhub_config(
+        c,
+        config_file=None,
+        service_name='environments',
+        custom_menu=False,
+        service_environments={},
+        debug=False):
     # hub
     c.JupyterHub.spawner_class = Repo2DockerSpawner
 
-    # add extra templates for the service UI
-    c.JupyterHub.template_paths.insert(
-        0, os.path.join(os.path.dirname(__file__), "templates")
-    )
-
     c.DockerSpawner.cmd = ["jupyterhub-singleuser"]
 
-    # register the handlers to manage the user images
-    c.JupyterHub.extra_handlers.extend(
-        [
-            (r"environments", ImagesHandler),
-            (r"api/environments", BuildHandler),
-            (r"api/environments/default-course-image", DefaultCouseImageHandler),
-            (r"api/environments/([^/]+)/logs", LogsHandler),
-            (
-                r"environments-static/(.*)",
-                CacheControlStaticFilesHandler,
-                {"path": os.path.join(os.path.dirname(__file__), "static")},
-            ),
-        ]
-    )
+    if custom_menu:
+        # add extra templates for the service UI
+        c.JupyterHub.template_paths.insert(
+            0, os.path.join(os.path.dirname(__file__), "custom_templates")
+        )
+
+    service_command = [
+        sys.executable,
+        "-m", "cwh_repo2docker.service",
+    ]
+
+    if config_file is not None:
+        service_command.extend([
+            "--config-file", config_file
+        ])
+
+    if debug:
+        service_command.extend([
+            "--debug"
+        ])
+
+    c.JupyterHub.template_vars.update({
+        'cwh_repo2docker_service_name': service_name
+    })
+
+    c.JupyterHub.services.extend([{
+        "name": service_name,
+        "command": service_command,
+        "url": "http://127.0.0.1:10101",
+        "display": not custom_menu,
+        "oauth_no_confirm": True,
+        "environment": service_environments,
+        "oauth_client_allowed_scopes": ["inherit"]
+    }])

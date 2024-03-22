@@ -1,7 +1,7 @@
 require([
   "jquery", "bootstrap", "moment", "jhapi", "utils",
-  "environments-static/vendor/xterm-addon-fit.js",
-  "environments-static/vendor/xterm.js"
+  "static/vendor/xterm-addon-fit.js",
+  "static/vendor/xterm.js"
 ], function(
   $,
   bs,
@@ -14,8 +14,8 @@ require([
   "use strict";
 
   var base_url = window.jhdata.base_url;
+  var xsrf_token = window.jhdata.xsrf_token || window.xsrf_token;
   var api = new JHAPI(base_url);
-
 
   function getRow(element) {
     var original = element;
@@ -47,7 +47,7 @@ require([
     var row = getRow(el);
     var name = row.data('image');
     var digest = row.data('manifest-digest');
-    api.api_request("environments/default-course-image", {
+    $.ajax("api/environments/default-course-image?_xsrf=" + xsrf_token, {
       type: "PUT",
       data: JSON.stringify({
         name: name,
@@ -72,7 +72,7 @@ require([
       var spinner = $("#adding-environment-dialog");
       spinner.find('.modal-footer').remove();
       spinner.modal();
-      api.api_request("environments", {
+      $.ajax("api/environments?_xsrf=" + xsrf_token, {
         type: "POST",
         data: JSON.stringify({
           repo: repo,
@@ -107,7 +107,7 @@ require([
       var spinner = $("#removing-environment-dialog");
       spinner.find('.modal-footer').remove();
       spinner.modal();
-      api.api_request("environments", {
+      $.ajax("api/environments?_xsrf=" + xsrf_token, {
         type: "DELETE",
         data: JSON.stringify({
           name: image
@@ -140,7 +140,8 @@ require([
       log.open(container);
       fitAddon.fit();
 
-      var logsUrl = utils.url_path_join(base_url, "api", "environments", image, "logs");
+      var logsUrl = utils.url_path_join("api", "environments", image, "logs");
+      logsUrl += "?_xsrf=" + xsrf_token;
       eventSource = new EventSource(logsUrl);
       eventSource.onerror = function(err) {
         console.error("Failed to construct event stream", err);

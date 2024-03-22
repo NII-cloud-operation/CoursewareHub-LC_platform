@@ -1,20 +1,17 @@
-from inspect import isawaitable
-from jupyterhub.handlers.base import BaseHandler
-from jupyterhub.scopes import needs_scope
+from jupyterhub.services.auth import HubOAuthenticated
 from tornado import web
-import json
 
 from .docker import list_containers
 from .registry import get_registry
+from .base import BaseHandler
 
 
-class ImagesHandler(BaseHandler):
+class ImagesHandler(HubOAuthenticated, BaseHandler):
     """
     Handler to show the list of environments as Docker images
     """
 
     @web.authenticated
-    @needs_scope('admin-ui')
     async def get(self):
         registry = get_registry(config=self.settings['config'])
         images = await registry.list_images()
@@ -23,7 +20,4 @@ class ImagesHandler(BaseHandler):
             "images.html",
             images=images + containers
         )
-        if isawaitable(result):
-            self.write(await result)
-        else:
-            self.write(result)
+        self.write(await result)
