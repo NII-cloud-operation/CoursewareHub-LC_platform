@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../../lib/const.php';
 require_once __DIR__ . '/../../lib/hub-const.php';
 require_once __DIR__ . '/../../lib/functions.php';
-require_once __DIR__ . '/../../simplesamlphp/www/_include.php';
+require_once __DIR__ . '/../../simplesamlphp/public/_include.php';
 
 @session_start();
 

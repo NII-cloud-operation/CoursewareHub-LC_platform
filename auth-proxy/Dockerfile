@@ -1,6 +1,6 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
-ARG SIMPLESAMLPHP_VERSION="1.19.7"
+ARG SIMPLESAMLPHP_VERSION="2.1.4"
 ARG ATTRIBUTE_AGGREGATOR_URL="https://github.com/NII-cloud-operation/simplesamlphp-module-attributeaggregator"
 ARG ATTRIBUTE_AGGREGATOR_BRANCH="dev-2.x-gakunin-cloud-gateway"
 
@@ -23,31 +23,45 @@ RUN set -x \
         unzip \
         supervisor \
         cron \
+	gnupg2 \
+	ca-certificates \
+	lsb-release \
+	ubuntu-keyring \
+        patch \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 RUN set -x \
-    && add-apt-repository ppa:nginx/stable \
+    && curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor \
+        | tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null \
+    && gpg --dry-run --quiet --import --import-options import-show /usr/share/keyrings/nginx-archive-keyring.gpg | grep 573BFD6B3D8FBC641079A6ABABF5BD827BD9BF62 \
+    && echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] \
+    http://nginx.org/packages/ubuntu `lsb_release -cs` nginx" \
+        | tee /etc/apt/sources.list.d/nginx.list \
+    && echo "Package: *\nPin: origin nginx.org\nPin: release o=nginx\nPin-Priority: 900\n" \
+        | tee /etc/apt/preferences.d/99nginx \
     && add-apt-repository ppa:ondrej/php \
     && apt-get update \
     && apt-get -y --no-install-recommends --no-install-suggests install \
         nginx \
-        php8.1-cli \
-        php8.1-fpm \
-        php8.1-common \
-        php8.1-xml \
-        php8.1-pgsql \
-    && php8.1 -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
-    && php8.1 -r "if (hash_file('sha384', 'composer-setup.php') === '$(curl -q https://composer.github.io/installer.sig)') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;" \
-    && php8.1 composer-setup.php \
-    && php8.1 -r "unlink('composer-setup.php');" \
+        php8.2-cli \
+        php8.2-fpm \
+        php8.2-common \
+        php8.2-xml \
+        php8.2-pgsql \
+        php8.2-sqlite3 \
+    && php8.2 -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
+    && php8.2 -r "if (hash_file('sha384', 'composer-setup.php') === '$(curl -q https://composer.github.io/installer.sig)') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;" \
+    && php8.2 composer-setup.php \
+    && php8.2 -r "unlink('composer-setup.php');" \
     && mv composer.phar /usr/local/bin/composer \
     && chmod +x /usr/local/bin/composer \
     && ln -sf /dev/stdout /var/log/nginx/access.log \
     && ln -sf /dev/stderr /var/log/nginx/error.log \
     && mkdir -p /run/php \
     # Install simplesamlphp
+    && mkdir -p /var/www \
     && cd /var/www \
-    && curl -Lo /var/www/downloaded-simplesamlphp.tar.gz https://github.com/simplesamlphp/simplesamlphp/releases/download/v${SIMPLESAMLPHP_VERSION}/simplesamlphp-${SIMPLESAMLPHP_VERSION}.tar.gz \
+    && curl -Lo /var/www/downloaded-simplesamlphp.tar.gz https://github.com/simplesamlphp/simplesamlphp/releases/download/v${SIMPLESAMLPHP_VERSION}/simplesamlphp-${SIMPLESAMLPHP_VERSION}-full.tar.gz \
     && tar xvfz downloaded-simplesamlphp.tar.gz \
     && mv $( ls | grep simplesaml | grep -v *tar.gz ) simplesamlphp \
     && rm /var/www/downloaded-simplesamlphp.tar.gz \
@@ -59,10 +73,10 @@ COPY resources/composer.json /var/www/composer.json
 RUN cd /var/www && composer install --no-dev
 
 # Configure PHP settings
-RUN perl -pi -e 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' /etc/php/8.1/fpm/php.ini && \
-    perl -pi -e 's/allow_url_fopen = Off/allow_url_fopen = On/g' /etc/php/8.1/fpm/php.ini && \
-    perl -pi -e 's/expose_php = On/expose_php = Off/g' /etc/php/8.1/fpm/php.ini && \
-    perl -pi -e 's/;?\s*session\.gc_maxlifetime\s*=\s*.+/session.gc_maxlifetime = 10800/g' /etc/php/8.1/fpm/php.ini
+RUN perl -pi -e 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' /etc/php/8.2/fpm/php.ini && \
+    perl -pi -e 's/allow_url_fopen = Off/allow_url_fopen = On/g' /etc/php/8.2/fpm/php.ini && \
+    perl -pi -e 's/expose_php = On/expose_php = Off/g' /etc/php/8.2/fpm/php.ini && \
+    perl -pi -e 's/;?\s*session\.gc_maxlifetime\s*=\s*.+/session.gc_maxlifetime = 10800/g' /etc/php/8.2/fpm/php.ini
 
 # Prepare nginx configuration
 RUN mkdir /etc/nginx/certs
@@ -70,6 +84,10 @@ RUN mkdir /etc/nginx/certs
 # Setup simplesamlphp
 COPY resources/simplesamlphp/bin/get_idp_proxy_metadata.sh /var/www/simplesamlphp/bin
 COPY resources/simplesamlphp/bin/remove_idp_proxy_metadata.sh /var/www/simplesamlphp/bin
+COPY resources/simplesamlphp/templates/selectidp-dropdown.twig /var/www/simplesamlphp/templates
+COPY resources/simplesamlphp/templates/selectidp-embedded-wayf-start.twig /var/www/simplesamlphp/templates/includes
+COPY resources/simplesamlphp/templates/selectidp-embedded-wayf-end.twig /var/www/simplesamlphp/templates/includes
+
 # simplesamlphp keys
 RUN set -x \
     && cd /var/www/simplesamlphp/cert \
@@ -80,23 +98,26 @@ RUN set -x \
 
 # simplesamlphp metarefresh module
 RUN set -x \
-    && touch /var/www/simplesamlphp/modules/cron/enable \
     && mkdir -p /var/www/simplesamlphp/metadata/idp-proxy
+
+# Patch simplesamlphp
+COPY resources/simplesamlphp/simplesamlphp.patch /tmp/
+RUN set -x \
+    && cd /var/www/simplesamlphp \
+    && patch -p1 < /tmp/simplesamlphp.patch \
+    && rm -f /tmp/simplesamlphp.patch
 
 # Install simplesamlphp-module-attributeaggregator
 RUN set -x \
     && apt-get update \
     && apt-get -y --force-yes --no-install-recommends --no-install-suggests install \
-       php8.1-curl \
-       php8.1-mbstring \
-       php8.1-gmp \
-       php8.1-soap \
-       php8.1-ldap \
+       php8.2-curl \
+       php8.2-mbstring \
+       php8.2-gmp \
+       php8.2-soap \
+       php8.2-ldap \
        composer \
     && cd /var/www/simplesamlphp \
-    && composer require --dev -W \
-        "simplesamlphp/simplesamlphp-test-framework:^1.1.5" \
-        "phpunit/phpunit:^7.5|^8.5|^9.5" "vimeo/psalm:^4.17" \
     && composer config repositories.attributeaggregator "{\"type\": \"vcs\", \"url\": \"${ATTRIBUTE_AGGREGATOR_URL}\", \"no-api\": true}" \
     && composer require --update-no-dev niif/simplesamlphp-module-attributeaggregator:${ATTRIBUTE_AGGREGATOR_BRANCH} \
     && apt-get clean \
@@ -106,9 +127,6 @@ RUN set -x \
 RUN set -x \
     && chown -R www-data:www-data /var/www/simplesamlphp /var/www/vendor \
     && chmod a+x /var/www/simplesamlphp/bin/get_idp_proxy_metadata.sh
-
-# Install custom discoresp.php
-COPY resources/saml/www/sp/discoresp.php /var/www/simplesamlphp/modules/saml/www/sp/discoresp.php
 
 # supervisord
 COPY resources/supervisord.conf /etc/
