@@ -40,7 +40,10 @@ setup_args = dict(
     description         = """Coursewarespawner: A custom spawner for Jupyterhub.""",
     long_description    = "Spawn single-user servers with Docker.",
     platforms           = "Linux, Mac OS X",
-    install_requires    = ['requests-unixsocket', 'dockerspawner'],
+    install_requires    = [
+        'requests-unixsocket @ git+https://github.com/NII-cloud-operation/requests-unixsocket.git',
+        'dockerspawner'
+    ],
     cmdclass = {
         'bdist_egg': bdist_egg if 'bdist_egg' in sys.argv else bdist_egg_disabled,
     }

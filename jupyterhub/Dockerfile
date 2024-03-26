@@ -59,7 +59,7 @@ RUN apt-get update && \
 
 # install the wheels from first stage
 COPY --from=builder /tmp/wheelhouse /tmp/wheelhouse
-RUN python3 -m pip install --no-cache /tmp/wheelhouse/*
+RUN python3 -m pip install --no-cache --no-deps /tmp/wheelhouse/*
 
 # Resources
 RUN mkdir /var/jupyterhub
