@@ -1274,6 +1274,7 @@ $config = [
         ['type' => 'flatfile', 'directory' => 'metadata/gakunin-metadata'],
         ['type' => 'flatfile', 'directory' => 'metadata/attributeauthority-remote'],
         ['type' => 'flatfile', 'directory' => 'metadata/open-idp-metadata'],
+        ['type' => 'flatfile', 'directory' => 'metadata/orthros-metadata'],
         {% if cgidp_localfile_metadata=="1" or cgidp_localfile_metadata=="yes" 
            or enable_test_federation=="1" or enable_test_federation=="yes" %}
         ['type' => 'xml', 'file' => 'metadata/xml/cgidp-metadata.xml'],
