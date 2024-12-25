@@ -58,8 +58,8 @@ RUN apt-get update && \
     apt-get autoclean && apt-get clean && apt-get autoremove
 
 # install the wheels from first stage
-COPY --from=builder /tmp/wheelhouse /tmp/wheelhouse
-RUN python3 -m pip install --no-cache --no-deps /tmp/wheelhouse/*
+RUN --mount=type=cache,from=builder,source=/tmp/wheelhouse,target=/tmp/wheelhouse \
+    python3 -m pip install --no-cache --no-deps /tmp/wheelhouse/*
 
 # Resources
 RUN mkdir /var/jupyterhub
