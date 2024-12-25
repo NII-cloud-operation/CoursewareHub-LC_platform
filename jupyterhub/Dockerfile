@@ -1,4 +1,4 @@
-FROM jupyterhub/jupyterhub:4.0 AS builder
+FROM jupyterhub/jupyterhub:5.2 AS builder
 
 # dev tools
 RUN apt-get update && \
@@ -43,7 +43,7 @@ RUN python3 -m pip wheel --wheel-dir wheelhouse --constraint requirements \
 RUN python3 -m pip wheel --wheel-dir wheelhouse --constraint requirements \
     jupyterhub-idle-culler
 
-FROM jupyterhub/jupyterhub:4.0
+FROM jupyterhub/jupyterhub:5.2
 
 # dind
 RUN apt-get update && \
