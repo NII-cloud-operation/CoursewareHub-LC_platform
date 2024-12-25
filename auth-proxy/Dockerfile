@@ -159,4 +159,4 @@ COPY --chown=www-data:www-data resources/templates /var/www/templates
 COPY --chown=www-data:www-data resources/bin /var/www/bin
 COPY --chown=www-data:www-data resources/lib /var/www/lib
 
-CMD /start.sh
+CMD ["/start.sh"]
