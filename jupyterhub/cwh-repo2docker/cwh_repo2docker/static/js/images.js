@@ -1,10 +1,9 @@
 require([
-  "jquery", "bootstrap", "moment", "jhapi", "utils",
+  "jquery", "moment", "jhapi", "utils",
   "static/vendor/xterm-addon-fit.js",
   "static/vendor/xterm.js"
 ], function(
   $,
-  bs,
   moment,
   JHAPI,
   utils,
@@ -39,7 +38,8 @@ require([
     dialog.find(".build-args-input").val("");
     dialog.find(".username-input").val("");
     dialog.find(".password-input").val("");
-    dialog.modal();
+    var modal = new bootstrap.Modal(dialog[0])
+    modal.show();
   });
 
   $(".set-default-course-image").click(function() {
@@ -71,7 +71,8 @@ require([
       var password = dialog.find(".password-input").val().trim();
       var spinner = $("#adding-environment-dialog");
       spinner.find('.modal-footer').remove();
-      spinner.modal();
+      var modal = new bootstrap.Modal(spinner[0])
+      modal.show();
       $.ajax("api/environments?_xsrf=" + xsrf_token, {
         type: "POST",
         data: JSON.stringify({
@@ -96,7 +97,8 @@ require([
     var dialog = $("#remove-environment-dialog");
     dialog.find(".delete-environment").attr("data-image", image);
     dialog.find(".delete-environment").text(name);
-    dialog.modal();
+    var modal = new bootstrap.Modal(dialog[0])
+    modal.show();
   });
 
   $("#remove-environment-dialog")
@@ -106,7 +108,8 @@ require([
       var image = dialog.find(".delete-environment").data("image");
       var spinner = $("#removing-environment-dialog");
       spinner.find('.modal-footer').remove();
-      spinner.modal();
+      var modal = new bootstrap.Modal(spinner[0])
+      modal.show();
       $.ajax("api/environments?_xsrf=" + xsrf_token, {
         type: "DELETE",
         data: JSON.stringify({
@@ -123,6 +126,8 @@ require([
     var row = getRow(el);
     var image = row.data("image");
     var dialog = $("#show-logs-dialog");
+
+    dialog.find(".modal-dialog").addClass("modal-lg");
 
     var log = new xterm.Terminal({
       convertEol: true,
@@ -165,7 +170,8 @@ require([
         eventSource.close();
       }
     });
-    dialog.modal();
+    var modal = new bootstrap.Modal(dialog[0])
+    modal.show();
   });
 
   // initialize tooltips
