@@ -343,6 +343,10 @@ class CoursewareUserSpawner(SwarmSpawner):
             NB_UID=self.user_id,
             HOME=self.homedir,
         ))
+        if os.environ('DEBUG', 'no') in ['yes', '1']:
+            env.update(dict(
+                REPO_DIR=self.homedir,
+            ))
         # Fix 20180802
         if self._is_admin():
             env['GRANT_SUDO'] = 'yes'
