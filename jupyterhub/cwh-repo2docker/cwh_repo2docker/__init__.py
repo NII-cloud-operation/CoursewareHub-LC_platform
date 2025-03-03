@@ -213,6 +213,21 @@ class Repo2DockerSpawner(CoursewareUserSpawner):
             cmd = image_info["Config"]["Cmd"]
         return cmd
 
+    def get_args(self):
+        args = super().get_args()
+        username = self.user.name
+        base_url = self.hub.base_url[:-4]
+        xsrf_cookie_path = base_url + 'user/' + username + '/'
+        # workaround when jupyterhub<=4.1.5 is used on single-user server
+        # https://github.com/jupyterhub/jupyterhub/pull/4750
+        # https://github.com/jupyterhub/jupyterhub/pull/4771
+        args.append(
+                '--ServerApp.tornado_settings='
+                '{"xsrf_cookie_kwargs":{"path":"'
+                + xsrf_cookie_path + '"}}')
+
+        return args
+
     async def get_command(self):
         image_cmd = await self._get_cmd_from_image()
         # override cmd for docker-stacks image
