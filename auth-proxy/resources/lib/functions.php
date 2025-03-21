@@ -1,21 +1,9 @@
 <?php
 require_once __DIR__ . '/hub-const.php';
 require_once __DIR__ . '/const.php';
-require_once __DIR__ . '/../simplesamlphp/public/_include.php';
 
 $SESSION_NAME = session_name();
 
-
-/**
- * Logout from the federation
- */
-function logout_fed()
-{
-    $as = new \SimpleSAML\Auth\Simple('default-sp');
-    if ($as->isAuthenticated()) {
-        $as->logout();
-    }
-}
 
 /**
  * Check the user autorization of this Coursen

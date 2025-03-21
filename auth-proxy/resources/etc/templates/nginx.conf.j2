@@ -53,7 +53,6 @@ http {
         root /var/www/htdocs;
         index login.php logout.php;
 
-        ssl on;
         ssl_certificate "/etc/nginx/certs/auth-proxy.chained.cer";
         ssl_certificate_key "/etc/nginx/certs/auth-proxy.key";
 
@@ -86,7 +85,7 @@ http {
 
         location ~ [^/]\.php(/|$) {
             fastcgi_split_path_info ^(.+\.php)(/.*)$;
-            fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+            fastcgi_pass unix:/run/php/php8.3-fpm.sock;
             include fastcgi_params;
             fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
             fastcgi_param PATH_INFO $fastcgi_path_info;
@@ -98,7 +97,7 @@ http {
             alias /var/www/simplesamlphp/public;
 
             location ~ ^(?<prefix>/simplesaml)(?<phpfile>.+?\.php)(?<pathinfo>/.*)?$ {
-                fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+                fastcgi_pass unix:/run/php/php8.3-fpm.sock;
                 fastcgi_index index.php;
                 include fastcgi_params;
                 fastcgi_param SCRIPT_FILENAME $document_root$phpfile;
