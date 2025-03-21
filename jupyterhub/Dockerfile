@@ -1,4 +1,4 @@
-FROM jupyterhub/jupyterhub:4.0 AS builder
+FROM jupyterhub/jupyterhub:5.2 AS builder
 
 # dev tools
 RUN apt-get update && \
@@ -43,7 +43,7 @@ RUN python3 -m pip wheel --wheel-dir wheelhouse --constraint requirements \
 RUN python3 -m pip wheel --wheel-dir wheelhouse --constraint requirements \
     jupyterhub-idle-culler
 
-FROM jupyterhub/jupyterhub:4.0
+FROM jupyterhub/jupyterhub:5.2
 
 # dind
 RUN apt-get update && \
@@ -58,8 +58,8 @@ RUN apt-get update && \
     apt-get autoclean && apt-get clean && apt-get autoremove
 
 # install the wheels from first stage
-COPY --from=builder /tmp/wheelhouse /tmp/wheelhouse
-RUN python3 -m pip install --no-cache --no-deps /tmp/wheelhouse/*
+RUN --mount=type=cache,from=builder,source=/tmp/wheelhouse,target=/tmp/wheelhouse \
+    python3 -m pip install --no-cache --no-deps /tmp/wheelhouse/*
 
 # Resources
 RUN mkdir /var/jupyterhub

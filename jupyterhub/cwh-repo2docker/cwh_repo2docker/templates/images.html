@@ -109,20 +109,20 @@
 {% call modal(name, btn_class='btn-primary save-button') %}
   <div class="form-horizontal">
     <div class="form-group">
-      <label for="repository-url" class="col-sm-4 control-label">Repository URL</label>
-      <div class="col-sm-8">
+      <label for="repository-url" class="col-sm-6 control-label">Repository URL</label>
+      <div class="col-sm-10">
         <input type="text" class="form-control repo-input" id="repository-url"/>
       </div>
     </div>
     <div class="form-group">
-      <label for="reference" class="col-sm-4 control-label">Reference (git commit)</label>
-      <div class="col-sm-8">
+      <label for="reference" class="col-sm-6 control-label">Reference (git commit)</label>
+      <div class="col-sm-10">
         <input type="text" class="form-control ref-input" id="reference" placeholder="HEAD"/>
       </div>
     </div>
     <div class="form-group">
-      <label for="name" class="col-sm-4 control-label">Name of the environment</label>
-      <div class="col-sm-8">
+      <label for="name" class="col-sm-6 control-label">Name of the environment</label>
+      <div class="col-sm-10">
         <input data-toggle="tooltip" title="Allowed characters are a to z, A to Z, 0 to 9, - and _"
                type="text" class="form-control name-input" id="name"/>
         <p class="help-block">Example: course-python-101-B37</p>
@@ -132,8 +132,8 @@
     <details>
       <summary>&gt; Advanced</summary>
       <div class="form-group">
-        <label for="build-args" class="col-sm-4 control-label">Build Arguments</label>
-        <div class="col-sm-8">
+        <label for="build-args" class="col-sm-6 control-label">Build Arguments</label>
+        <div class="col-sm-10">
           <textarea class="form-control build-args-input" id="build-args" rows="4" placeholder="arg1=val1&#10;arg2=val2&#10;..."></textarea>
         </div>
       </div>
@@ -141,14 +141,14 @@
     <details>
       <summary>&gt; Credentials (optional)</summary>
       <div class="form-group">
-        <label for="username" class="col-sm-4 control-label">Git Username</label>
-        <div class="col-sm-8">
+        <label for="username" class="col-sm-6 control-label">Git Username</label>
+        <div class="col-sm-10">
           <input type="text" class="form-control username-input" id="username"/>
         </div>
       </div>
       <div class="form-group">
-        <label for="password" class="col-sm-4 control-label">Git Password</label>
-        <div class="col-sm-8">
+        <label for="password" class="col-sm-6 control-label">Git Password</label>
+        <div class="col-sm-10">
           <input type="password" class="form-control password-input" id="password"/>
         </div>
       </div>
