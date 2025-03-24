@@ -256,6 +256,10 @@ class Registry(SingletonConfigurable):
         name = self.initial_course_image
         return f'{host}/{name}'
 
+    def get_full_image_name(self, name: str) -> str:
+        host = self.host
+        return f'{host}/{name}'
+
     async def list_images(self) -> List[Dict]:
         async with aiohttp.ClientSession(
                 auth=self._get_auth(),

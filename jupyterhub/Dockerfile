@@ -19,12 +19,13 @@ RUN python3 -m pip wheel --wheel-dir wheelhouse --constraint requirements \
     git+https://github.com/cwaldbieser/jhub_remote_user_authenticator.git
 
 # Spawner
-RUN mkdir /tmp/spawner
 ADD ./spawner /tmp/spawner/
+ADD ./cwh-authenticator /tmp/cwh-authenticator/
 ADD ./cwh-repo2docker /tmp/cwh-repo2docker/
 RUN python3 -m pip wheel --wheel-dir wheelhouse --constraint requirements \
         git+https://github.com/jupyterhub/dockerspawner.git \
         /tmp/spawner \
+        /tmp/cwh-authenticator \
         /tmp/cwh-repo2docker
 
 # DB

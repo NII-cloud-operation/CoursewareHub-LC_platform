@@ -1,0 +1,10 @@
+{% extends "templates/error.html" %}
+
+{% block error_detail %}
+{% if exception %}{% if exception.log_message %}
+{% if exception.log_message | format(*exception.args) != message %}
+<p>{{ exception.log_message | format(*exception.args) | safe }}</p>
+{% endif %}
+{% endif %}{% endif %}
+{{ super() }}
+{% endblock %}
