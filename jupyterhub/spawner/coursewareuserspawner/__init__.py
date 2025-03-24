@@ -343,7 +343,7 @@ class CoursewareUserSpawner(SwarmSpawner):
             NB_UID=self.user_id,
             HOME=self.homedir,
         ))
-        if os.environ('DEBUG', 'no') in ['yes', '1']:
+        if os.environ.get('DEBUG', 'no') in ['yes', '1']:
             env.update(dict(
                 REPO_DIR=self.homedir,
             ))
