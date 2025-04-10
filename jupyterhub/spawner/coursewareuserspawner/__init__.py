@@ -441,6 +441,8 @@ class CoursewareUserSpawner(SwarmSpawner):
         super().load_state(state)
         if 'user_id' in state:
             self.user_id = state['user_id']
+        else:
+            self.user_id = self.get_user_id(self)
 
     def get_state(self):
         state = super().get_state()
