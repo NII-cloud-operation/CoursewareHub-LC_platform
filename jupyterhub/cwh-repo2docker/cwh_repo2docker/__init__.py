@@ -300,9 +300,10 @@ class Repo2DockerSpawner(CoursewareUserSpawner):
 
     def _make_dir(self, dirpath, mode, uid, gid):
         try:
-            os.mkdir(dirpath, mode)
+            os.mkdir(dirpath)
         except FileExistsError:
-            os.chmod(dirpath, mode)
+            pass
+        os.chmod(dirpath, mode)
         os.chown(dirpath, uid, gid)
 
     async def create_object(self, *args, **kwargs):
