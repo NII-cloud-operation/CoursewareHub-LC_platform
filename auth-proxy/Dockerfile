@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 ARG SIMPLESAMLPHP_VERSION="2.3.7"
 ARG ATTRIBUTE_AGGREGATOR_URL="https://github.com/NII-cloud-operation/simplesamlphp-module-attributeaggregator"
@@ -135,10 +135,14 @@ COPY resources/supervisord.conf /etc/
 RUN set -x \
     && apt-get update \
     && apt-get -y --no-install-recommends --no-install-suggests install \
-       python3-pip \
+       python3-venv \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
-    && pip install --no-cache-dir j2cli
+    && mkdir /opt/venv \
+    && python3 -m venv /opt/venv \
+    && /opt/venv/bin/pip install --no-cache-dir jinja2-cli
+
+ENV PATH=/opt/venv/bin:$PATH
 
 # Install config template files
 COPY resources/etc/templates /etc/templates
