@@ -44,7 +44,14 @@ http {
     server {
         listen 80;
         server_name hub;
-        rewrite  ^ https://$host$request_uri? permanent;
+        root /var/www/htdocs;
+
+        location /.well-known/acme-challenge/ {
+        }
+
+        location / {
+            return 301 https://$host$request_uri;
+        }
     }
 
     server {
@@ -53,8 +60,8 @@ http {
         root /var/www/htdocs;
         index login.php logout.php;
 
-        ssl_certificate "/etc/nginx/certs/auth-proxy.chained.cer";
-        ssl_certificate_key "/etc/nginx/certs/auth-proxy.key";
+        ssl_certificate "/etc/nginx/live-certs/server.cer";
+        ssl_certificate_key "/etc/nginx/live-certs/server.key";
 
         ssl_ciphers "AES128+EECDH:AES128+EDH";
         ssl_protocols TLSv1.2;

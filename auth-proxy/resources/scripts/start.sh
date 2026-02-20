@@ -3,6 +3,28 @@ set -xe
 
 TEMPLATE_DIR=/etc/templates
 
+ACME_CONFIG_FILE=${ACME_CONFIG_FILE:-acme-config}
+
+if [[ -e "/run/secrets/${ACME_CONFIG_FILE}" ]]; then
+    source "/run/secrets/${ACME_CONFIG_FILE}"
+    export ACME_SERVER \
+           ACME_EAB_KID \
+           ACME_EAB_HMAC_KEY \
+           ACME_EAB_HMAC_ALG \
+           ACME_EMAIL \
+           ACME_KEY_TYPE
+fi
+
+CERT_DIR=/etc/nginx/certs
+mkdir -p /etc/nginx/live-certs
+if [[ -e $CERT_DIR/server.cer ]] && [[ -e $CERT_DIR/server.key ]]; then
+    ln -s -f $CERT_DIR/server.cer /etc/nginx/live-certs/server.cer
+    ln -s -f $CERT_DIR/server.key /etc/nginx/live-certs/server.key
+else
+    export ACME_ENABLED=1
+    /acme-init.sh
+fi
+
 if [[ -z ${SIMPLESAMLPHP_ADMIN_PASSWORD} ]]; then
     export SIMPLESAMLPHP_ADMIN_PASSWORD=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 12)
 fi
@@ -30,4 +52,4 @@ elif [[ "$ENABLE_FEDERATION" == "1" || "$ENABLE_FEDERATION" == "yes" ]]; then
     jinja2 ${TEMPLATE_DIR}/authsources.php.j2 -o /var/www/simplesamlphp/config/authsources.php
 fi
 
-/usr/bin/supervisord -n -c /etc/supervisord.conf
+exec /usr/bin/supervisord -n -c /etc/supervisord.conf
