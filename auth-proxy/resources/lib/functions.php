@@ -121,3 +121,19 @@ function generate_password($length = 10)
     }
     return $password;
 }
+
+function get_reproxy_url($params)
+{
+    $reproxy_url = HUB_URL;
+    if (! empty(COURSE_NAME)) {
+        $reproxy_url .= '/';
+        $reproxy_url .= COURSE_NAME;
+    }
+    $reproxy_url .= '/hub/login';
+    $query = http_build_query($params, '', null, PHP_QUERY_RFC3986);
+    if ($query) {
+        $reproxy_url .= '?';
+        $reproxy_url .= $query;
+    }
+    return $reproxy_url;
+}
