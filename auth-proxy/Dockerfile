@@ -131,7 +131,7 @@ RUN set -x \
 # supervisord
 COPY resources/supervisord.conf /etc/
 
-# Install j2cli
+# Install jinja2-cli and certbot
 RUN set -x \
     && apt-get update \
     && apt-get -y --no-install-recommends --no-install-suggests install \
@@ -140,7 +140,7 @@ RUN set -x \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir /opt/venv \
     && python3 -m venv /opt/venv \
-    && /opt/venv/bin/pip install --no-cache-dir jinja2-cli
+    && /opt/venv/bin/pip install --no-cache-dir jinja2-cli certbot
 
 ENV PATH=/opt/venv/bin:$PATH
 
@@ -150,12 +150,17 @@ COPY resources/etc/templates /etc/templates
 # Set the current working directory
 WORKDIR /var/www/html
 
-# Expose port 80
+# Expose port 80, 443
 EXPOSE 80
 EXPOSE 443
 
-COPY resources/scripts/start.sh /
-RUN chmod +x /start.sh
+COPY --chmod=755 resources/scripts/start.sh /
+COPY --chmod=755 resources/scripts/acme-init.sh /
+COPY --chmod=755 resources/scripts/acme-renew.sh /
+COPY --chmod=755 resources/scripts/reload-nginx /
+COPY --chmod=755 resources/scripts/healthcheck.sh /
+
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 --start-period=10s --start-interval=1s CMD /healthcheck.sh
 
 COPY --chown=www-data:www-data resources/htdocs/php /var/www/htdocs/php
 COPY --chown=www-data:www-data resources/html /var/www/htdocs/html
