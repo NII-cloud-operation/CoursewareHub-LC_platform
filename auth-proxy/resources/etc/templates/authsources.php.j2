@@ -10,7 +10,7 @@ $config = [
         'core:AdminPassword',
     ],
 
-    {% set enable_federation = env("ENABLE_FEDERATION", "no")%}
+    {% set enable_federation = environ("ENABLE_FEDERATION") | default("no", true) %}
 
     // An authentication source which can authenticate against SAML 2.0 IdPs.
     'default-sp' => [
@@ -20,9 +20,9 @@ $config = [
 
         // The entity ID of this SP.
         {% if enable_federation=="1" or enable_federation=="yes" %}
-        'entityID' => 'https://{{ env("MASTER_FQDN") }}/shibboleth-sp',
+        'entityID' => 'https://{{ environ("MASTER_FQDN") }}/shibboleth-sp',
         {% else %}
-        'entityID' => 'https://{{ env("MASTER_FQDN") }}/simplesaml/module.php',
+        'entityID' => 'https://{{ environ("MASTER_FQDN") }}/simplesaml/module.php',
         {% endif %}
 
         // The entity ID of the IdP this SP should contact.
@@ -30,7 +30,7 @@ $config = [
         {% if enable_federation=="1" or enable_federation=="yes" %}
         'idp' => null,
         {% else %}
-        'idp' => 'https://{{ env("AUTH_FQDN") }}/simplesaml/saml2/idp/metadata.php',
+        'idp' => 'https://{{ environ("AUTH_FQDN") }}/simplesaml/saml2/idp/metadata.php',
         {% endif %}
 
         // The URL to the discovery service.

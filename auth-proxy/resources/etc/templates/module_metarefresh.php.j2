@@ -6,7 +6,7 @@ $config = [
             'cron' => ['daily'],
             'sources' => [
                 [
-                    'src' => 'https://{{ env("AUTH_FQDN") }}/simplesaml/saml2/idp/metadata.php',
+                    'src' => 'https://{{ environ("AUTH_FQDN") }}/simplesaml/saml2/idp/metadata.php',
                     'certificates' => [
                         'idp-proxy.cer'
                     ]
