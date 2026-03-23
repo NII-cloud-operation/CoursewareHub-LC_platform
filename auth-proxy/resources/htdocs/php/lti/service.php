@@ -84,13 +84,9 @@ if ($launch->is_resource_launch()) {
     if ($next) {
         $login_params['next'] = $next;
     }
+    $reproxy_url = get_reproxy_url($login_params);
 
     header("X-Accel-Redirect: /entrance/");
-    $reproxy_url = HUB_URL.'/'.COURSE_NAME."/hub/login";
-    $query = http_build_query($login_params, '', null, PHP_QUERY_RFC3986);
-    if ($query) {
-        $reproxy_url = $reproxy_url.'?'.$query;
-    }
     header("X-Reproxy-URL: $reproxy_url");
     header("X-REMOTE-USER: $username");
 } else if ($launch->is_deep_link_launch()) {

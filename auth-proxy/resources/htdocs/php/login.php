@@ -21,9 +21,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['username'] = $username;
         $_SESSION['authtype'] = 'local';
 
-        $next_param = isset($_GET['next']) ? '?next=' . urlencode($_GET['next']) : '';
+        $login_params = array();
+        if (isset($_GET['next'])) {
+            $login_params['next'] = $_GET['next'];
+        }
+        $reproxy_url = get_reproxy_url($login_params);
         header("X-Accel-Redirect: /entrance/");
-        header("X-Reproxy-URL: ".HUB_URL.'/'.COURSE_NAME."/hub/login".$next_param);
+        header("X-Reproxy-URL: $reproxy_url");
         header("X-REMOTE-USER: $username");
 
         exit;
