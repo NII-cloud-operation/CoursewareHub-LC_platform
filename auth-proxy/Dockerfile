@@ -1,6 +1,6 @@
 FROM ubuntu:24.04
 
-ARG SIMPLESAMLPHP_VERSION="2.4.4"
+ARG SIMPLESAMLPHP_VERSION="2.5.3.1"
 ARG ATTRIBUTE_AGGREGATOR_URL="https://github.com/NII-cloud-operation/simplesamlphp-module-attributeaggregator"
 ARG ATTRIBUTE_AGGREGATOR_BRANCH="dev-2.x-gakunin-cloud-gateway"
 
@@ -49,6 +49,7 @@ RUN set -x \
         php8.4-xml \
         php8.4-pgsql \
         php8.4-sqlite3 \
+        php8.4-bcmath \
     && php8.4 -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
     && php8.4 -r "if (hash_file('sha384', 'composer-setup.php') === '$(curl -q https://composer.github.io/installer.sig)') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;" \
     && php8.4 composer-setup.php \
