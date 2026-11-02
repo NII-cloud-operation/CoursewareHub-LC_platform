@@ -154,17 +154,20 @@ if cull_server == '1' or cull_server == 'yes':
     ]
 
     cull_server_idle_timeout = int(os.environ.get('CULL_SERVER_IDLE_TIMEOUT', '600'))
-    cull_server_max_age = int(os.environ.get('CULL_SERVER_MAX_AGE', '0'))
-    cull_server_every = int(os.environ.get('CULL_SERVER_EVERY', '0'))
     if cull_server_idle_timeout > 0:
+        culler_params = []
+        culler_params.append('--timeout={}'.format(cull_server_idle_timeout))
+        cull_server_max_age = os.environ.get('CULL_SERVER_MAX_AGE')
+        if (cull_server_max_age):
+            culler_params.append('--max-age={}'.format(int(cull_server_max_age)))
+        cull_server_every = os.environ.get('CULL_SERVER_EVERY')
+        if (cull_server_every):
+            culler_params.append('--cull-every={}'.format(int(cull_server_every)))
         services.append(
             {
                 'name': 'jupyterhub-idle-culler-service',
                 'command': [sys.executable,
-                            '-m', 'jupyterhub_idle_culler',
-                            '--timeout={}'.format(str(cull_server_idle_timeout)),
-                            '--max-age={}'.format(str(cull_server_max_age)),
-                            '--cull-every={}'.format(str(cull_server_every))],
+                            '-m', 'jupyterhub_idle_culler'] + culler_params
             }
         )
 c.JupyterHub.services = services
