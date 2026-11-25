@@ -1,0 +1,119 @@
+name: Build and use CoursewareHub with the deployment notebooks
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited]
+  workflow_call:
+    inputs:
+      deploy_repository:
+        required: true
+        type: string
+      deploy_branch:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      deploy_repository:
+        description: Deploy repository (owner/repository)
+        default: NII-cloud-operation/CoursewareHub-LC_deploy
+        type: string
+      deploy_branch:
+        description: Deploy branch
+        default: main
+        type: string
+permissions:
+  contents: read
+jobs:
+  select:
+    name: Select deployment notebooks
+    runs-on: ubuntu-24.04
+    outputs:
+      repository: ${{ steps.deploy.outputs.repository }}
+      sha: ${{ steps.deploy.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - id: deploy
+        env:
+          DEPLOY_REPOSITORY: ${{ inputs.deploy_repository }}
+          DEPLOY_BRANCH: ${{ inputs.deploy_branch }}
+        run: python3 .github/scripts/select-deploy.py
+
+  images:
+    name: Build platform images
+    needs: select
+    if: needs.select.outputs.sha != ''
+    uses: ./.github/workflows/docker.yml
+    with:
+      export_for_e2e: true
+
+  deploy:
+    name: ${{ matrix.scenario }}
+    needs: [select, images]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - authentication: local
+            scenario: Local login, Moodle LTI and custom images
+          - authentication: federation
+            scenario: SAML federation
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ needs.select.outputs.repository }}
+          ref: ${{ needs.select.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: platform-images
+          path: ${{ runner.temp }}
+      - name: Load images built from the platform revision
+        run: |
+          zstd -dc "$RUNNER_TEMP/platform.tar.zst" | docker load
+          rm "$RUNNER_TEMP/platform.tar.zst"
+          echo "Platform $GITHUB_SHA; deploy $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare the browser and VM tools
+        run: |
+          python -m pip install -r tests/lc4ri/requirements.txt
+          python -m playwright install --with-deps chromium
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 qemu-utils cloud-image-utils ffmpeg fonts-noto-cjk
+          install -Dm644 tests/lc4ri/fonts.conf ~/.config/fontconfig/fonts.conf
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+      - name: Build and use CoursewareHub through the deployment notebooks
+        env:
+          LC4RI_AUTHENTICATION: ${{ matrix.authentication }}
+          LC4RI_PLATFORM_HUB: coursewarehub-jupyterhub:${{ github.sha }}
+          LC4RI_PLATFORM_AUTH: coursewarehub-auth-proxy:${{ github.sha }}
+          LC4RI_PLATFORM_SCHEMA_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/jupyterhub/resources-schema.json
+        run: bash tests/lc4ri/run-construction.sh
+      - name: Verify the deployment notebook originals
+        if: always()
+        run: git diff --exit-code HEAD -- '*.ipynb'
+      - name: Render the walkthrough
+        if: success() || (!cancelled() && hashFiles('test-results/lc4ri-construction/**/segments.json') != '')
+        run: python tests/lc4ri/render_movie.py test-results/lc4ri-construction
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coursewarehub-${{ matrix.authentication }}-walkthrough
+          path: test-results/lc4ri-construction/movies/walkthrough.mp4
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coursewarehub-${{ matrix.authentication }}-results
+          path: |
+            test-results/lc4ri-construction/**
+            !test-results/lc4ri-construction/movies/**
+            !test-results/lc4ri-construction/**/*.webm
+            !test-results/lc4ri-construction/**/*trace.zip
+          if-no-files-found: error
+          retention-days: 14
